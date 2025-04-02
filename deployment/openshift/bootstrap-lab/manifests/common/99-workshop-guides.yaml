@@ -60,12 +60,12 @@ spec:
           container-registry-gitea-user: gitea
           container-registry-gitea-pass: gitea
           # AI
+          gitea-user: user${i}
+          gitea-password: redhat$i
           object_storage_models_access_key: $MODELS_ACCESS_KEY
           object_storage_models_secret_key: $MODELS_SECRET_KEY
           object_storage_pipeline_access_key: $PIPELINES_ACCESS_KEY
           object_storage_pipeline_secret_key: $PIPELINES_SECRET_KEY
-          gitea-user: user${i}
-          gitea-password: redhat$i
           registry-url: https://quay.io/user/luisarizmendi/
           EOF
 

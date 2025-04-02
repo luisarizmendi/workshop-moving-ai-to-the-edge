@@ -901,7 +901,7 @@ image::ai-build-pipeline-elyra-gpu-logs.png[]
 
 
 
-Once the Pipeline is finished, you could check that the contents are saved into the Object Data Store.
+Once the Pipeline is finished, you could check that the contents are saved into the Object Data Store by navigating to ( https://s3-browser-{user}-ai-models-{user}-tools.apps.${ocp_cluster_url} ) and open the `prototype/pipeline` folder.
 
 == Solution and Next Steps
 
