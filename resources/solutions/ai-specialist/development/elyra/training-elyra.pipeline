@@ -96,16 +96,16 @@
               "outputs": [],
               "env_vars": [
                 {
-                  "env_var": "AWS_S3_ENDPOINT"
+                  "env_var": "S3_ENDPOINT"
                 },
                 {
-                  "env_var": "AWS_ACCESS_KEY_ID"
+                  "env_var": "ACCESS_KEY"
                 },
                 {
-                  "env_var": "AWS_SECRET_ACCESS_KEY"
+                  "env_var": "SECRET__KEY"
                 },
                 {
-                  "env_var": "AWS_S3_BUCKET"
+                  "env_var": "S3_BUCKET"
                 }
               ],
               "kubernetes_pod_annotations": [],

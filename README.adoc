@@ -73,7 +73,7 @@ Bear also in mind that the https://docs.github.com/en/repositories/working-with-
 
 ==== GitHub Pages
 
-You can take a view to the content by simply visiting GitHub Pages for this repo in `https://luisarizmendi.github.io/workshop-moving-ai-to-the-edge/modules/index.html`
+You can take a view to the content preview (with no variables configured) by simply visiting GitHub Pages for this repo in `https://luisarizmendi.github.io/workshop-moving-ai-to-the-edge/modules/index.html`
 
 ==== Using Antora Viewer
 
