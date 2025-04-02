@@ -553,15 +553,11 @@ But what are those values? Well, when you created the Workbench you configured a
 
 [source,python,role=execute,subs="attributes"]
 ----
-AWS_S3_ENDPOINT_NAME = os.getenv("AWS_S3_ENDPOINT", "").replace('https://', '').replace('http://', '')
+AWS_S3_ENDPOINT = os.getenv("AWS_S3_ENDPOINT", "").replace('https://', '').replace('http://', '')
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
 ----
-
-[NOTE]
-
-In the `AWS_S3_ENDPOINT_NAME` we removed the `https://` from the `AWS_S3_ENDPOINT` variable
 
 Once you have the Object Storage Client configured, you just need to select the files and upload them using the `client.fput_object` method:
 
