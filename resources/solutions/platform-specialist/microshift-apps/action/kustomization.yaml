@@ -1,0 +1,5 @@
+resources:
+  - namespace.yaml
+  - sa.yaml
+  - crb.yaml
+  - deployment.yaml

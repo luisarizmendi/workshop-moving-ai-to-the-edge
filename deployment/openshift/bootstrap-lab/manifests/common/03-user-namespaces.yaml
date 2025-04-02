@@ -1,0 +1,98 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-namespaces-create
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            username="user$i"
+            password="redhat$i"
+            for n in ai tools workshop-guide; do
+              namespace=${username}-${n}
+              echo "Creating namespace: $namespace"
+          oc apply -f - <<EOF
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: $namespace
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: ${username}-adminc
+            namespace: $namespace
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: admin
+          subjects:
+          - kind: User
+            name: ${username}
+            apiGroup: rbac.authorization.k8s.io
+          ---
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: container-registry-credentials
+            namespace: $namespace
+          stringData:
+            config.json: |
+              {
+                "auths": {
+                  "workshop-registry-quay-app.openshift-operators.svc.cluster.local": {
+                    "auth": "$(echo -n $username:$password | base64)"
+                  },
+                  "workshop-registry-quay-openshift-operators.$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')": {
+                    "auth": "$(echo -n $username:$password | base64)"
+                  }
+                }
+              }
+          ---
+          kind: Secret
+          apiVersion: v1
+          metadata:
+            name: ai-models
+            namespace: $namespace
+            annotation:
+              workshop/user: ${username}
+          stringData:
+            AWS_ACCESS_KEY_ID: ${username}
+            AWS_SECRET_ACCESS_KEY: ${password}
+          ---
+          kind: ConfigMap
+          apiVersion: v1
+          metadata:
+            name: workshop-user-data
+            namespace: $namespace
+            annotation:
+              workshop/user: ${username}
+          stringData:
+            username: ${username}
+          EOF
+            done
+          done 
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1

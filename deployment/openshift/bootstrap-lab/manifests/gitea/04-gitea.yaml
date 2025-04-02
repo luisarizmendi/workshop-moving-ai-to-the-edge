@@ -1,0 +1,19 @@
+---
+apiVersion: pfe.rhpds.com/v1
+kind: Gitea
+metadata:
+  name: gitea
+  namespace: gitea
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  giteaImageTag: 1.22.6
+  giteaVolumeSize: 4Gi
+  giteaSsl: false
+  postgresqlVolumeSize: 4Gi
+
+  giteaAdminUser: gitea
+  giteaAdminPassword: "R3dh4t1!"
+  giteaAdminPasswordLength: 32
+  giteaAdminEmail: gitea@acme.com

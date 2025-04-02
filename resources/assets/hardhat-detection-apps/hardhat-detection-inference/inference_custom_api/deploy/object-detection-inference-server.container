@@ -1,0 +1,21 @@
+[Unit]
+Description=Object Detection Inference API
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=quay.io/luisarizmendi/quay.io/luisarizmendi/object-detection-inference-server:prod
+AutoUpdate=registry
+Ports=8080:8080
+Privileged=true
+Environment=YOLO_MODEL_PATH=./models
+Environment=YOLO_MODEL_FILE=model.pt
+Environment=CONFIDENCE_THRESHOLD=0.2
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
+
+

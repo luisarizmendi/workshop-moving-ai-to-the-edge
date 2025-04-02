@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-detection-dashboard-backend
+  labels:
+    app: object-detection-dashboard
+    app.kubernetes.io/part-of: Dashboard
+    app.openshift.io/runtime: "python"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-detection-dashboard
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: object-detection-dashboard
+        component: backend
+    spec:
+      containers:
+      - name: backend
+        image: quay.io/luisarizmendi/object-detection-dashboard-backend:v1
+        ports:
+        - containerPort: 5005
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-detection-dashboard-backend
+  labels:
+    app: object-detection-dashboard
+spec:
+  selector:
+    app: object-detection-dashboard
+    component: backend
+  ports:
+  - protocol: TCP
+    port: 5005
+    targetPort: 5005
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: object-detection-dashboard-backend
+  labels:
+    app: object-detection-dashboard
+spec:
+  to:
+    kind: Service
+    name: object-detection-dashboard-backend
+  port:
+    targetPort: 5005

@@ -1,0 +1,595 @@
+= Fast-Track Instructions
+
+
+Your mission is to develop an object detection system that monitors workers in real time, identifying whether they’re wearing hardhats. The system will rely on existing USB webcams across the factory floor, feeding video streams into AI models deployed on industrial PCs (IPCs) equipped with NVIDIA GPUs.
+
+image::labintro-arch.png[]
+
+
+Find below the workflow that you will follow as AI specialist during the workshop.
+
+image::ai-workflow.png[]
+
+
+Let's start with the first step.
+
+== 1. Data Management
+
+[NOTE]
+
+You have the full guide for this task in the xref:ai-specialist-01-data.adoc[Data Management] section
+
+For this project, https://roboflow.com/[Roboflow] will be the primary tool used for managing and preparing data.
+
+[example]
+====
+Your first task will be to create a https://roboflow.com/[Roboflow account] (if you don't have one already):
+
+1. Go to https://roboflow.com/ and click  `Get Started` in the top-right corner.
+
+2. Choose your preferred sign-up method (such as email) and enter your name and password.
+
+3. You’ll be prompted to create a new workspace, use "workshop" as name. This will serve as the central hub for organizing datasets and projects.
+
+4. Do not create a "Project" becase you are going to fork a Dataset and it will create a new Project for you. 
+====
+
+[IMPORTANT]
+
+Roboflow includes some restrictions to Not-Paid accounts. The most important for us is that the overall number of images in your account must be less than 10,000, so we need to mantain the size of the Dataset that we will create in the next point below that number. 
+
+
+You will get images in your Roboflow account by forking another Project.
+
+[example]
+====
+To Fork the "Hardhat or Hat MockTrain" Project:
+
+1. Navigate to the  https://universe.roboflow.com/luisarizmendi/hardhat-or-hat-mocktrain/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true[dataset's URL that you want to Fork in Roboflow Universe].
+2. Click the "Fork Dataset" button on the top right corner.
+3. Confirm and wait until fork is done.
+====
+
+[NOTE]
+
+It is named 'MockTrain' because it contains only a few images to speed up training during the workshop. However, the resulting model will not be usable. A pre-trained model, trained on a more comprehensive dataset https://universe.roboflow.com/luisarizmendi/hardhat-or-hat/dataset/1["Hardhat or Hat" Dataset], will be provided as part of this workshop . 
+
+
+Roboflow need you to "publish" the Dataset to be trained by creating a "version".
+
+[example]
+====
+To create a new version of your Dataset: 
+
+1. Navigate to your Project's URL in your https://roboflow.com/[Roboflow account].
+2. Click on "Versions" in the left menu.
+3. You'll be prompted to apply additional preprocessing and aumentation actions. You won't include any so click "Continue" twice. 
+4. Click "Create".
+====
+
+Now is time to get the details to access this Dataset version. You don't need to download the files, the images and metadata will be directly gather from Roboflow in this workshop.
+
+
+[example]
+====
+To get the Dataset access details:
+
+1. Navigate to the Project's URL in your https://roboflow.com/[Roboflow account].
+2. Click the "Versions" on the left menu and select the version to be used (you have just one).
+3. Click on "Download Dataset" on top right corner.
+4. Select the format. We will be using a YOLOv11 based model.
+5. Select "Show download code" radio button.
+6. Unselect "Also train" option if it appears as an option.
+7. Click "Continue".
+8. You get a piece of code for Jupyter, copy it because you will need them later (you don't need to press the button, just copy the text). The generated code will be similar to the shown below.
+====
+
+
+
+----
+!pip install roboflow
+
+from roboflow import Roboflow
+rf = Roboflow(api_key="xxxxxxxxxxxxxxxxxxxxx")
+project = rf.workspace("workspace").project("hardhat-or-hat-mocktrain-<xxxxxxx>")
+version = project.version(1)
+dataset = version.download("yolov11")
+----
+
+Ok, you have your Dataset ready to be used, move into the next task.
+
+
+== 2. Model Development
+
+[NOTE]
+
+You have the full guide for this task in the xref:ai-specialist-02-develop.adoc[Model Development] section
+
+
+This section will guide you through the essential steps of engineering, training, and evaluation to create the first model prototype.
+
+In this step you will be using OpenShift AI and MinIO. 
+
+OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks] for experimentation and model training.
+
+https://min.io/[MinIO] is an Open Source High Performance Object Storage where we will save the models and the files with the performance metrics.
+
+
+[example]
+====
+To get started, you will create a new, empty Jupyter Notebook using OpenShift AI. In order to do so you have to 
+
+1- Navegate to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
+
+2- Log in using your OpenShift credentials: {openshift-user}  /  {openshift-password}. It's a good idea to refresh the page right after the first log in in order to let the left menu load completly with all the additional enabled features.  
+
+You need to select the `WORKSHOP` authenticaticator
+
+image::ai-build-authenticator.png[]
+
+
+3- Create a new Data Science Project "{user}-ai"
+
+4- Create a new S3 Storage Connection ("Connetions" tab) that will be used by your Jupyter Notebooks to save the model and performance stats. Include:
+
+** MinIO username and password ( Access key={minio-user-base}pass:[<span id="gnumberVal"></span>] / Secret key={minio-password-base}pass:[<span id="gnumberVal"></span>] )
+** MinIO API URL: {minio-api}
+** Bucket name "{user}-ai-models" 
+** Region: "none" 
+
+image::ai-build-dataconnection.png[]
+
+5- Create a new Workbench ("Workbenches" tab) named "Object Detection Notebooks". You will need to select:
+
+** Base image that will be used to run your Jupyter Notebooks (select `PyTorch`)
+** Version selection (keep the default)
+** Container Size (`Small` is enough)
+** Persistent Volume associated to the container (you can keep the default 20Gi Persistent Volume for your Notebook but you won't need that much storage)
+** Attach the Object Storage Connection that you already configured. 
+** Additionally, when you have GPUs you will find that during the Workbench creation you also can use accelerators (see an example below with NVIDIA GPUs).
+
+image::ai-build-workbench.png[]
+
+6- Click "Create Workbench". It will take some time to create and start it.
+
+7- Once started, open the Workbench (it could take time to open). You will be asked to allow permissions pior to show the Jupyter environment in your browser.
+
+8- Clone the source the workshop's Git repository: {git-workshop-url}. Once you click "Clone" a message will appear in the button right. It could take some time to clone the repository.
+
+image::ai-build-gitclone.png[]
+
+9- Move into the `workshop-moving-ai-to-the-edge/resources/solutions/ai-specialist/development` directory. Open the `prototyping.ipynb`
+ file
+ 
+10- Paste the Roboflow access code in the first code block of the"Step 3: Download from Roboflow" and save your Notebook clicking the disk icon on the top bar menu.
+
+====
+
+Now you have your prototyping Jupyter Notebook ready. In order to start the prototype training you just need to click the "Run all blocks" (`>>` icon) icon on the top bar menu (click "Restart" button once it appears in the screen).
+
+Even being a Mock Training it could take some time to finish if you are using CPUs instead of GPUs, in the meanwhile you can take a look at the cell's output. 
+
+You now can go to MinIO console ( https://minio-ui-minio.apps.{ocp_cluster_url} ) and open your "{user}-ai-models" Bucket. You will find the model with the best performance metrics (`best.pt`) and the last produced with the last training epoch (`last.pt`) along with the performance stats for the Test, Validation and Training sets.
+
+image::ai-build-miniomodel.png[]
+
+
+[NOTE]
+
+Remember that you performed a Mock Training with a reduced number of epochs and few data, so you cannot use that model to detect hardhats. During the deployment phase you will use a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/assets/object-detection-hardhat-or-hat/v1/model/pytorch[provided pre-trained model].
+
+At this point you can navigate to "Data Science Projects" and stop your Workbench to save resources in the OpenShift cluster. 
+
+== 3. Model Training
+
+[NOTE]
+
+You have the full guide for this task in the xref:ai-specialist-03-training.adoc[Model Training] section
+
+In production environments, training machine learning models is not as simple as running a script or experimenting in a notebook. A robust pipeline is essential. In this workshop we will use https://www.kubeflow.org/docs/components/pipelines/overview/[Kubeflow Pipelines].
+
+In this step you will use the same tools than in the previous one: OpenShift AI and MinIO Object Storage.
+
+Before Importing a pipeline you will need to enable the Pipeline server.
+
+
+[example]
+====
+To create a Pipeline Server:
+
+1. Navigate to "Data Science Pipelines" in OpenShift AI and configure a new pipeline server.
+2. Fill in the Data Connection information but this time use the Bucket {user}-ai-pipelines and set the region to `none` (as it is not configured in MinIO).
+3. Click "Configure pipeline server".
+====
+
+image::ai-build-pipeline-server.png[]
+
+
+
+Wait until the Pipeline is ready. Then you can import your pipeline.
+
+
+[example]
+====
+To proceed with the Kubeflow Pipeline import:
+
+1. Go to Data Science Pipelines
+2. Click Import Pipeline
+3. Fill in Name (`hardhat-training`)
+4. Select "Import by URL" and include the following URL:
+
+`https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline.yaml`
+
+====
+
+[NOTE]
+====
+If you don't have GPUs or the GPUs are in use, you might want to import this other pipeline that does the training in the CPU:
+
+`https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline_cpu.yaml`
+====
+
+After the correct import, you will see the Pipeline diagram:
+
+
+image::ai-train-kubeflow-pipe.png[]
+
+[NOTE]
+
+You will find the Roboflow values in the code that you saved before, including Key, Project name, Workspace and Dataset version.
+
+
+[example]
+====
+It's time to run the imported Kubeflow Pipeline:
+
+1. Click Actions and then `Create run`
+2. Under the "Project and experiment" section, you might want to click "Create new experiment" (and name it `hardhat-detection`)
+3. Give the run a name (e.g. `v1`)
+4. Fill in the Parameters used in your run:
+    * Access Key: "{user}"
+    * Secret Key: "{password}"
+    * Bucket: "{user}-ai-models"
+    * Endpoint: {minio-api}
+    * Model Registry Name: `object-detection-model-registry`
+    * PVC sufix: `-kubeflow-pvc`
+    * Roboflow Key: <your value>
+    * Roboflow Project: <your value>
+    * Roboflow Workspace: <your value>
+    * Roboflow version: <your value>
+    * Batch Size: `1`
+    * Ephoch number: `1` 
+    * Image Size: `640`
+    * Training name (e.g. `hardhat`)
+    * Learning Rate: `0.005`
+    * Train Optimizer: `SGD`
+    * Train YOLO Model: `yolo11m.pt`
+====
+
+[NOTE]
+
+The first task (`download-dataset`) could take some time to finish if it's the first run because it needs to pull the container image.
+
+You can view the details of each task while it's running to monitor important information. Additionally, you can check the POD name generated for the task (top right corner, in a red square in the image below), which is useful for accessing real-time logs in the OpenShift Console (since the Logs tab in the OpenShift AI Pipeline view is only available once the task has completed).
+
+image::ai-train-pipeline-pod-task.png[]
+
+
+If the Pipeline run POD is scheduled in a node where other workloads using GPUs are located, it could happen that your GPU run out of memory. If it happens try reducing the `batch size` or launch the run again after the other workloads finished or just import the https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline_cpu.yaml[Kubeflow Pipeline that only make use of CPU] (just for testing propouses).
+
+image::ai-train-memoryerror.png[]
+
+After some time, the pipeline will finish. You can at that point go to the Object Storage and check the contents that have been uplaoded to `models` directory in your "{user}-ai-models" bucket.
+
+image::ai-train-minio.png[]
+
+Additionally, you can check the newly trained model in the Model Registry (check the left menu in OpenShift AI console), where it will be available along with all the associated metadata details that were added during the registration process.
+
+The Model Registry serves as the central hub for model publication. From here, you can directly deploy the model to the same OpenShift cluster running OpenShift AI, utilizing one of the supported Model Serving options. However, in this workshop, we won't be using this method. Instead, model inference will be performed at the Edge using Red Hat Enterprise Linux as it's explained in the next step.
+
+
+image::ai-train-registry.png[]
+
+
+== 4. Model Serving
+
+[NOTE]
+
+You have the full guide for this task in the xref:ai-specialist-04-deploy.adoc[Model Serving] section
+
+The Model Serving Phase is where a validated machine learning model is prepared for production use. 
+
+OpenShift AI provides a Model Serving capability (based on (https://github.com/kserve/kserve[`KServe`] and https://github.com/kserve/modelmesh[`ModelMesh`]) to deploy the AI models inside the OpenShift cluster where OpenShift AI is installed, but in our case we need to deploy the model in Edge Devices, so that feature cannot be used, insted we have prepared a custom Inference Server that will be used in this workshop.
+
+Along with the Inference Server other microservices have been developed to provide a solution that leverages the model's predictions to raise alarms when individuals are not wearing hardhats.
+
+This is the overal solution architecture:
+
+
+image::ai-deploy-object-detection-webcam.png[]
+
+Defore handing over to the Platform Specialist for deploying the applications to the Edge devices, it’s a good idea to perform a final test of the model.
+
+Let’s deploy all the components together and verify if everything works as expected.
+
+**Cloud-side Applications deployment**
+
+
+
+[example]
+====
+Deploy the Cloud-side sevices in OpenShift
+
+1- Navegate to https://console-openshift-console.apps.{ocp_cluster_url}
+
+2- Log in using your OpenShift credentials: {openshift-user}  /  {openshift-password}.
+
+3- Create a new OpenShift Project (`{user}-ai-test`)
+
+4- Click on the `+` icon on the top right corner of the OpenShift console.
+
+5- Paste there the content shown below to deploy the Dashboard Backend and Click "Create".
+
+[source,yaml,role=execute,subs="attributes"]
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-detection-dashboard-backend
+  labels:
+    app: object-detection-dashboard
+    app.kubernetes.io/part-of: Dashboard
+    app.openshift.io/runtime: "python"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-detection-dashboard
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: object-detection-dashboard
+        component: backend
+    spec:
+      containers:
+      - name: backend
+        image: quay.io/luisarizmendi/object-detection-dashboard-backend:v1
+        ports:
+        - containerPort: 5005
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-detection-dashboard-backend
+  labels:
+    app: object-detection-dashboard
+spec:
+  selector:
+    app: object-detection-dashboard
+    component: backend
+  ports:
+  - protocol: TCP
+    port: 5005
+    targetPort: 5005
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: object-detection-dashboard-backend
+  labels:
+    app: object-detection-dashboard
+spec:
+  to:
+    kind: Service
+    name: object-detection-dashboard-backend
+  port:
+    targetPort: 5005
+----
+
+6- Open the "Route" object and take note of the Dashboard Backend URL, you will need it.
+
+7- Click again on the `+` icon on the top right corner of the OpenShift console. Copy the code below and paste it there, **but before creating the object** include in the placeholder `HERE-YOU-BACKEND-API-BASE-URL---` the Dashboard Backend URL that you copied in the previous step.
+
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-detection-dashboard-frontend
+  labels:
+    app: object-detection-dashboard
+    app.kubernetes.io/part-of: Dashboard
+    app.openshift.io/runtime: "nodejs"
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"object-detection-dashboard-backend"}]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-detection-dashboard
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: object-detection-dashboard
+        component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: quay.io/luisarizmendi/object-detection-dashboard-frontend:v1
+        ports:
+        - containerPort: 3000
+        env:
+        - name: BACKEND_API_BASE_URL
+          value: HERE-YOU-BACKEND-API-BASE-URL-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!-DONT-FORGET-TO-COMPLETE
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-detection-dashboard-frontend
+  labels:
+    app: object-detection-dashboard
+spec:
+  selector:
+    app: object-detection-dashboard
+    component: frontend
+  ports:
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: object-detection-dashboard-frontend
+  labels:
+    app: object-detection-dashboard
+spec:
+  to:
+    kind: Service
+    name: object-detection-dashboard-frontend
+  port:
+    targetPort: 3000
+----
+
+6- Open the "Route" object and take note of the Dashboard Frontend URL.
+
+====
+
+When all pods are running, you will be able to open the Dashboard using the Frontend URL. You will see an empty page with the "Device Monitoring Dashboard" title.
+
+[CAUTION]
+
+The Dashboard application does not use TLS, so the URL must start `http://` and `https://` otherwhile you will get a message "Application is not available" even when then POD is already running.
+
+
+
+**Local machine applications deployment**
+
+You’ve successfully deployed the cloud-side applications! Now, take the next step by running the remaining applications on your own laptop
+
+[NOTE]
+
+Instructions for Fedora/RHEL based systems and using the interactive mode, so you can review live logs easily (you will need to use three different command line terminals).
+
+[example]
+====
+
+1- Deploy the Inference Server:
+
+[source,shell,role=execute,subs="attributes"]
+----
+podman run -it --rm -p 8080:8080 quay.io/luisarizmendi/object-detection-inference-server:prod
+----
+
+[NOTE]
+
+This is a large image, the pull could take time
+
+
+If you have an https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[NVIDA GPU and you have it configured in your system] (`sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`), you might want to use it for inferencing by running `podman run -it --rm -p 8080:8080 --device nvidia.com/gpu=all --security-opt=label=disable quay.io/luisarizmendi/object-detection-inference-server:prod`
+
+
+2- Now you can check that the GPU is being detected by checking the `healthz` endpoint, see an example below.
+
+----
+curl http://localhost:8080/healthz
+{"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
+----
+
+3- Deploy the Camera stream manager. In this case you will need to run it as privileged to access the system devices (webcams) and also to use the host network, so it can reach out to the inference server.
+
+[source,shell,role=execute,subs="attributes"]
+----
+sudo podman run -it --rm -p 5000:5000 --privileged --network=host quay.io/luisarizmendi/object-detection-stream-manager:prod
+----
+
+
+4- Deploy the Actuator. It needs also to use the host network. Also you will need to include the Dashboard backend route that you copied before. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
+
+----
+podman run -it --rm --network=host -e ALERT_ENDPOINT=${DASHBOARD_BACKEND_OCP_ROUTE}/alert -e ALIVE_ENDPOINT=${DASHBOARD_BACKEND_OCP_ROUTE}/alive quay.io/luisarizmendi/object-detection-action:prod
+----
+
+====
+
+
+As part of the workshop materials, hardhats should be provided. If you don’t have one, you can use a cycling helmet, though this may reduce detection accuracy.
+
+[NOTE]
+
+For this initial test, you will start without wearing a hardhat.
+
+
+
+[example]
+====
+Once all services are up and running, follow these steps to validate the system:
+
+
+1- Open `http://localhost:5000/video_stream`. You should see the camera feed displaying a `no_helmet` detection.
+
+
+image::ai-deploy-screenshot_video_stream.png[]
+
+
+2- Open the Dashboard Frontend URL. If the camera has already detected anything (`helmet` or `no_helmet`), you will see a device listed with your MAC address as the Device Name.
+
+
+3- Since the camera is detecting no_helmet, an alarm icon will appear next to your device name.
+
+image::ai-deploy-screenshot_dashboard_main.png[]
+
+
+4- Put on the hardhat and observe how the system detects it in the video stream. After a few seconds, the alarm should disappear.
+
+5- Click on your Device Name to view detailed information, including logged alarms. You can also rename the device to give it a more user-friendly name.
+
+image::ai-deploy-screenshot_dashboard_detail.png[]
+====
+
+
+At this stage, you are well-positioned to hand over the solution to the xref:platform-specialist-00-intro.adoc[Platform Specialist] for deployment on Edge Devices. However, if you prefer to skip that step or have already completed it in a previous part of the workshop, you can proceed to the final task for the AI Specialist.
+
+
+== 5. Day-2 Operations
+
+Over time, models deployed in production environments can experience a decrease in performance due to several factors.
+
+In our example use case, the trained model for detecting hardhats on the factory floor had been deployed and working as expected. However, over time, reports started emerging about incidents where people were not wearing helmets, but the system did not trigger any alarms. After investigation, it was found that the individuals in question were wearing cups or hats, which the model did not recognize as something that could interfere with hardhat detection. Since the model was only trained to detect hardhats and not other headgear, these individuals were simply not detected, causing false negatives.
+
+To solve this issue, retraining the model with new data is necessary.
+
+
+
+**Dataset Update**
+
+The first step to correct the problem is to have labeled data of people wearing hat and cup in order to train our model with those as well.
+
+You need to repeat the steps that you performed, but this time you might follow the xref:ai-specialist-01-data.adoc[Data Management] section. Remember that this time you will need to add images of hats and cups and labeling those as `hat`.
+
+
+**Retraining**
+
+In this phase you just need to re-run the training pipeline including the last version of you Dataset in the Pipeline Run setup.
+
+**Final Testing**
+
+Once you have the new model .pt file, would  build the Inference Server container image. In you case you can use the images that have been already pulled in the Container Registry containing the new model.
+
+You have to redeploy two local services: The Inference Server (with the new model detecting hats) and the Actuator (it now triggers alarms with the tag `hat`).
+
+You can find the images here:
+
+* https://quay.io/repository/luisarizmendi/object-detection-inference-server?tab=tags[Inference Server v2 container image]: `quay.io/luisarizmendi/object-detection-inference-server:v2-prod`
+
+* https://quay.io/repository/luisarizmendi/object-detection-action?tab=tags[Actuator v2]: `quay.io/luisarizmendi/object-detection-action:v2-prod`
+
+
+After deploying the new Inference Server and Actuator version you can reproduce again the testing workflow that you follow in the previous point, this time even wearing a hat will trigger the alarm.
+
+You have reached the end of the *AI Specialist* Fast-Track. You can proceed to the xref:platform-specialist-00-intro.adoc[Platform Specialist Introduction] section or if you find it useful, you can revisit the *AI Specialist* model following the xref:ai-specialist-00-intro.adoc[Full Guide].
+
+

@@ -1,0 +1,24 @@
+FROM node:16
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install \
+    && npm install -D tailwindcss postcss autoprefixer cors
+
+COPY . .
+
+RUN npm run build
+
+COPY serve.sh /app/serve.sh
+RUN chmod +x /app/serve.sh && \
+    chown -R node /app && \
+    touch /app/build/runtime-config.js && \
+    chmod 777 /app/build/runtime-config.js
+
+RUN npm install -g serve
+
+EXPOSE 3000
+
+CMD ["/app/serve.sh"]

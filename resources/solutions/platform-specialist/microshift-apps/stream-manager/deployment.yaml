@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: object-detection
+  name: object-detection-stream-manager-deployment
+  namespace: object-detection
+spec:
+  selector:
+    matchLabels:
+      app: object-detection-stream-manager
+  template:
+    metadata:
+      labels:
+        app: object-detection-stream-manager
+      name: object-detection-stream-manager
+    spec:
+      serviceAccount: object-sa
+      containers:
+      - args:
+        - python
+        - object-detection-stream-manager.py
+        env:
+        - name: INFERENCE_SERVER_URL
+          value: http://object-detection-inference-server-service:8080
+        image: osbuild.lmf.openshift.es:5000/gitea/object-detection-stream-manager:prod
+        name: object-detection-stream-manager
+        ports:
+        - containerPort: 5000
+        securityContext:
+          privileged: true
+          procMount: Unmasked
+

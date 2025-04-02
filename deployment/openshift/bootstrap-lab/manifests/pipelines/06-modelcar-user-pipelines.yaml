@@ -1,0 +1,373 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-pipelines-create
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          while true; do
+              if oc get tasks.tekton.dev -n default &> /dev/null; then
+                  echo "Tekton Task API (tekton.dev/v1) is ready"
+                  break
+              fi
+            sleep 10
+          done
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            username="user$i"
+            pipeline_namespace="${username}-tools"
+
+            while true; do
+                if oc get namespace "$pipeline_namespace" &> /dev/null; then
+                    echo "Namespace $pipeline_namespace has been created"
+                    break
+                fi
+                sleep 10
+            done    
+
+          echo "Creating cross-namespace-pipeline-runner"
+          oc apply -f - <<EOFUP
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: cross-namespace-pipeline-runner
+          rules:
+          - apiGroups: ["tekton.dev"]
+            resources: ["pipelineruns"]
+            verbs: ["create", "get", "list", "watch", "delete", "update"]
+
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: pipeline-cross-namespace-binding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cross-namespace-pipeline-runner
+          subjects:
+          - kind: ServiceAccount
+            name: pipeline-runner-dspa
+            namespace: $pipeline_namespace
+          EOFUP
+
+          echo "Creating pipeline ServiceAccount"
+          oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: pipeline
+            namespace: ${pipeline_namespace}
+          secrets:
+            - name: container-registry-credentials
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: pipeline-admin-${pipeline_namespace}
+            namespace: ${pipeline_namespace}
+          subjects:
+          - kind: ServiceAccount
+            name: pipeline
+            namespace: ${pipeline_namespace}
+          roleRef:
+            kind: ClusterRole
+            name: admin
+            apiGroup: rbac.authorization.k8s.io
+          EOFUP
+
+          oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: ai-modelcar-pvc
+            namespace: $pipeline_namespace
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+          EOFUP
+
+          echo "Creating modelcar-containerfile-create Task"
+          oc apply -f - <<EOFUP
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: modelcar-containerfile-create
+            namespace: $pipeline_namespace
+          spec:
+            workspaces:
+              - name: data
+                description: "The workspace to store the downloaded files"
+            steps:
+              - name: generate-containerfile
+                image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+                script: |
+                  #!/usr/bin/env bash
+                  echo 'FROM registry.access.redhat.com/ubi9/ubi-micro:9.4' > \$(workspaces.data.path)/Dockerfile
+                  echo 'COPY ./models /models' >> \$(workspaces.data.path)/Dockerfile
+                  echo 'USER 1001' >> \$(workspaces.data.path)/Dockerfile
+
+              - name: create-models-dir
+                image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+                script: |
+                  #!/usr/bin/env bash
+                  mkdir -p \$(workspaces.data.path)/models
+          EOFUP
+
+          echo "Creating modelcar-download-model Task"
+          oc apply -f - <<EOFUP
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: modelcar-download-model
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: objectApiUrl
+                type: string
+              - name: objectBucket
+                type: string
+              - name: objectAccessKey
+                type: string
+              - name: objectSecretKey
+                type: string
+              - name: directoryPath
+                type: string
+            workspaces:
+              - name: data
+                description: "The workspace to store the downloaded files"
+            steps:
+              - computeResources: {}
+                image: 'quay.io/luisarizmendi/s3cmd:latest'
+                name: download-from-object
+                script: |
+                  #!/usr/bin/env sh
+                  set -e
+
+                  # Create s3cmd config
+                  cat > /tmp/.s3cfg << EOF
+                  [default]
+                  access_key = \$(params.objectAccessKey)
+                  secret_key = \$(params.objectSecretKey)
+                  host_base = \$(params.objectApiUrl)
+                  host_bucket = \$(params.objectApiUrl)
+                  use_https = True
+                  signature_v2 = False
+                  # Disable SSL verification
+                  check_ssl_certificate = False
+                  check_ssl_hostname = False
+                  EOF
+
+                  # Create target directory for recursive copy
+                  rm -rf \$(workspaces.data.path)/models
+                  mkdir -p \$(workspaces.data.path)/models
+
+                  echo "Copying from Object Storage in \$(params.objectBucket)/\$(params.directoryPath)/ to \$(workspaces.data.path)/models/"
+
+                  # Use s3cmd to copy the directory
+                  s3cmd -c /tmp/.s3cfg get --recursive s3://\$(params.objectBucket)/\$(params.directoryPath)/ \$(workspaces.data.path)/models/
+
+                  # Check if the download was successful
+                  if [ $? -ne 0 ]; then
+                    echo "Failed to download files from object storage"
+                    exit 1
+                  fi
+
+                  echo "----- \$(workspaces.data.path) ------"
+                  ls \$(workspaces.data.path)
+                  echo "-----------"
+
+          EOFUP
+
+
+          echo "Creating modelcar-build-and-push Task"
+          oc apply -f - <<EOFUP      
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: modelcar-build-and-push
+            namespace: $pipeline_namespace
+          spec:
+
+            params:
+              - name: IMAGE
+                description: Name (reference) of the image to build.
+              - name: DOCKERFILE
+                description: Path to the Dockerfile to build.
+                default: ./Dockerfile
+              - name: CONTEXT
+                description: The build context used by Kaniko.
+                default: ./
+              - name: EXTRA_ARGS
+                type: array
+                default: []
+              - name: BUILDER_IMAGE
+                description: The image on which builds will run (default is v1.5.1)
+                default: gcr.io/kaniko-project/executor:v1.5.1@sha256:c6166717f7fe0b7da44908c986137ecfeab21f31ec3992f6e128fff8a94be8a5
+
+            workspaces:
+              - name: source
+                description: Holds the context and Dockerfile
+              - name: dockerconfig
+                description: Includes a docker config.json
+                optional: true
+                mountPath: /kaniko/.docker
+
+            results:
+              - name: IMAGE_DIGEST
+                description: Digest of the image just built.
+              - name: IMAGE_URL
+                description: URL of the image just built.
+
+            steps:
+              - name: build-and-push
+                workingDir: \$(workspaces.source.path)
+                image: \$(params.BUILDER_IMAGE)
+                args:
+                  - \$(params.EXTRA_ARGS)
+                  - --dockerfile=\$(params.DOCKERFILE)
+                  - --context=\$(workspaces.source.path)/\$(params.CONTEXT) 
+                  - --destination=\$(params.IMAGE)
+                  - --digest-file=\$(results.IMAGE_DIGEST.path)
+                  - --skip-tls-verify
+                securityContext:
+                  runAsUser: 0
+              - name: write-url
+                image: docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9
+                script: |
+                  set -e
+                  image="\$(params.IMAGE)"
+                  echo -n "${image}" | tee "\$(results.IMAGE_URL.path)"
+          EOFUP
+
+          echo "Creating ai-modelcar Pipeline"
+          oc apply -f - <<EOFUP
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Pipeline
+          metadata:
+            name: ai-modelcar
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: object-api-url
+                type: string
+                description: "Object Storage  API URL"
+              - name: object_access_key
+                type: string
+                description: "Object Storage Access-Key"
+              - name: object_secret_key
+                type: string
+                description: "Object Storage Secret-Key"
+              - name: object-bucket
+                type: string
+                description: "Object Storage bucket name"
+              - name: object-directory-path
+                type: string
+                description: "Path to the directory in the object bucket to download"
+              - name: container-registry-image-name
+                type: string
+                description: "Name of the image to push"
+              - name: container-registry-image-tag
+                type: string
+                description: "Tag for the image to push"
+              - name: container-registry
+                type: string
+                description: "Container Registry URL"
+              - name: container-registry-credentials
+                type: string
+                description: "Container Registry credentials"
+
+
+            workspaces:
+              - name: shared-workspace
+                description: "Workspace used for sharing data between tasks"
+              - name: docker-credentials
+                description: "Secret with the container registry credentials"
+
+            tasks:
+
+              - name: containerfile-create
+                taskRef:
+                  name: modelcar-containerfile-create
+                  kind: Task
+                workspaces:
+                  - name: data
+                    workspace: shared-workspace 
+
+
+              - name: get-model-file
+                runAfter:
+                  - containerfile-create
+                taskRef:
+                  name: modelcar-download-model
+                  kind: Task
+                params:
+                  - name: objectApiUrl
+                    value: \$(params.object-api-url)
+                  - name: objectBucket
+                    value: \$(params.object-bucket)
+                  - name: objectAccessKey
+                    value: \$(params.object_access_key)
+                  - name: objectSecretKey
+                    value: \$(params.object_secret_key)
+                  - name: directoryPath
+                    value: \$(params.object-directory-path)
+                workspaces:
+                  - name: data
+                    workspace: shared-workspace 
+
+
+
+              - name: build-and-push
+                runAfter:
+                  - get-model-file
+                taskRef:
+                  name: modelcar-build-and-push
+                  kind: Task
+                params:
+                  - name: IMAGE
+                    value: \$(params.container-registry)/\$(params.container-registry-image-name):\$(params.container-registry-image-tag)
+                workspaces:
+                  - name: source
+                    workspace: shared-workspace
+                  - name: dockerconfig
+                    workspace: docker-credentials                 
+  
+          EOFUP
+
+          done 
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
+
+

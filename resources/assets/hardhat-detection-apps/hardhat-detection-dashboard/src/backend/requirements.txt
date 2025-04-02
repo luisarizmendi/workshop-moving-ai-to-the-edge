@@ -1,0 +1,9 @@
+flask
+flask-cors
+sqlalchemy
+requests
+
+# Optional
+gunicorn
+typing-extensions
+python-dotenv

@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: switch-default-storageclass
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+              set -e
+              
+              # Wait for ocs-storagecluster-ceph-rbd to exist
+              while ! oc get storageclass ocs-storagecluster-ceph-rbd &>/dev/null; do
+                echo "Waiting for ocs-storagecluster-ceph-rbd StorageClass..."
+                sleep 10
+              done
+              
+              echo "ocs-storagecluster-ceph-rbd found. Updating default StorageClass..."
+
+              # Find all StorageClasses marked as default
+              default_classes=$(oc get storageclass -o jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
+
+              # Remove default annotation from each found StorageClass
+              for sc in $default_classes; do
+                if [ "$sc" != "ocs-storagecluster-ceph-rbd" ]; then
+                  echo "Setting $sc as non-default..."
+                  oc annotate storageclass $sc storageclass.kubernetes.io/is-default-class="false" --overwrite
+                fi
+              done
+
+
+              # Add default annotation to ocs-storagecluster-ceph-rbd
+              oc annotate storageclass ocs-storagecluster-ceph-rbd \
+                storageclass.kubernetes.io/is-default-class="true" --overwrite
+
+              echo "Default StorageClass switched to ocs-storagecluster-ceph-rbd."
+              echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1

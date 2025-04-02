@@ -1,0 +1,120 @@
+= Day-2 Operations
+
+Over time, models deployed in production environments can experience a decrease in performance due to several factors. The most common causes are data drift and concept drift.
+
+* *Data Drift* occurs when the distribution of the input data changes over time. This means that the data the model is receiving at inference time is different from the data it was trained on. For example, in a factory setting, if the lighting conditions, camera angles, or types of clothing change, the model might not perform as well because it was not exposed to this new kind of data during training.
+
+* *Concept Drift* happens when the underlying relationships or patterns in the data change. In other words, the target variable that the model is predicting changes its behavior over time. This might happen if the system's goals evolve or if the environment in which the model operates changes. For example, if the factory introduces new changes in the safety equiment requirements, the model might need adjustments to account for those changes.
+
+
+Retraining your models periodically is a necessary practice to maintain their performance and ensure that they adapt to new conditions. Continuous monitoring and updating of your models are vital to prevent them from becoming obsolete or ineffective due to data and concept drift.
+
+
+In our example use case, the trained model for detecting hardhats on the factory floor had been deployed and working as expected. However, over time, reports started emerging about incidents where people were not wearing helmets, but the system did not trigger any alarms. After investigation, it was found that the individuals in question were wearing cups or hats, which the model did not recognize as something that could interfere with hardhat detection. Since the model was only trained to detect hardhats and not other headgear, these individuals were simply not detected, causing false negatives.
+
+To solve this issue, retraining the model with new data is necessary. This retraining should include additional objects that could be worn on the head, such as cups or hats. By expanding the dataset to include these new classes of headgear and properly labeling them, the model will be able to differentiate between a person wearing a hardhat, a cup, a hat, or no headgear at all.
+
+The model should also be updated to raise an alarm when a person is either not wearing anything on their head or wearing something that is not a helmet. 
+
+
+
+
+== Monitoring
+
+After deployment, AI models require continuous monitoring to maintain accuracy, reliability, and compliance. Day-2 operations focus on detecting issues like data drift, performance degradation, and unexpected behavior to ensure models remain effective in real-world conditions. OpenShift AI provides tools to monitor the deployed models, such as:
+
+* Prometheus and Grafana: Prometheus and Grafana are integral to OpenShift AI’s monitoring stack, providing metrics collection, visualization, and alerting.
+
+* https://github.com/trustyai-explainability[TrustyAI]: TrustyAI in OpenShift AI enables monitoring of machine learning models for fairness, bias, and drift. It integrates with OpenShift’s monitoring stack to provide insights into model behavior and performance.
+
+
+As with OpenShift AI Serving capabilities, model deployment is limited to the same OpenShift cluster, making it unsuitable for our Edge Computing use case.
+
+While you could gather metrics from deployed models using a custom approach with Prometheus and Grafana, this is not included out-of-the-box in the solution and requires additional setup.
+
+In our case, we only need a quick test for model's performance validation. Hopefully, the environment is still available.
+
+
+[example]
+====
+Do the following test to detect the issue with our current model.
+
+
+1. Open `http://localhost:5000/video_stream`. You should see the camera feed displaying a `no_helmet` or `helmet` detection based on whether you are wearing a hard hat.
+
+
+2. Now, put on any hat or cap (provided during the workshop). Instantly, you either vanish from detection or appear as if you're wearing a helmet, effectively "confusing" the model.
+
+
+3. Open the Dashboard Frontend URL. Notice that your device is not triggering any alarm, even though you are not wearing a hard hat.
+====
+
+
+
+== Dataset Update
+
+The first step to correct the problem is to have labeled data of people wearing hat and cup in order to train our model with those as well.
+
+You need to repeat the steps that you performed in the xref:ai-specialist-01-data.adoc[Data Management] section but this time adding images of hats and cups and labeling those as `hat`.
+
+[TIP]
+
+If you want to use an already built Dataset instead of investing time building your own, you can get the labeled images here: https://universe.roboflow.com/luisarizmendi/hardhat-or-hat/dataset/2
+
+
+
+== Retraining
+
+When we trained our first model, we built upon the pre-trained YOLO v11 model, leveraging transfer learning to add our custom detection classes by replacing the final layers of the deep neural network.
+
+Now, we could apply the same approach using our v1 model as a base for re-training. However, testing has shown that performance improves when re-training the second model version directly on the YOLO model again, this time incorporating the full dataset, including hats and caps, to enhance detection accuracy.
+
+In this phase you just need to re-run the training pipeline including the last version of you Dataset in the Pipeline Run setup.
+
+[TIP]
+
+You have a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v2/model/pytorch[second verion of the pre-trained model] that includes the hat detections that you can directly use instead of waiting to train your own model.
+
+
+
+
+
+== Final Testing
+
+Once you have the new model `.pt` file after retraining, you can build the Inference Server container image again using the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-inference-server/src/Containerfile[Containerfile] provided (double-check that you include the version 2 of the model).
+
+[TIP]
+
+If you want you can use the https://quay.io/repository/luisarizmendi/object-detection-inference-server?tab=tags[pre-pull Inference Server container image] containing the model v2: `quay.io/luisarizmendi/object-detection-inference-server:v2-prod`
+
+
+Then re-deploy your Inference Server using the new image.
+
+Besides the Inference Server, there is another microservice that you need to update: the "Actuator". This microservice monitors the last predicted class, since you added a new class hat, you need to add that into the code too.
+
+This work should be done by the Application Developers, but since you have been working some of their job during this workshop now this is your dutty too.
+
+If you check the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-action/src/object-detection-action.py#L133[actuator source code], you will find that the required code is already commented out, so you just need to un comment it:
+
+---
+...
+
+    monitored_classes = {
+        "no_helmet": {"count_threshold": 0},
+        "hat": {"count_threshold": 0},
+    }
+...
+---
+
+[TIP]
+
+You also have a https://quay.io/repository/luisarizmendi/object-detection-action?tab=tags[pre-pull image for the Actuator]: `quay.io/luisarizmendi/object-detection-action:v2-prod`
+
+You also have to redeploy this microservice with the latest version to get the full solution working.
+
+
+
+== Solution and Next Steps
+
+You have reached the end of the *AI Specialist* module. If you haven't done so yet, you can proceed to the xref:platform-specialist-00-intro.adoc[Platform Specialist Introduction] section.
+

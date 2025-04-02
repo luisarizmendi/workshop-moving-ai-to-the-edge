@@ -1,0 +1,89 @@
+<script src="{{uiRootPath}}/js/vendor/clipboard.js"></script>
+<script src="{{uiRootPath}}/js/site.js"></script>
+<script async src="{{uiRootPath}}/js/vendor/highlight.js"></script>
+<script>
+
+  function clearStorage() {
+    console.info('INFO - clearing user and cluster');
+    document.getElementById('gnumber').value = '';
+    localStorage.removeItem('GROUP_NUMBER');
+    //localStorage.removeItem('CLUSTER_DOMAIN');
+    //document.getElementById('cdomain').value = '';
+    //localStorage.removeItem('GIT_SERVER');
+    //document.getElementById('gitserver').value = '';
+    updateMessage(); 
+  }
+
+  function setNamesInStorage() {
+      let gnumber = document.getElementById('gnumber').value;
+/*
+      let cdomain = (document.getElementById('cdomain').value).toLowerCase().includes('https://')
+          ? document.getElementById('cdomain').value.toLowerCase().substring(8)
+          : document.getElementById('cdomain').value.toLowerCase();
+      let gitserver = (document.getElementById('gitserver').value).toLowerCase().includes('https://')
+          ? document.getElementById('gitserver').value.toLowerCase().substring(8)
+          : document.getElementById('gitserver').value.toLowerCase();
+*/
+      if (gnumber === '') {
+          alert('Please enter a Group Number');
+          return;
+      }
+      if (isNaN(gnumber) || gnumber < 1 || gnumber > 99) {
+          alert('Group Number must be a number between 01 and 99');
+          return;
+      }
+
+      // Ensure two-digit format (01, 02, ..., 99)
+      gnumber = gnumber.padStart(2, '0');
+
+/*
+      if (cdomain === '') {
+          alert('Please enter a cluster domain');
+          return;
+      }
+*/
+      localStorage.setItem('GROUP_NUMBER', gnumber);
+      //localStorage.setItem('CLUSTER_DOMAIN', cdomain);
+      //localStorage.setItem('GIT_SERVER', gitserver);
+      updateMessage();
+  }
+
+  function clearStorage() {
+      localStorage.removeItem('GROUP_NUMBER');
+      //localStorage.removeItem('CLUSTER_DOMAIN');
+      //localStorage.removeItem('GIT_SERVER');
+
+      // Clean input fields
+      document.getElementById('gnumber').value = '';
+      //document.getElementById('cdomain').value = '';
+      //document.getElementById('gitserver').value = '';
+      
+      updateMessage();
+  }
+
+    function updateMessage() {
+        const username = localStorage.getItem('GROUP_NUMBER') || '{GROUP_NUMBER}';
+        const gnumberVals = document.querySelectorAll('#gnumberVal');
+        gnumberVals.forEach(element => {
+            element.innerText = username;
+        });
+/*
+        const cdomain = localStorage.getItem('CLUSTER_DOMAIN') || '{CLUSTER_DOMAIN}';
+        const cdomainVals = document.querySelectorAll('#cdomainVal');
+        cdomainVals.forEach(element => {
+            element.innerText = cdomain;
+        });
+
+        const gitserver = localStorage.getItem('GIT_SERVER') || '{GIT_SERVER}';
+        const gitserverVals = document.querySelectorAll('#gitserverVal');
+        gitserverVals.forEach(element => {
+            element.innerText = gitserver;
+        });
+*/
+        
+    }
+
+
+  // Update the message display on page load
+  window.onload = updateMessage;
+</script>

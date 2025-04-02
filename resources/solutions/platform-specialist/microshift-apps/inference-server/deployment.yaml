@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: object-detection
+  name: object-detection-inference-server-deployment
+  namespace: object-detection
+spec:
+  selector:
+    matchLabels:
+      app: object-detection-inference-server
+  template:
+    metadata:
+      labels:
+        app: object-detection-inference-server
+      name: object-detection-inference-server
+    spec:
+      serviceAccount: object-sa
+      containers:
+      - args:
+        - /opt/app-root/src/entrypoint.sh
+        env:
+        - name: TERM
+          value: xterm
+        image: osbuild.lmf.openshift.es:5000/gitea/object-inference-server:prod
+        name: object-detection-inference-server
+        ports:
+        - containerPort: 8080
+        securityContext:
+          runAsNonRoot: true
+          seLinuxOptions:
+            type: spc_t
+        stdin: true
+        tty: true
+

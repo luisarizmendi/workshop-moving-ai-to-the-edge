@@ -1,19 +1,54 @@
 name: modules
-title: Default Title
+title: Moving AI to the edge
 version: master
 nav:
   - modules/ROOT/nav.adoc
 
 asciidoc:
   attributes:
-    lab_name: "I'm the lab_name var"
+    lab_name: "Moving AI to the edge"
     release-version: master
     page-pagination: true
-    my_var: "foo"
-    guid: my-guid
-    ssh_user: devops
-    ssh_password: devops
-    ssh_command: ssh someone@example.com
+    # Common
+    id: <id>
+    user: <username>
+    password: <password>
+    ocp_cluster_url: <cluster domain>
+    git-workshop-url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge
+    openshift-user: <username>
+    openshift-password: <password>
+    gitea-user: <username>
+    gitea-password: <password>
+    # Platform
+    # Local Edge Devices to be (hopefully) assigned with corresponding group ids
+    device-ip: 192.168.2.<ip>
+    device-username: redhat
+    device-password: R3dh4t1!
+    # Shared Nvidia Device 
+    shared-nvidia-ip: 192.168.2.128
+    shared-nvidia-user: admin
+    shared-nvidia-pass: R3dh4t1!
+    # Router / dns / dhcp
+    gateway-dns-dhcp-openwrt: http://192.168.2.1
+    wifi_ssid: FriendlyWrt
+    wifi_password: password
+    # Edge Container Registry
+    container-registry-gitea: 192.168.2.200:5000
+    container-registry-gitea-user: gitea
+    container-registry-gitea-pass: gitea
+    # AI
+    object_storage_models_access_key:
+    object_storage_models_secret_key:
+    object_storage_pipelines_access_key:
+    object_storage_pipelines_secret_key:
+    gitea-user: user
+    gitea-password: redhat
+    registry-url: https://quay.io/user/luisarizmendi/
     page-links:
-    - url: https://redhat.com
-      text: Red Hat
+    - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist
+      text: AI Specialist solutions
+    - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/platform-specialist
+      text: Platform Specialist solutions
+    - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets
+      text: Additional Assets
+

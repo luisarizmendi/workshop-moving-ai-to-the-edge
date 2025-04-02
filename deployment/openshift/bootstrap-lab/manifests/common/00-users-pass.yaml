@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: htpasswd-config
+  namespace: openshift-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+stringData:
+  htpasswd: |
+    user01:$2y$05$Mx/MAsnz.xeQmmhAFYVrWORB8tE9RjGlxSHMXqFWSILO0ZhqHo4HG
+    user02:$2y$05$k5iovwtK4RzvrswdKAm/EelM2hONRcrB3YQAA46Ojcj23/5wxF2FO
+    user03:$2y$05$zgZurAoX4U55nlUFa3UN8eP1OTXrGWM1ZxvVis3qvIjIaEwnrWqWa
+    user04:$2y$05$ANBR2UhgHpwQuA/jw4MT9.PuZ1wbO6TKZWr.NeGXi9JRAhla6zxf.
+    user05:$2y$05$Fvcm3Kd/JovaG7euRiQma.bf3/YKuLA69k3xusHXLMmUw2ynxFB/.
+    user06:$2y$05$CFs9lafg3IiPlvhLEaRUNeLkOVWfzfpTqbEJQldPD8JLnWsNFtZOW
+    user07:$2y$05$/.84./OaiI.HfoYKwp4OIeMpq6v/OFQvRe0CVcYfVp2iSgRRU4VVi
+    user08:$2y$05$qZ5Dh57rXXcbyo1imapEveQGF6/bODK1Ek2F/SY27h588xKxMK6aq
+    user09:$2y$05$ibVG.nb9tmSU9DWqgKU0Q.O75vz0N2lOA8IS9LVnyKMt3Kx4fto3.
+    user10:$2y$05$E.zaErh1pPBaSSWac/MG4.tJ1KifEADHd52TSUIiaR7N5TBSXtlvu
+    user11:$2y$05$6NH4HxKNBtBwe84IB8bRyOtouvy370NIC8WOd798zXretwwt0hh5W
+    user12:$2y$05$ROTHqOJz77S8AKDRk8GXvug/LOxgbQVW2T8oWLrwuf.bB/Oq9drcm
+    user13:$2y$05$LlqymdIJvX7eqw.C09kRuO0d8.9qNYsC8TA4TUh..u7RUOvKWnyYi
+    user14:$2y$05$W5YZ/8rlGHW6io1ba1MNiuxhQwW03WX2meOFMVDadW.7el9UDg8Nu
+    user15:$2y$05$WbvMYbKkGirg7ti.8971Jua4faH18ZGzPgI9lzrG3Ot513V.ndT6q
+    user16:$2y$05$NTBm7/qAGMWm9TeUkKGsden/SPnAyu/rIgU7JL.a/24UFvhyWZhUu
+    user17:$2y$05$mJ..godmdc8KmVpvVksReexsfhA2gi5oQjOQq3Leh9.ineW2.CwLm
+    user18:$2y$05$.6WMZw75N6P1sjjGaO3W.OjVE88LcwHdYs81LVe083M43BKSgSUPW
+    user19:$2y$05$cVpmCJanWNkvgRPjYqh5I.i1VNLCPQNBlQsltK8BnWmeaYwoESiMa
+    user20:$2y$05$fNbDBfug53eG/M1hc26xEeUi35pGdyMRjv3tWEsOSqnyflVmVs9oy
+    user21:$2y$05$GREycz7YO0OO7stGE5v6Ye.UcUEuQtH7mKCCRCG36GfLvp0ogHPAO
+    user22:$2y$05$SPTce/wXYOKlJDiFWmKki.tCOm8EFUMp7TuSK7QQnziG7vSf4FjYu
+    user23:$2y$05$ppiI/VzB6KlsBMwO7Nsu1Ox9xbFomg9.1OhnFcrsUo07Klk0x1lWS
+    user24:$2y$05$8Ex5wOwb7v.vO9wGn7zIzOIRnhTrJ8xZExNbC10tOolskfPxJYOGa
+    user25:$2y$05$EeZ1cqrfipJ8FhHmQMEQDuKYgVxmg37LtWvkMdNF5K4UGApJcAmty
+    user26:$2y$05$Kv02QAWUZ4cvMKwzY8necO/BmGi7IdWjA3HkulCeWscgEV670i4QS
+    user27:$2y$05$S4.QoFEqfDNIEAiuH7mbcO9CAfU1dhJDPP0uMWJ7/OU7oRUJpd12W
+    user28:$2y$05$AQ4BNJsZlgZW88NHuOzo2uxwoMvAZuVU.r6gIPfNQRZjDAlSB9HYi
+    user29:$2y$05$.4xvyVAtsiSYsaraMtH4Re/lXWcl4qd3ubQ/8NNto4MGo0fSpnfiW
+    user30:$2y$05$OXWnJp0BizvHKN8w/yTmLuylsNFVM/lfrvAIQy8bhQhESOrTOjjeC
+    user31:$2y$05$g0Xw0mGCrDIq/7AlW4cdOOS.fYHd1RQkNpKVGZ0VRQe./utyHhfei
+    user32:$2y$05$qTnB6c7HwC8fYuUjNaA18eC0m52Y7bxBm8OQbaEYVM.4CoM8JT0pS
+    user33:$2y$05$GRrDTQyJrZjyq8Cm4EjqWeZgVkeqOH4eioVARDvmKoq6d5ebxz4bG
+    user34:$2y$05$.d2pAbRecDRXBQ3LOkAi0u/YB8cQuu/kxbnQ79ZHgbAPElzFYLanC
+    user35:$2y$05$A08xNbpp9XakPiK7fiVGjumg32S3Wl4nsS8F5sSOFTYYSZg6By9J.
+    user36:$2y$05$g4SIcBPrbfM3y8M4TT66he3V3pS4dNeN/aCjukh08kzAZds9Zah16
+    user37:$2y$05$FAfyH.MkvpMO6.9FPQMgd.KHx5/N83jS2Njm4pHpBh8vzNaEU7BWu
+    user38:$2y$05$ljdeFPC.G/bIrVSe/3rDRe1I9F9ZusbvIapas3Eras4On4WSjSjVa
+    user39:$2y$05$EyElFDoQwZu0UB59lXZgz.0Hj8yxM4Y8CMtX8YKKdzfGoRTJW26tO
+    user40:$2y$05$WXotXlNkmSa3uoUF80rcheaPWSqLIyZn0YzdjxhrYDYElNcS774uO
+    user41:$2y$05$FsFWrzjmOkIXBXDO2ncOBeohnR2pSgKNnQhH0EgNuwS3Pc5bYMTHC
+    user42:$2y$05$5cuDJQrmQe1OakN3Lairy.uMUPuS/yPPvFX53woszkB/JcearBRJa
+    user43:$2y$05$0dFSHasgsOcK3txDiEtBBuv4ge9gxmWnFnCKLzD7RxKtSeY2x0r4u
+    user44:$2y$05$gQjOwZnLTKKkUZh2vBZd0O2ITTWRcK3QQiUHIIH4nbHaWUSB9At8O
+    user45:$2y$05$BRJauZibfLhn4/zpdzjfdOo2d5OV5PLg/Ka6254FftxXp.oYREsqC
+    user46:$2y$05$tvODtytWSDfk6ZL29akg5OG5KuE9WM1Ui74Zz.STSuzC5h9dWiP5O
+    user47:$2y$05$1SnuglQ2EbOpkQogc1R4cuJOX01bdZIRbv/ooVF6z3VoojRDuV2LS
+    user48:$2y$05$IF1qGVRE.W.sITYWtULrCea5AVaBprveACF5UY7DNDqFZOibm.NMm
+    user49:$2y$05$NHRpvaKi8bEbkMFl/YKpVOBZXR221ECK8W93cITKv6JCu8Gya5RhG
+    user50:$2y$05$WTu0RU8RF2n5I.yyP9Eq9.oGDV2OWLwlcwOAGeCBxqn43X4Ldb/MS
+    user99:$2y$05$m1NvOqZiom0cixaI3rQl3OH6886pg6w//h2r.BukrJbBFmHLN5dJ.

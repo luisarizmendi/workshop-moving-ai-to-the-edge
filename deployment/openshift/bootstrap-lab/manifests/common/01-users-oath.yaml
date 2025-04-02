@@ -1,0 +1,39 @@
+---
+apiVersion: config.openshift.io/v1
+kind: OAuth
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  identityProviders:
+    - name: htpasswd_provider
+      mappingMethod: claim
+      type: HTPasswd
+      htpasswd:
+        fileData:
+          name: htpasswd
+    - name: WORKSHOP
+      mappingMethod: claim
+      type: HTPasswd
+      htpasswd:
+        fileData:
+          name: htpasswd-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: v4-0-config-user-idp-0-ca
+  namespace: openshift-authentication
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: v4-0-config-user-idp-0-bind-password
+  namespace: openshift-authentication
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: v4-0-config-user-idp-1-file-data
+  namespace: openshift-authentication

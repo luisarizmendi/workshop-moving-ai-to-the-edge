@@ -1,0 +1,41 @@
+
+---
+apiVersion: modelregistry.opendatahub.io/v1alpha1
+kind: ModelRegistry
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    openshift.io/description: ''
+    openshift.io/display-name: object-detection-model-registry
+  name: object-detection-model-registry
+  namespace: rhoai-model-registries
+spec:
+  grpc:
+    port: 9090
+  istio:
+    gateway:
+      grpc:
+        gatewayRoute: enabled
+        port: 443
+        tls:
+          mode: SIMPLE
+      istioIngress: ingressgateway
+      rest:
+        gatewayRoute: enabled
+        port: 443
+        tls:
+          mode: SIMPLE
+    tlsMode: ISTIO_MUTUAL
+  mysql:
+    database: object_detection_model_registry
+    host: model-registry-db
+    passwordSecret:
+      key: database-password
+      name: object-detection-model-registry-secret
+    port: 3306
+    skipDBCreation: false
+    username: admin
+  rest:
+    port: 8080
+    serviceRoute: disabled

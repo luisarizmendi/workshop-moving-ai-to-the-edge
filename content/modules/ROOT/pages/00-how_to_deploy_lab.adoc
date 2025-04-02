@@ -1,0 +1,193 @@
+= How to deploy the Lab and Workshop guide
+
+You likely already have the necessary environment set up to run this workshop. However, if you want to recreate it on your own, follow the instructions below to prepare your environment.
+
+The "AI Specialist" module only requires the Cloud/Core Datacenter infrastructure, while the "Platform Specialist" needs both the Cloud and the Edge sides.
+
+== Cloud/Core Datacenter
+
+
+=== OpenShift
+
+This workshop requires an OpenShift cluster. You might already have one or, if you have access to the Red Hat Demo Platform, you can order either the "RHOAI on OCP on AWS with NVIDIA GPUs" lab, if you want or not GPUs, or the "Red Hat OpenShift Container Platform Cluster (AWS)" lab if you want an "empty" environment.
+
+
+==== Lab Baseline
+
+The workshop requires several services and configuration (baseline) in OpenShift. You can prepare your environment easily by just importing some YAMLs in your environment:
+
+[example]
+====
+
+1- Navigate to OpenShift Console (admin user)
+
+2- Click on the `+` sign and import the bootstrap-lap YAML. https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/deployment/openshift/bootstrap-lab[Choose the right YAML file] depending on the platform where you are deploying. If using the Demo Platform, choose `bootstrap-lab-rhpds-nvidia.yaml` if you are using the "RHOAI on OCP on AWS with NVIDIA GPUs" lab as a base, or the `bootstrap-lab-empty.yaml` if using the "Red Hat OpenShift Container Platform Cluster (AWS)" lab.
+
+image::lab-bootstrap.png[]
+
+3- When the Argo CD access is ready, log in using the admin credentials ().
+
+image::lab-argo.png[]
+
+4- Wait until all Applications are in Synced state (`OutofSync` in `common` application is not a problem)
+
+image::lab-argo-finish.png[]
+====
+
+With these YAMLs you deploy:
+
+* OpenShift Workshop user and groups
+* OpenShift AI with Model Registry
+* MinIO Object Storage
+* Gitea as Source Code Repository
+* NVIDIA GPU configuration
+
+
+==== Workshop Guide deployment
+
+If you want to have your own Workshop Guide first you need to prepare the values for the guide variables. The default values can be found in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/content/antora.yml[`antora.yaml` file]. 
+
+Once you know the values that you want to apply to the guide, you can deploy the guide using a Kubernetes Job that runs Helm.
+
+
+[example]
+====
+In order to deploy the guide you will need to:
+
+1- Navigate to the OpenShift Web Console
+
+2- Click the `+` icon on the top right corner
+
+3- Copy and paste the following YAML file chaning the values according to your needs
+
+----
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bootstrap-showroom
+  namespace: openshift-gitops
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: bootstrap-showroom
+        image: quay.io/luisarizmendi/helm-cli:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          export HOME=/tmp  # Fix permission issues
+
+          NAMESPACE="showroom"
+
+          echo "Creating values.yaml..."
+          cat <<EOF > /tmp/values.yaml
+          # Common
+          git-workshop-url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge
+          openshift-console: https://console-openshift-console.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
+          openshift-api: https://api.cluster-np6lk.np6lk.sandbox2077.opentlc.com:6443
+          openshift-user-base: user
+          openshift-password-base: redhat
+          gitea-server: gitea.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com
+          container-registry-gitea: 192.168.1.100
+          container-registry-gitea-user: gitea
+          container-registry-gitea-pass: gitea
+          shared-nvidia-ip: 192.168.1.2
+          shared-nvidia-user: admin
+          shared-nvidia-pass: R3dh4t1!
+          gateway-dns-dhcp-openwrt: http://192.168.1.1
+          # Platform
+          device-ip-base: 192.168.100.1
+          device-username: admin
+          device-password: secret
+          openshift-ai: https://rhods-dashboard-redhat-ods-applications.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
+          flightctl-ui: https://flightui-flightctl.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
+          flightctl-api: https://flightapi-flightctl.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
+          flightctl-user-basename: flightctluser
+          flightctl-password: secretflightctl
+          registry-local-url: http://192.168.100.200/workshop/
+          # AI
+          minio-ui: https://minio-ui-minio.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com
+          minio-api: https://minio-api-minio.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com
+          minio-user-base: user
+          minio-password-base: redhat
+          registry-url: https://quay.io/user/luisarizmendi/
+          EOF
+
+          echo "Ensuring the project exists..."
+          if ! /usr/bin/oc get project $NAMESPACE >/dev/null 2>&1; then
+            /usr/bin/oc new-project $NAMESPACE
+          fi
+
+          echo "Fetching cluster domain..."
+          clusterdomain_apps=$(/usr/bin/oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}')
+
+          echo "Running Helm template..."
+          helm repo add larizmen-charts https://raw.githubusercontent.com/luisarizmendi/helm-chart-repo/main/packages
+          helm repo update
+
+          helm template showroom larizmen-charts/showroom-single-pod --namespace=${NAMESPACE}  \
+          --set deployer.domain=${clusterdomain_apps} \
+          --set-file content.user_data=/tmp/values.yaml \
+          --set content.repoUrl=https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge \
+          --set general.guid=1 \
+          --set-string content.contentOnly="true" \
+          | /usr/bin/oc apply -f -
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
+----
+
+4- Click "Create"
+====
+
+Once you create the object, the guide will be deployed in a new the `showroom` OpenShift project. You will find in that project a route pointing to the guide that will be available as soon as the showroom POD is running.
+
+
+
+
+
+
+== Edge Site
+
+=== Gitea
+
+Besides the Gitea deployed as Source Code Repository in the Cloud, there is another one at the Edge desgined as Edge Container Registry to minimize latency and bandwidth usage during the Workshop. 
+
+Remember that Gitea as other container registries, can do store multi-arch images, but it will still warn you if it stores images designed for a different arch.
+
+To install this on a machine called A, make sure that you have sudo / passwordless access to A and add machine A to the inventory file. Same for the shared Nvidia Device that will used as first Image Builder machine.
+
+Then install all needed collections on your machine:
+
+[source,bash]
+----
+$ ansible-galaxy install -r requirements.yml
+----
+
+Then install and configure Gitea on A using the playbook provided. The playbook also requires an accessible Nvidia Device that is designated as shared in the lab, for image building purposes. 
+
+[source,bash]
+----
+$ ansible-playbook playbook.yml -i inventory 
+----
+
+=== DNS - DHCP - Router Openwrt
+I've reused a https://wiki.friendlyelec.com/wiki/index.php/NanoPi_M1_Plus[device] I had at home and installed FriendlyWRT on it.
+
+You will find the backup configuration in the folder.
+
+
+
+
+
+

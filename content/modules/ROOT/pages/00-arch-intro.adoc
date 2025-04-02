@@ -1,0 +1,165 @@
+= Workshop Architecture
+
+The workshop requires several components, and there are multiple elements to take into consideration for assembling these components effectively.
+
+Let's outline the necessary components and then explore the architecture used for this workshop.
+
+
+== Workshop Building Blocks
+
+Local (Edge) Components:
+
+* Edge Device: Device where the Sensor application and AI model will run. This device has a GPU to accelerate AI inference.
+
+* Webcam: Since this workshop focuses on image recognition, connecting a webcam to the edge device is essential.
+
+* Workstation/Laptop: This is your main system for following the workshop instructions.
+
+* Network Infrastructure: Switches and routers (with additional services such as DNS and DHCP) to ensure communication between all components. Internet connectivity may be required depending on the final lab architecture.
+
+Additional Services:
+
+* Source Code Repository: Hosts the workshop guide, application, AI model code, infrastructure descriptors, and scripts.
+
+* Container Image Registry: Containerized workloads require a registry to store container images.
+
+* Edge Device Image Builder: Building image-based operating systems simplifies edge computing deployment and enhances consistency. A dedicated image-building system is necessary.
+
+* AI Model Development Environment: A platform to train and refine AI models.
+
+* APP Development Environment: A system to develop and build containerized applications.
+
+* Edge Device Manager: A system used to manage the Edge Devices.
+
+Other Essentials:
+
+* Props: Since this workshop focuses on object detection, you need physical objects to test AI image inferencing.
+
+You can run the entire lab locally. This requires not only edge device, webcam, and a laptop but also an additional server to manage services such as the container registry, source code repository, image builder, and development environments. This could be a standalone server running RHEL or one or multiple systems running an OpenShift cluster.
+
+Deploying OpenShift can enhance the lab by providing tools like OpenShift AI for AI model training and OpenShift Pipelines for application deployment. If you opt to train AI models from scratch (instead of using pre-trained models), ensure you have GPU resources.
+
+Alternatively to the local lab, some or all additional services can be hosted in the cloud to reduce local hardware requirements.
+
+
+== Lab Architecture Overview
+
+For this lab, the following architecture will be used:
+
+image::labintro-arch.png[]
+
+Running Locally:
+
+* Edge Device: NVIDIA Jetson Orin NANO Development Board (8GB RAM).
+
+* Webcam: Arducam 16MP Autofocus USB Camera.
+
+* Network Infrastructure: TBD
+
+* Local Server: OnLogic Helix 500 with XXXXXXXXXX cores, XXXXXXXXXXXX GB memory, and XXXXXXXXXXX disk capacity. The local server will run the following services:
+    - Container Image Registry mirror (to save bandwidth).
+    - RPM mirror https://access.redhat.com/solutions/7227[info]
+
+[NOTE]
+
+Automatic mirroring is not configured. If you build new container images using pipelines, push them manually to the local registry. Alternatively, configure pipelines to use external registries, though expect longer wait times during image pulls.
+
+
+Running in the Cloud:
+
+* Source Code Repository: GitHub.
+
+* Container Image Registry: https://quay.io[Quay.io].
+
+* AI Model Development Environment: OpenShift AI.
+
+* APP Development Environment: OpenShift Dev Spaces + OpenShift Pipelines.
+
+* Edge Device Image Builder: TBD
+
+* Edge Device Manager: https://github.com/flightctl/flightctl[Flight Control] running on top of OpenShift.
+
+[NOTE]
+
+OpenShift services runs on AWS.
+
+
+Additional Items:
+
+* Props: Hardhats and hats for object detection.
+
+
+For details on how the lab environment was deployed, refer to the xref:00-how_to_deploy_lab.adoc[Deployment Guide].
+
+
+== Workstation/Laptop Requirements
+
+The only requirements are:
+
+* SSH Client – to connect to remote services.
+
+* Web Browser – to access workshop materials and cloud platforms.
+
+* `podman` or `docker`
+
+* `oc` https://mirror.openshift.com/pub/openshift-v4/clients/ocp/[OpenShift client]
+
+* https://helm.sh/docs/intro/install/[Helm CLI]
+
+== Lab Details
+
+Before beginning the workshop steps, you will need some necessary environment details (e.g., URLs, usernames, passwords, etc) that you will find in this section.
+
+
+=== Cloud/Core Datacenter
+
+
+==== OpenShift Cluster
+
+* Web Console: https://console-openshift-console.apps.{ocp_cluster_url}
+* API: {openshift-api}
+* OpenShift AI: https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}
+* Username: {openshift-user}
+* Password: {openshift-password}
+
+==== Source Code Repository (Gitea)
+
+* Web Console: http://gitea.apps.{ocp_cluster_url}
+* Username: {gitea-user}
+* Password: {gitea-password}
+
+==== Additional Services
+
+* Workshop GitHub repository: {git-workshop-url}
+* Container Image Registry (Quay.io): {registry-url}
+
+
+=== Edge location
+
+==== WIFI
+
+* SSID: {wifi_ssid}
+* Password: {wifi_password}
+
+==== Edge Device
+
+* IP Address: {device-ip}
+* Username: {device-username}
+* Password: {device-password}
+
+==== Local server
+
+* Local Container Image Registry (Gitea)
+** Address: {container-registry-gitea}
+** Username: {container-registry-gitea-user}
+** Password: {container-registry-gitea-pass}
+
+* Local Edge Builder:
+** Addresss: {shared-nvidia-ip}
+** Username: {shared-nvidia-user}
+** Password: {shared-nvidia-pass}
+
+== Next
+
+Now you're ready to choose your path in the navigation menu and let's get started!
+

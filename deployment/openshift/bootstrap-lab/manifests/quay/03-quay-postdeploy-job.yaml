@@ -1,0 +1,142 @@
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quay-config
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+            URL="http://workshop-registry-quay-app.openshift-operators.svc.cluster.local"
+            superuser="quayadmin"
+            superuser_pass="R3dh4t1!"
+
+            cat <<EOF > /tmp/quay-init.json
+            {
+              "username": "${superuser}",
+              "password": "${superuser_pass}",
+              "email": "quayadmin@example.com",
+              "access_token": true
+            }
+            EOF
+
+            # Infinite loop until the request succeeds
+            while true; do
+              # Run the curl command and capture the response
+              response=$(curl -X POST -k -s -w "%{http_code}" \
+                ${URL}/api/v1/user/initialize \
+                --header 'Content-Type: application/json' \
+                --data @/tmp/quay-init.json)
+
+              # Extract HTTP status code (last 3 characters of response)
+              http_code="${response: -3}"
+
+              # Extract JSON body (everything except the last 3 characters)
+              response_body="${response::-3}"
+
+              # Check if HTTP status is 200 (OK) or 201 (Created), meaning success
+              if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then
+                # Extract access_token from JSON response using jq
+                access_token=$(echo "$response_body" | jq -r '.access_token')
+
+                # Check if access_token is not empty
+                if [[ -n "$access_token" ]]; then
+                  echo "Request succeeded!"
+                  echo "Access Token: $access_token"
+                  break
+                fi
+              fi
+
+              if [[ "$response" =~ "Cannot initialize user in a non-empty database" ]]; then
+                echo "Admin user already created, initial setup failed"
+                exit -1
+                break
+              else
+                echo "Request failed. Retrying in 5 seconds..."
+                sleep 5
+              fi
+            done
+
+
+            # Loop through users user01 to user50 and user99
+            for i in $(seq -w 1 50) 99; do
+              username="user$i"
+              password="redhat$i"
+              email="$username@example.com"
+
+              echo "Creating user: $username"
+
+              while true; do
+                response=$(curl -X POST -k -s -w "%{http_code}" \
+                  -H "Authorization: Bearer $access_token" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"username\": \"$username\",
+                    \"email\": \"$email\"
+                  }" \
+                  "${URL}/api/v1/superuser/users/")
+
+                # Extract HTTP status code
+                http_code="${response: -3}"
+                response_body="${response::-3}"
+
+                # Check if user creation was successful
+                if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then
+                  echo "User '$username' created successfully!"
+
+                  echo "Updating password"
+                  while true; do
+                    response=$(curl -X PUT -k -s -w "%{http_code}" \
+                      -H "Authorization: Bearer $access_token" \
+                      -H "Content-Type: application/json" \
+                      -d "{
+                        \"password\": \"$password\"
+                      }" \
+                      "${URL}/api/v1/superuser/users/$username")
+
+                    # Extract HTTP status code
+                    http_code="${response: -3}"
+                    response_body="${response::-3}"
+
+                    # Check if user creation was successful
+                    if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then
+                      echo "User '$username' created successfully!"
+                      break
+                    else
+                      echo "Failed to update user $username. HTTP Code: $http_code"
+                      echo "Response: $response_body"
+                      echo "Retrying in 5 seconds..."
+                      sleep 5
+                    fi
+                  done
+                  break
+                else
+                  echo "Failed to create user $username. HTTP Code: $http_code"
+                  echo "Response: $response_body"
+                  echo "Retrying in 5 seconds..."
+                  sleep 5
+                fi
+              done
+            done 
+
+            echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1

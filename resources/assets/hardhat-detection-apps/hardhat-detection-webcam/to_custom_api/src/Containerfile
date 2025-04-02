@@ -1,0 +1,29 @@
+FROM registry.access.redhat.com/ubi9/python-39:latest AS base
+
+USER root
+
+RUN dnf install -y \
+    python3 \
+    mesa-libGL \
+    mesa-dri-drivers \
+    libX11 \
+    libXext \
+    gstreamer1-plugins-base \
+    && dnf clean all \
+    && python3 -m ensurepip --upgrade
+    
+COPY requirements.txt /opt/app-root/src/
+
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir  -r /opt/app-root/src/requirements.txt
+
+COPY object-detection-stream-manager.py /opt/app-root/src
+
+WORKDIR /opt/app-root/src
+
+# To avoid using local permissions for the camera
+#USER 1001
+
+EXPOSE 5000
+
+CMD ["python", "object-detection-stream-manager.py"]

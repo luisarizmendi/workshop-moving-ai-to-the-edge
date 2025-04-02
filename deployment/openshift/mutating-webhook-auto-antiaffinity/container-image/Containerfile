@@ -1,0 +1,29 @@
+FROM registry.access.redhat.com/ubi9/python-39:latest AS base
+
+USER root
+
+RUN dnf install -y \
+    python3 \
+    && dnf clean all \
+    && python3 -m ensurepip --upgrade
+    
+COPY requirements.txt /opt/app-root/src/
+
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir  -r /opt/app-root/src/requirements.txt
+
+COPY webhook.py /opt/app-root/src
+COPY webhook.crt /opt/app-root/src
+COPY webhook.key /opt/app-root/src
+
+# Ensure user 1001 can read the certs
+RUN chmod 644 /opt/app-root/src/webhook.crt /opt/app-root/src/webhook.key \
+    && chown 1001:1001 /opt/app-root/src/webhook.crt /opt/app-root/src/webhook.key
+
+WORKDIR /opt/app-root/src
+
+USER 1001
+
+EXPOSE 8443
+
+CMD ["python", "webhook.py"]

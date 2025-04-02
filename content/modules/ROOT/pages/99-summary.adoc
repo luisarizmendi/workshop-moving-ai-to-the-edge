@@ -1,0 +1,49 @@
+= Workshop summary
+
+The "Moving AI to the edge" workshop guided participants through the end-to-end process of developing and deploying an object detection model using Red Hat Device Edge (RHDE). 
+
+The workshop is divided into two main sections, based on the area of expertise:
+
+* AI Specialist 
+* Platform Specialist
+
+
+== AI Specialist
+
+Throughout AI Specialist module, participants gained hands-on experience OpenShift AI, and associated tools, equipping them with the skills needed to develop, deploy, and maintain object detection models. It included the following sections:
+
+=== Introduction
+This section provided an overview of the workshop's objectives, the importance of object detection in industrial settings, and an introduction to the tools and technologies used throughout the course.
+
+=== Data Management
+Participants learned about the processes involved in collecting and preparing data for model training. This included strategies for gathering relevant datasets and techniques for preprocessing and annotating data to ensure it was suitable for training an object detection model.
+
+=== Model Development
+This phase covered feature engineering and the development of the initial model prototype. Participants were guided through the steps of transforming raw data into a functional model, including selecting appropriate features and building the model architecture.
+
+=== Model Training
+The focus in this section was on training the model using scalable and reproducible pipelines. The workshop introduced tools like Kubeflow Pipelines within OpenShift AI to automate the training process, manage large datasets, and ensure consistent model performance.
+
+=== Model Serving
+Participants learned how to deploy the trained model into a production environment. This included packaging the model, validating its performance, and deploying it using a custom inference server tailored for edge environments. The section also emphasized the importance of monitoring the deployed model to maintain optimal performance.
+
+=== Day-2 Operations
+The final section addressed the ongoing maintenance of the deployed model. Topics included monitoring for data and concept drift, updating datasets, and retraining the model to adapt to new conditions or data patterns. The importance of continuous monitoring and updating was highlighted to ensure the model remained effective over time.
+
+
+
+== Platform Specialist
+
+=== Introduction
+This section provides a summary of the importance of the Platform Specialist in the scenario depicted and an introduction to the tools and technologies used throughout the course.
+
+=== Image Baking
+Attendees will learn in this section how to design, manage and build OS images based on Image Mode. This section will also explain to the attendees how to deploy to different targets. A short overview of bootc technology is also provided.
+
+=== Device Onboarding
+Attendees will learn the role played by Flight Control in Edge Management, how to deploy it, how it works and the main objects it manages. Attendees will also learn how to enrol a Device into Flight Control in an image mode way.
+
+=== Day 2 Operations
+Attendees will apply all day 2 typical operation activities, such as OS upgrade, OS configuration change, Application deployment / upgrade, by means of Flight Control. We will also explore some basic Edge monitoring capabilities provided.
+
+

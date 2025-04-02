@@ -1,0 +1,31 @@
+FROM registry.access.redhat.com/ubi9/python-39:latest AS base
+
+USER root
+
+RUN dnf install -y gcc git python3-devel mesa-libGL \
+    && dnf clean all \
+    && python3 -m ensurepip --upgrade
+
+WORKDIR /opt/app-root/src
+
+COPY requirements.txt /opt/app-root/src/
+
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir  -r /opt/app-root/src/requirements.txt
+
+COPY object-detection-inference-server.py /opt/app-root/src/main.py
+COPY model.pt /opt/app-root/src/models/1/
+COPY entrypoint.sh /opt/app-root/src/entrypoint.sh
+
+RUN chmod +x /opt/app-root/src/entrypoint.sh
+
+USER 1001
+
+EXPOSE 8080
+
+ENV YOLO_MODEL_PATH=/opt/app-root/src/models/1
+ENV YOLO_MODEL_FILE=model.pt
+ENV YOLO_MODEL_NAME=1
+
+
+CMD ["/opt/app-root/src/entrypoint.sh"]

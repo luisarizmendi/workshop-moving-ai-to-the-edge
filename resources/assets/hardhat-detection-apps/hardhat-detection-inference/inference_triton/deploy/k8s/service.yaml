@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-hardhat
+spec:
+  selector:
+    app: hardhat-inference
+  ports:
+    - protocol: TCP
+      port: 8888
+      targetPort: 8888

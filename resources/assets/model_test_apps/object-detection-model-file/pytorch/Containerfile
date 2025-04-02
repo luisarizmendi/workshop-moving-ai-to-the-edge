@@ -1,0 +1,21 @@
+FROM registry.access.redhat.com/ubi9/python-39:latest AS base
+
+USER root
+
+RUN dnf install -y \
+    mesa-libGL \
+    && dnf clean all \
+    && python3 -m ensurepip --upgrade
+    
+COPY requirements.txt /opt/app-root/src/
+
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir  -r /opt/app-root/src/requirements.txt
+
+COPY object-detection-pytorch.py /opt/app-root/src
+
+WORKDIR /opt/app-root/src
+
+EXPOSE 8800
+
+CMD ["python", "object-detection-pytorch.py"]

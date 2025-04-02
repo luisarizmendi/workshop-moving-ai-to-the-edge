@@ -1,7 +1,61 @@
-* xref:module-01.adoc[1. RPM Native Container]
-** xref:module-01.adoc#repositories[Repositories]
-** xref:module-01.adoc#software[Software]
+* xref:00-arch-intro.adoc[Architecture]
+* -------------------------
+* `_AI Specialist_`
+* xref:ai-specialist-00-intro.adoc[*0. AI Specialist Intro*]
+* xref:ai-specialist-00-intro.adoc#_background[- Background]
+* xref:ai-specialist-00-intro.adoc#_toolset[- Toolset]
+* xref:ai-specialist-00-intro.adoc#_workflow_overview[- Workflow Overview]
+* xref:ai-specialist-00-intro.adoc#_section_video_recording[- Section Video Recording]
 
-* xref:module-02.adoc[2. GitHub Sourced Container]
-** xref:module-02.adoc#prerequisites[Install Prerequisites]
-** xref:module-02.adoc#container[Enable Container]
+* xref:ai-specialist-01-data.adoc[*1. Data Management*]
+* xref:ai-specialist-01-data.adoc#_collection[- Collection]
+* xref:ai-specialist-01-data.adoc#_preparation[- Preparation]
+* xref:ai-specialist-01-data.adoc#_dataset_publication_and_formatting[- Publication]
+
+* xref:ai-specialist-02-develop.adoc[*2. Model Development*]
+* xref:ai-specialist-02-develop.adoc#_feature_engineering[- Feature Engineering]
+* xref:ai-specialist-02-develop.adoc#_model_development[- Model Development]
+* xref:ai-specialist-02-develop.adoc#_prototyping_pipeline_optional[- Prototyping Pipeline]
+
+* xref:ai-specialist-03-training.adoc[*3. Model Training*]
+* xref:ai-specialist-03-training.adoc#_pipeline_creation[- Pipeline Creation]
+* xref:ai-specialist-03-training.adoc#_pipeline_import[- Pipeline Import]
+* xref:ai-specialist-03-training.adoc#_pipeline_run[- Pipeline Run]
+
+* xref:ai-specialist-04-deploy.adoc[*4. Model Serving*]
+* xref:ai-specialist-04-deploy.adoc#_serving[- Serving]
+* xref:ai-specialist-04-deploy.adoc#_live_testing[- Live Testing]
+
+* xref:ai-specialist-05-update.adoc[*5. Day-2 Operations*]
+* xref:ai-specialist-05-update.adoc#_monitoring[- Monitoring]
+* xref:ai-specialist-05-update.adoc#_dataset_update[- Dataset Update]
+* xref:ai-specialist-05-update.adoc#_retrain[- Retraining]
+* xref:ai-specialist-05-update.adoc#__final_testing[- Final Testing]
+
+* xref:ai-specialist-99-fast.adoc[*Fast-Track for AI Specialist*]
+
+* -------------------------
+* `_Platform Specialist_`
+* xref:platform-specialist-00-intro.adoc[*0. Platform Specialist Intro*]
+* xref:platform-specialist-00-intro.adoc#_background[- Background]
+* xref:platform-specialist-00-intro.adoc#_toolset[- Toolset]
+* xref:platform-specialist-00-intro.adoc#_workflow_overview[- Workflow Overview]
+* xref:platform-specialist-00-intro.adoc#_section_video_recording[- Section Video Recording]
+* xref:platform-specialist-01-image-bake.adoc[*1. Device Image Preparation*]
+* xref:platform-specialist-01-image-bake.adoc#_image_build[- Image Build]
+* xref:platform-specialist-01-image-bake.adoc#_image_deploy[- Image Deploy]
+* xref:platform-specialist-01-image-bake.adoc#_image_rollout[- Image Rollout]
+* xref:platform-specialist-02-device-onboarding.adoc[*2. Device Onboarding*]
+* xref:platform-specialist-02-device-onboarding.adoc#_flight_control_intro[- Flight Control Intro]
+* xref:platform-specialist-02-device-onboarding.adoc#_flight_control_deployment[- Flight Control Deployment]
+* xref:platform-specialist-02-device-onboarding.adoc#_image_manage[- Image Manage]
+* xref:platform-specialist-02-device-onboarding.adoc#_device_management[- Device Management]
+* xref:platform-specialist-02-device-onboarding.adoc#_fleet_management[- Fleet Management]
+* xref:platform-specialist-03-day-2-ops.adoc[*3. Day-2 Operations*]
+* xref:platform-specialist-03-day-2-ops.adoc#_os_configuration[- OS Configuration]
+* xref:platform-specialist-03-day-2-ops.adoc#_application_deployment[- Application Deployment]
+* xref:platform-specialist-03-day-2-ops.adoc#_os_update[- OS Update]
+* xref:platform-specialist-03-day-2-ops.adoc#_device_monitoring[- Device Monitoring]
+* -------------------------
+* xref:99-summary.adoc[*Summary*]
+* xref:00-how_to_deploy_lab.adoc[*Extra: Deploying the Lab*]

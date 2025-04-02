@@ -1,0 +1,102 @@
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-config
+  namespace: minio
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    spec:
+      containers:
+      - name: bootstrap-lab
+        image: quay.io/luisarizmendi/mc:latest 
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+            MINIO_ALIAS="minio"
+            MINIO_URL="http://minio-service.minio.svc.cluster.local:9000"
+            ACCESS_KEY="admin"
+            SECRET_KEY="R3dh4t1!"
+
+            mkdir -p /tmp/mc-config
+            export MC_CONFIG_DIR=/tmp/mc-config
+
+            # Wait to be ready
+            while true; do
+                if mc alias set "$MINIO_ALIAS" "$MINIO_URL" "$ACCESS_KEY" "$SECRET_KEY"; then
+                    echo "MinIO alias set successfully!"
+                    break
+                else
+                    echo "Retrying in 2 seconds..."
+                    sleep 2
+                fi
+            done
+
+            for i in $(seq -w 1 50) 99; do
+                USER="user$i"
+                PASSWORD="redhat$i"
+                POLICY_FILE="/tmp/${USER}-policy.json"
+                BUCKET_NAME="${USER}-ai"
+
+                echo "Creating user: $USER with password: $PASSWORD"
+                mc admin user add $MINIO_ALIAS $USER $PASSWORD
+
+                echo "Creating policy for: $USER"
+                cat > $POLICY_FILE << EOF
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetBucketLocation",
+                            "s3:ListBucket",
+                            "s3:ListBucketMultipartUploads"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::${USER}-*"
+                        ]
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:AbortMultipartUpload",
+                            "s3:DeleteObject",
+                            "s3:GetObject",
+                            "s3:ListMultipartUploadParts"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::${USER}-*/*"
+                        ]
+                    }
+                ]
+            }
+            EOF
+
+                echo "Adding policy to MinIO: ${USER}-policy"
+                mc admin policy create $MINIO_ALIAS ${USER}-policy $POLICY_FILE
+
+                echo "Attaching policy to user: $USER"
+                mc admin policy attach $MINIO_ALIAS ${USER}-policy --user=$USER
+
+                echo "Creating bucket: ${USER}-ai-models"
+                mc mb ${MINIO_ALIAS}/${USER}-ai-models
+
+                echo "Creating bucket: ${USER}-ai-pipelines"
+                mc mb ${MINIO_ALIAS}/${USER}-ai-pipelines
+
+                # Clean up policy file
+                rm -f $POLICY_FILE
+
+                echo "User $USER setup complete."
+                echo "-------------------------"
+            done
+
+            echo "Environment ready!"
+      restartPolicy: Never
+  backoffLimit: 1
+

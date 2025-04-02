@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: object-detection
+  name: object-detection-action-deployment
+  namespace: object-detection
+spec:
+  selector:
+    matchLabels:
+      app: object-detection-action
+  template:
+    metadata:
+      labels:
+        app: object-detection-action
+      name: object-detection-action
+    spec:
+      serviceAccount: object-sa
+      containers:
+      - args:
+        - python
+        - object-detection-action.py
+        env:
+        - name: TERM
+          value: xterm
+        - name: ALIVE_ENDPOINT
+          value: http://object-detection-dashboard-backend-dashboard.apps.cluster-xmsj9.dynamic.redhatworkshops.io/alive
+        - name: ALERT_ENDPOINT
+          value: http://object-detection-dashboard-backend-dashboard.apps.cluster-xmsj9.dynamic.redhatworkshops.io/alert
+        image: osbuild.lmf.openshift.es:5000/gitea/object-detection-action:prod
+        name: object-detection-action
+        securityContext:
+          runAsNonRoot: true
+        stdin: true
+        tty: true
+      hostNetwork: true
+      hostname: nvidia-agx
+

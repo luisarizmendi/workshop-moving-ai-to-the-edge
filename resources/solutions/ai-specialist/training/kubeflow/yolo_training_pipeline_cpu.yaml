@@ -1,0 +1,877 @@
+# PIPELINE DEFINITION
+# Name: yolo-training-pipeline
+# Description: Pipeline to download data, train YOLO model, and upload results to MinIO
+# Inputs:
+#    container_registry: str
+#    container_registry_secret_name: str [Default: 'container-registry-credentials']
+#    inference_outputdims: str [Default: '[ 1, 6, 8400 ]']
+#    model_registry_name: str [Default: 'object-detection-model-registry']
+#    object_access_key: str
+#    object_secret_key: str
+#    object_storage_bucket: str
+#    object_storage_endpoint: str [Default: 's3.openshift-storage.svc:443']
+#    roboflow_api_key: str
+#    roboflow_project: str
+#    roboflow_version: int
+#    roboflow_workspace: str
+#    train_batch_size: int [Default: 16.0]
+#    train_epochs: int [Default: 50.0]
+#    train_img_size: int [Default: 640.0]
+#    train_learning_rate: float [Default: 0.005]
+#    train_name: str [Default: 'hardhat']
+#    train_optimizer: str [Default: 'SGD']
+#    train_yolo_model: str [Default: 'yolo11m.pt']
+#    workshop_username: str
+components:
+  comp-create-modelcar:
+    executorLabel: exec-create-modelcar
+    inputDefinitions:
+      parameters:
+        container_registry:
+          parameterType: STRING
+        container_registry_credentials:
+          parameterType: STRING
+        modelcar_image_name:
+          parameterType: STRING
+        modelcar_image_tag:
+          parameterType: STRING
+        object_storage_access_key:
+          parameterType: STRING
+        object_storage_bucket:
+          parameterType: STRING
+        object_storage_endpoint:
+          parameterType: STRING
+        object_storage_path:
+          parameterType: STRING
+        object_storage_secret_key:
+          parameterType: STRING
+        pipeline_name:
+          parameterType: STRING
+        pipeline_run_name:
+          parameterType: STRING
+        user_name:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        Output:
+          parameterType: STRING
+  comp-createpvc:
+    executorLabel: exec-createpvc
+    inputDefinitions:
+      parameters:
+        access_modes:
+          description: 'AccessModes to request for the provisioned PVC. May
+
+            be one or more of ``''ReadWriteOnce''``, ``''ReadOnlyMany''``, ``''ReadWriteMany''``,
+            or
+
+            ``''ReadWriteOncePod''``. Corresponds to `PersistentVolumeClaim.spec.accessModes
+            <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_.'
+          parameterType: LIST
+        annotations:
+          description: Annotations for the PVC's metadata. Corresponds to `PersistentVolumeClaim.metadata.annotations
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+          isOptional: true
+          parameterType: STRUCT
+        pvc_name:
+          description: 'Name of the PVC. Corresponds to `PersistentVolumeClaim.metadata.name
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+            Only one of ``pvc_name`` and ``pvc_name_suffix`` can
+
+            be provided.'
+          isOptional: true
+          parameterType: STRING
+        pvc_name_suffix:
+          description: 'Prefix to use for a dynamically generated name, which
+
+            will take the form ``<argo-workflow-name>-<pvc_name_suffix>``. Only one
+
+            of ``pvc_name`` and ``pvc_name_suffix`` can be provided.'
+          isOptional: true
+          parameterType: STRING
+        size:
+          description: The size of storage requested by the PVC that will be provisioned.
+            For example, ``'5Gi'``. Corresponds to `PersistentVolumeClaim.spec.resources.requests.storage
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.
+          parameterType: STRING
+        storage_class_name:
+          defaultValue: ''
+          description: 'Name of StorageClass from which to provision the PV
+
+            to back the PVC. ``None`` indicates to use the cluster''s default
+
+            storage_class_name. Set to ``''''`` for a statically specified PVC.'
+          isOptional: true
+          parameterType: STRING
+        volume_name:
+          description: 'Pre-existing PersistentVolume that should back the
+
+            provisioned PersistentVolumeClaim. Used for statically
+
+            specified PV only. Corresponds to `PersistentVolumeClaim.spec.volumeName
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.'
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        name:
+          parameterType: STRING
+  comp-deletepvc:
+    executorLabel: exec-deletepvc
+    inputDefinitions:
+      parameters:
+        pvc_name:
+          description: Name of the PVC to delete. Supports passing a runtime-generated
+            name, such as a name provided by ``kubernetes.CreatePvcOp().outputs['name']``.
+          parameterType: STRING
+  comp-download-dataset:
+    executorLabel: exec-download-dataset
+    inputDefinitions:
+      parameters:
+        api_key:
+          parameterType: STRING
+        project:
+          parameterType: STRING
+        version:
+          parameterType: NUMBER_INTEGER
+        workspace:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        dataset_path:
+          parameterType: STRING
+  comp-push-to-model-registry:
+    executorLabel: exec-push-to-model-registry
+    inputDefinitions:
+      parameters:
+        container_registry:
+          parameterType: STRING
+        metrics:
+          parameterType: STRUCT
+        model_format_name:
+          parameterType: STRING
+        model_name:
+          parameterType: STRING
+        model_registry_name:
+          parameterType: STRING
+        modelcar_image_name:
+          parameterType: STRING
+        modelcar_image_tag:
+          parameterType: STRING
+        roboflow_project:
+          parameterType: STRING
+        roboflow_version:
+          parameterType: NUMBER_INTEGER
+        roboflow_workspace:
+          parameterType: STRING
+        train_batch_size:
+          parameterType: NUMBER_INTEGER
+        train_epochs:
+          parameterType: NUMBER_INTEGER
+        train_img_size:
+          parameterType: NUMBER_INTEGER
+        user_name:
+          parameterType: STRING
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      parameters:
+        batch_size:
+          defaultValue: 16.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        dataset_path:
+          parameterType: STRING
+        epochs:
+          defaultValue: 50.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        img_size:
+          defaultValue: 640.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        learning_rate:
+          defaultValue: 0.005
+          isOptional: true
+          parameterType: NUMBER_DOUBLE
+        name:
+          defaultValue: yolo
+          isOptional: true
+          parameterType: STRING
+        optimizer:
+          defaultValue: SGD
+          isOptional: true
+          parameterType: STRING
+        yolo_model:
+          defaultValue: yolo11m.pt
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        metrics:
+          parameterType: STRUCT
+        test_dir:
+          parameterType: STRING
+        train_dir:
+          parameterType: STRING
+  comp-upload-to-storage:
+    executorLabel: exec-upload-to-storage
+    inputDefinitions:
+      parameters:
+        access_key:
+          parameterType: STRING
+        bucket:
+          parameterType: STRING
+        endpoint:
+          parameterType: STRING
+        outputdims:
+          parameterType: STRING
+        secret_key:
+          parameterType: STRING
+        tag:
+          parameterType: STRING
+        test_dir:
+          parameterType: STRING
+        train_dir:
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        files_model:
+          parameterType: STRING
+        model_artifact_s3_path:
+          parameterType: STRING
+        model_path:
+          parameterType: STRING
+deploymentSpec:
+  executors:
+    exec-create-modelcar:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - create_modelcar
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.11.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'kubernetes'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef create_modelcar(\n        pipeline_name: str,\n        pipeline_run_name:\
+          \ str,\n\n        user_name: str,\n\n        object_storage_endpoint: str,\n\
+          \        object_storage_bucket: str,\n        object_storage_path: str,\n\
+          \        object_storage_access_key: str,\n        object_storage_secret_key:\
+          \ str,\n\n        modelcar_image_name: str,\n        modelcar_image_tag:\
+          \ str,\n\n        container_registry_credentials: str,\n        container_registry:\
+          \ str,\n\n) -> str:\n\n    from kubernetes import client, config\n    import\
+          \ time\n    import random\n    import string\n    import re\n\n    modelcar_image_name=f\"\
+          modelcar-{modelcar_image_name}\"\n\n    # Underscores  are not allowed in\
+          \ k8s names\n    pipeline_run_name = pipeline_run_name.replace(\"_\", \"\
+          -\")\n    random_str = ''.join(random.choices(string.ascii_lowercase + string.digits,\
+          \ k=3))\n    pipeline_run_name += f\"-{random_str}\"\n\n    container_registry_clean\
+          \ = re.sub(r\"^https?://([^/]+).*\", r\"\\1\", container_registry)\n   \
+          \ print(f\"Using this Container Registry: {container_registry_clean}\")\n\
+          \n    config.load_incluster_config()\n    custom_api = client.CustomObjectsApi()\n\
+          \n    pipeline_run_manifest = {\n        \"apiVersion\": \"tekton.dev/v1\"\
+          ,\n        \"kind\": \"PipelineRun\",\n        \"metadata\": {\n       \
+          \     \"name\": pipeline_run_name,\n            \"namespace\": f\"{user_name}-tools\"\
+          \n        },\n        \"spec\": {\n            \"params\": [\n         \
+          \       {\n                    \"name\": \"object-api-url\",\n         \
+          \           \"value\": object_storage_endpoint\n                },\n   \
+          \             {\n                    \"name\": \"username\",\n         \
+          \           \"value\": user_name\n                },\n                {\n\
+          \                    \"name\": \"object_access_key\",\n                \
+          \    \"value\": object_storage_access_key\n                },\n        \
+          \        {\n                    \"name\": \"object_secret_key\",\n     \
+          \               \"value\": object_storage_secret_key\n                },\n\
+          \                {\n                    \"name\": \"object-bucket\",\n \
+          \                   \"value\": object_storage_bucket\n                },\n\
+          \                {\n                    \"name\": \"object-directory-path\"\
+          ,\n                    \"value\": f\"{object_storage_path}/serving\"\n \
+          \               },\n                {\n                    \"name\": \"\
+          container-registry-image-name\",\n                    \"value\": modelcar_image_name\n\
+          \                },\n                {\n                    \"name\": \"\
+          container-registry\",\n                    \"value\": f\"{container_registry_clean}/{user_name}\"\
+          \n                },\n                {\n                    \"name\": \"\
+          container-registry-credentials\",\n                    \"value\": container_registry_credentials\n\
+          \                },\n                {\n                    \"name\": \"\
+          container-registry-image-tag\",\n                    \"value\": modelcar_image_tag\n\
+          \                }\n            ],\n            \"pipelineRef\": {\n   \
+          \             \"name\": pipeline_name\n            },\n            \"taskRunTemplate\"\
+          : {\n                \"serviceAccountName\": \"pipeline\"\n            },\n\
+          \            \"timeouts\": {\n                \"pipeline\": \"1h0m0s\"\n\
+          \            },\n            \"workspaces\": [\n                {\n    \
+          \                \"name\": \"shared-workspace\",\n                    \"\
+          persistentVolumeClaim\": {\n                        \"claimName\": \"ai-modelcar-pvc\"\
+          \n                    }\n                },\n                {\n       \
+          \             \"name\": \"docker-credentials\",\n                    \"\
+          secret\": {\n                        \"secretName\": container_registry_credentials\n\
+          \                    }\n                }\n            ]\n        }\n  \
+          \  }\n\n    namespace_file_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'\n\
+          \    with open(namespace_file_path, 'r') as namespace_file:\n        namespace\
+          \ = namespace_file.read().strip()\n\n\n    custom_api.create_namespaced_custom_object(\n\
+          \        group=\"tekton.dev\",\n        version=\"v1\",\n        namespace=f\"\
+          {user_name}-tools\",\n        plural=\"pipelineruns\",\n        body=pipeline_run_manifest\n\
+          \    )\n    print(f\"Tekton PipelineRun '{pipeline_run_name}' triggered\
+          \ for pipeline '{pipeline_name}'.\")\n\n    time.sleep(5)\n\n    return\
+          \ pipeline_run_name\n\n"
+        image: python:3.9
+    exec-createpvc:
+      container:
+        image: argostub/createpvc
+    exec-deletepvc:
+      container:
+        image: argostub/deletepvc
+    exec-download-dataset:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - download_dataset
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.11.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'roboflow' 'pyyaml'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef download_dataset(\n    api_key: str,\n    workspace: str,\n \
+          \   project: str,\n    version: int,\n    dataset_path: dsl.OutputPath(str)\n\
+          ) -> None:\n    from roboflow import Roboflow\n    import yaml\n    import\
+          \ os\n\n    rf = Roboflow(api_key=api_key)\n    project = rf.workspace(workspace).project(project)\n\
+          \    version = project.version(version)\n    dataset = version.download(\"\
+          yolov11\")\n\n    # Update data.yaml paths\n    dataset_yaml_path = f\"\
+          {dataset.location}/data.yaml\"\n    with open(dataset_yaml_path, \"r\")\
+          \ as file:\n        data_config = yaml.safe_load(file)\n\n    data_config[\"\
+          train\"] = f\"{dataset.location}/train/images\"\n    data_config[\"val\"\
+          ] = f\"{dataset.location}/valid/images\"\n    data_config[\"test\"] = f\"\
+          {dataset.location}/test/images\"\n\n\n    print(dataset)\n\n\n\n    with\
+          \ open(dataset_path, \"w\") as f:\n        f.write(dataset.location)\n\n"
+        image: quay.io/luisarizmendi/pytorch-custom:latest
+    exec-push-to-model-registry:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - push_to_model_registry
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.11.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'model-registry'\
+          \ && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef push_to_model_registry(\n    user_name: str,\n    model_name:\
+          \ str,\n    model_format_name: str,\n    metrics: dict,\n    model_registry_name:\
+          \ str,\n\n    container_registry: str,\n    modelcar_image_name: str,\n\
+          \    modelcar_image_tag: str,\n\n    roboflow_workspace: str,\n    roboflow_project:\
+          \ str,\n    roboflow_version: int,\n    train_epochs: int,\n    train_batch_size:\
+          \ int,\n    train_img_size: int\n):\n    from model_registry import ModelRegistry\n\
+          \    from model_registry import utils\n    import os\n    import json\n\
+          \    import re\n\n    container_registry_clean = re.sub(r\"^https?://([^/]+).*\"\
+          , r\"\\1\", container_registry)\n\n    model_object_prefix = model_name\
+          \ if model_name else \"model\"\n\n    # To avoid making the user introduce\
+          \ the cluster domain I get it from the Quay endpoint (that should be running\
+          \ in the same cluster)\n    cluster_domain= \"\"\n    pattern = re.compile(r\"\
+          apps\\.([^/]+)\")\n    match = re.search(pattern, container_registry)\n\
+          \    cluster_domain = match.group(1) if match else None\n\n    server_address\
+          \ = f\"https://{model_registry_name}-rest.apps.{cluster_domain}\"\n\n  \
+          \  print(f\"Publishing model into {server_address}\")\n\n    #namespace_file_path\
+          \ = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'\n    #with\
+          \ open(namespace_file_path, 'r') as namespace_file:\n    #    namespace\
+          \ = namespace_file.read().strip()\n\n    os.environ[\"KF_PIPELINES_SA_TOKEN_PATH\"\
+          ] = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\n\n    def _register_model():\n\
+          \        registry = ModelRegistry(server_address=server_address, port=443,\
+          \ author=user_name, is_secure=False)\n        registered_model_name = model_object_prefix\n\
+          \        metadata = {\n            \"Dataset\": f\"https://universe.roboflow.com/{roboflow_workspace}/{roboflow_project}/dataset/{str(roboflow_version)}\"\
+          ,\n            \"Epochs\": str(train_epochs),\n            \"Batch Size\"\
+          : str(train_batch_size),\n            \"Image Size\": str(train_img_size),\n\
+          \            \"mAP50\": str(metrics[\"mAP50\"]),\n            \"mAP50-95\"\
+          : str(metrics[\"mAP50-95\"]),\n            \"precision\": str(metrics[\"\
+          precision\"]),\n            \"recall\": str(metrics[\"recall\"])\n     \
+          \   }\n\n        rm = registry.register_model(\n            registered_model_name,\n\
+          \            f\"oci://{container_registry_clean}/{user_name}/{modelcar_image_name}/:{modelcar_image_tag}\"\
+          ,\n            version=modelcar_image_tag,\n            description=f\"\
+          {registered_model_name} is a dense neural network that detects Hardhats\
+          \ in images.\",\n            model_format_name=model_format_name,\n    \
+          \        model_format_version=\"1\",\n            metadata=metadata\n  \
+          \      )\n        print(\"Model registered successfully\")\n\n    _register_model()\n\
+          \n"
+        image: python:3.9
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.11.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"'  &&\
+          \  python3 -m pip install --quiet --no-warn-script-location 'ultralytics'\
+          \ 'torch' 'pandas' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n    dataset_path: str,\n    epochs: int = 50,\n\
+          \    batch_size: int = 16,\n    img_size: int = 640,\n    name: str = \"\
+          yolo\",\n    yolo_model: str = \"yolo11m.pt\",\n    optimizer: str = \"\
+          SGD\",\n    learning_rate: float = 0.005,\n) -> NamedTuple('Outputs', [\n\
+          \    ('train_dir', str),\n    ('test_dir', str),\n    ('metrics', dict)\n\
+          ]):\n    import torch\n    from ultralytics import YOLO\n    import pandas\
+          \ as pd\n    import os\n\n    device = torch.device(\"cuda:0\" if torch.cuda.is_available()\
+          \ else \"cpu\")\n    print(f\"Using device: {device}\")\n\n    CONFIG =\
+          \ {\n        'name': name,\n        'model': yolo_model,\n        'data':\
+          \ f\"{dataset_path}/data.yaml\",\n        'epochs': epochs,\n        'batch':\
+          \ batch_size,\n        'imgsz': img_size,\n        'device': device,\n \
+          \       'optimizer': optimizer,\n        'lr0': 0.001,\n        'lrf': learning_rate,\n\
+          \        'momentum': 0.9,\n        'weight_decay': 0.0005,\n        'warmup_epochs':\
+          \ 3,\n        'warmup_bias_lr': 0.01,\n        'warmup_momentum': 0.8,\n\
+          \        'amp': False,\n    }\n\n    # Configure PyTorch\n    os.environ[\"\
+          PYTORCH_CUDA_ALLOC_CONF\"] = \"expandable_segments:True\"\n\n    # Initialize\
+          \ and train model\n    model = YOLO(CONFIG['model'])\n    results_train\
+          \ = model.train(\n        name=CONFIG['name'],\n        data=CONFIG['data'],\n\
+          \        epochs=CONFIG['epochs'],\n        batch=CONFIG['batch'],\n    \
+          \    imgsz=CONFIG['imgsz'],\n        device=CONFIG['device'],\n\n      \
+          \  # Optimizer parameters\n        optimizer=CONFIG['optimizer'],\n    \
+          \    lr0=CONFIG['lr0'],\n        lrf=CONFIG['lrf'],\n        momentum=CONFIG['momentum'],\n\
+          \        weight_decay=CONFIG['weight_decay'],\n        warmup_epochs=CONFIG['warmup_epochs'],\n\
+          \        warmup_bias_lr=CONFIG['warmup_bias_lr'],\n        warmup_momentum=CONFIG['warmup_momentum'],\n\
+          \        amp=CONFIG['amp'],\n    )\n\n    # Evaluate model\n    results_test\
+          \ = model.val(\n        data=CONFIG['data'],\n        split='test',\n  \
+          \      device=CONFIG['device'],\n        imgsz=CONFIG['imgsz']\n    )\n\n\
+          \    # Export to ONNX format\n    model.export(format='onnx', imgsz=CONFIG['imgsz'])\n\
+          \n    # Compute metrics from CSV\n    results_csv_path = os.path.join(results_train.save_dir,\
+          \ \"results.csv\")\n    results_df = pd.read_csv(results_csv_path)\n\n \
+          \   # Extract metrics\n    metrics = {\n        \"precision\": results_df[\"\
+          metrics/precision(B)\"].iloc[-1],\n        \"recall\": results_df[\"metrics/recall(B)\"\
+          ].iloc[-1],\n        \"mAP50\": results_df[\"metrics/mAP50(B)\"].iloc[-1],\n\
+          \        \"mAP50-95\": results_df[\"metrics/mAP50-95(B)\"].iloc[-1]\n  \
+          \  }\n\n    return NamedTuple('Outputs', [\n        ('train_dir', str),\n\
+          \        ('test_dir', str),\n        ('metrics', dict)\n    ])(\n      \
+          \  train_dir=str(results_train.save_dir),\n        test_dir=str(results_test.save_dir),\n\
+          \        metrics=metrics\n    )\n\n"
+        image: quay.io/luisarizmendi/pytorch-custom:latest
+        resources:
+          memoryRequest: 2.147483648
+          resourceMemoryRequest: 2Gi
+    exec-upload-to-storage:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - upload_to_storage
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.11.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef upload_to_storage(\n    train_dir: str,\n    tag: str,\n    test_dir:\
+          \ str,\n    endpoint: str,\n    access_key: str,\n    secret_key: str,\n\
+          \    bucket: str,\n    outputdims: str,\n    model_path: dsl.OutputPath(str)\n\
+          ) -> NamedTuple('Outputs', [\n    ('model_artifact_s3_path', str),\n   \
+          \ ('files_model', str)\n]):\n    import boto3\n    from botocore.exceptions\
+          \ import NoCredentialsError, PartialCredentialsError\n    import os\n\n\
+          \    s3_client = boto3.client(\n        \"s3\",\n        endpoint_url=f\"\
+          https://{endpoint}\",\n        aws_access_key_id=access_key,\n        aws_secret_access_key=secret_key,\n\
+          \        verify=False \n    )\n\n    # Get paths for files\n    weights_path\
+          \ = os.path.join(train_dir, \"weights\")\n\n    files_train = [os.path.join(train_dir,\
+          \ f) for f in os.listdir(train_dir)\n                   if os.path.isfile(os.path.join(train_dir,\
+          \ f))]\n    files_models = [os.path.join(weights_path, f) for f in os.listdir(weights_path)\n\
+          \                    if os.path.isfile(os.path.join(weights_path, f))]\n\
+          \n    files_model = os.path.join(train_dir, \"weights\") + \"/best\"\n\n\
+          \    files_test = [os.path.join(test_dir, f) for f in os.listdir(test_dir)\
+          \ \n                  if os.path.isfile(os.path.join(test_dir, f))]\n\n\
+          \    directory_name = os.path.basename(train_dir) + \"-\" + tag\n\n    #\
+          \ Upload files\n    for file_path in files_train:\n        try:\n      \
+          \      s3_client.upload_file(file_path, bucket, f\"{directory_name}/metrics/train-val/{os.path.basename(file_path)}\"\
+          )\n        except Exception as e:\n            print(f\"Error uploading\
+          \ {file_path}: {e}\")\n\n    for file_path in files_test:\n        try:\n\
+          \            s3_client.upload_file(file_path, bucket, f\"{directory_name}/metrics/test/{os.path.basename(file_path)}\"\
+          )\n        except Exception as e:\n            print(f\"Error uploading\
+          \ {file_path}: {e}\")\n\n    with open(model_path, \"w\") as f:\n      \
+          \  f.write(directory_name)\n\n    try:\n        s3_client.upload_file(f\"\
+          {files_model}.pt\", bucket, f\"{directory_name}/{os.path.basename(files_model)}.pt\"\
+          )\n    except Exception as e:\n        print(f\"Error uploading {files_model}.pt:\
+          \ {e}\")\n\n    try:\n        s3_client.upload_file(f\"{files_model}.onnx\"\
+          , bucket, f\"{directory_name}/serving/hardhat/1/model.onnx\")\n    except\
+          \ Exception as e:\n        print(f\"Error uploading {files_model}.onnx:\
+          \ {e}\")\n\n    try:\n        # Create the config.pbtxt file\n        config_pbtxt\
+          \ = f\"\"\"\\\nname: \"hardhat\"\nplatform: \"onnxruntime_onnx\"\nmax_batch_size:\
+          \ 0  \ninput [\n{{\n    name: \"images\"\n    data_type: TYPE_FP32\n   \
+          \ dims: [1, 3, 640, 640]  \n}}\n]\noutput [\n{{\n    name: \"output0\"\n\
+          \    data_type: TYPE_FP32\n    dims: {outputdims}\n}}\n]\nbackend: \"onnxruntime\"\
+          \n\"\"\"\n\n        with open(\"config.pbtxt\", \"w\") as f:\n         \
+          \   f.write(config_pbtxt)\n\n        s3_client.upload_file(\"config.pbtxt\"\
+          , bucket, f\"{directory_name}/serving/hardhat/config.pbtxt\")\n    except\
+          \ Exception as e:\n        print(f\"Error uploading config.pbtxt: {e}\"\
+          )\n\n    model_artifact_s3_path = directory_name\n\n    return NamedTuple('Outputs',\
+          \ [\n        ('model_artifact_s3_path', str),\n        ('files_model', str)\n\
+          \    ])(\n        model_artifact_s3_path,\n        os.path.basename(files_model)\n\
+          \    )\n\n"
+        image: quay.io/luisarizmendi/pytorch-custom:latest
+pipelineInfo:
+  description: Pipeline to download data, train YOLO model, and upload results to
+    MinIO
+  name: yolo-training-pipeline
+root:
+  dag:
+    tasks:
+      create-modelcar:
+        cachingOptions: {}
+        componentRef:
+          name: comp-create-modelcar
+        dependentTasks:
+        - upload-to-storage
+        inputs:
+          parameters:
+            container_registry:
+              componentInputParameter: container_registry
+            container_registry_credentials:
+              componentInputParameter: container_registry_secret_name
+            modelcar_image_name:
+              componentInputParameter: train_name
+            modelcar_image_tag:
+              runtimeValue:
+                constant: 04-02-09_13
+            object_storage_access_key:
+              componentInputParameter: object_access_key
+            object_storage_bucket:
+              componentInputParameter: object_storage_bucket
+            object_storage_endpoint:
+              componentInputParameter: object_storage_endpoint
+            object_storage_path:
+              taskOutputParameter:
+                outputParameterKey: model_artifact_s3_path
+                producerTask: upload-to-storage
+            object_storage_secret_key:
+              componentInputParameter: object_secret_key
+            pipeline_name:
+              runtimeValue:
+                constant: ai-modelcar
+            pipeline_run_name:
+              runtimeValue:
+                constant: modelcar-run-04-02-09_13
+            user_name:
+              componentInputParameter: workshop_username
+        taskInfo:
+          name: create-modelcar
+      createpvc:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-createpvc
+        inputs:
+          parameters:
+            access_modes:
+              runtimeValue:
+                constant:
+                - ReadWriteOnce
+            pvc_name_suffix:
+              runtimeValue:
+                constant: -kubeflow-pvc
+            size:
+              runtimeValue:
+                constant: 5Gi
+            storage_class_name:
+              runtimeValue:
+                constant: ocs-storagecluster-ceph-rbd
+        taskInfo:
+          name: createpvc
+      deletepvc:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-deletepvc
+        dependentTasks:
+        - createpvc
+        - upload-to-storage
+        inputs:
+          parameters:
+            pvc_name:
+              taskOutputParameter:
+                outputParameterKey: name
+                producerTask: createpvc
+        taskInfo:
+          name: deletepvc
+      download-dataset:
+        cachingOptions: {}
+        componentRef:
+          name: comp-download-dataset
+        dependentTasks:
+        - createpvc
+        inputs:
+          parameters:
+            api_key:
+              componentInputParameter: roboflow_api_key
+            project:
+              componentInputParameter: roboflow_project
+            version:
+              componentInputParameter: roboflow_version
+            workspace:
+              componentInputParameter: roboflow_workspace
+        taskInfo:
+          name: download-dataset
+      push-to-model-registry:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-push-to-model-registry
+        dependentTasks:
+        - create-modelcar
+        - train-model
+        inputs:
+          parameters:
+            container_registry:
+              componentInputParameter: container_registry
+            metrics:
+              taskOutputParameter:
+                outputParameterKey: metrics
+                producerTask: train-model
+            model_format_name:
+              runtimeValue:
+                constant: ONNX
+            model_name:
+              componentInputParameter: train_name
+            model_registry_name:
+              componentInputParameter: model_registry_name
+            modelcar_image_name:
+              componentInputParameter: train_name
+            modelcar_image_tag:
+              runtimeValue:
+                constant: 04-02-09_13
+            roboflow_project:
+              componentInputParameter: roboflow_project
+            roboflow_version:
+              componentInputParameter: roboflow_version
+            roboflow_workspace:
+              componentInputParameter: roboflow_workspace
+            train_batch_size:
+              componentInputParameter: train_batch_size
+            train_epochs:
+              componentInputParameter: train_epochs
+            train_img_size:
+              componentInputParameter: train_img_size
+            user_name:
+              componentInputParameter: workshop_username
+        taskInfo:
+          name: push-to-model-registry
+      train-model:
+        cachingOptions: {}
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - createpvc
+        - download-dataset
+        inputs:
+          parameters:
+            batch_size:
+              componentInputParameter: train_batch_size
+            dataset_path:
+              taskOutputParameter:
+                outputParameterKey: dataset_path
+                producerTask: download-dataset
+            epochs:
+              componentInputParameter: train_epochs
+            img_size:
+              componentInputParameter: train_img_size
+            learning_rate:
+              componentInputParameter: train_learning_rate
+            name:
+              componentInputParameter: train_name
+            optimizer:
+              componentInputParameter: train_optimizer
+            yolo_model:
+              componentInputParameter: train_yolo_model
+        taskInfo:
+          name: train-model
+      upload-to-storage:
+        cachingOptions: {}
+        componentRef:
+          name: comp-upload-to-storage
+        dependentTasks:
+        - createpvc
+        - train-model
+        inputs:
+          parameters:
+            access_key:
+              componentInputParameter: object_access_key
+            bucket:
+              componentInputParameter: object_storage_bucket
+            endpoint:
+              componentInputParameter: object_storage_endpoint
+            outputdims:
+              componentInputParameter: inference_outputdims
+            secret_key:
+              componentInputParameter: object_secret_key
+            tag:
+              runtimeValue:
+                constant: 04-02-09_13
+            test_dir:
+              taskOutputParameter:
+                outputParameterKey: test_dir
+                producerTask: train-model
+            train_dir:
+              taskOutputParameter:
+                outputParameterKey: train_dir
+                producerTask: train-model
+        taskInfo:
+          name: upload-to-storage
+  inputDefinitions:
+    parameters:
+      container_registry:
+        parameterType: STRING
+      container_registry_secret_name:
+        defaultValue: container-registry-credentials
+        isOptional: true
+        parameterType: STRING
+      inference_outputdims:
+        defaultValue: '[ 1, 6, 8400 ]'
+        isOptional: true
+        parameterType: STRING
+      model_registry_name:
+        defaultValue: object-detection-model-registry
+        isOptional: true
+        parameterType: STRING
+      object_access_key:
+        parameterType: STRING
+      object_secret_key:
+        parameterType: STRING
+      object_storage_bucket:
+        parameterType: STRING
+      object_storage_endpoint:
+        defaultValue: s3.openshift-storage.svc:443
+        isOptional: true
+        parameterType: STRING
+      roboflow_api_key:
+        parameterType: STRING
+      roboflow_project:
+        parameterType: STRING
+      roboflow_version:
+        parameterType: NUMBER_INTEGER
+      roboflow_workspace:
+        parameterType: STRING
+      train_batch_size:
+        defaultValue: 16.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_epochs:
+        defaultValue: 50.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_img_size:
+        defaultValue: 640.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_learning_rate:
+        defaultValue: 0.005
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      train_name:
+        defaultValue: hardhat
+        isOptional: true
+        parameterType: STRING
+      train_optimizer:
+        defaultValue: SGD
+        isOptional: true
+        parameterType: STRING
+      train_yolo_model:
+        defaultValue: yolo11m.pt
+        isOptional: true
+        parameterType: STRING
+      workshop_username:
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.11.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-download-dataset:
+          pvcMount:
+          - mountPath: /opt/app-root/src
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-train-model:
+          pvcMount:
+          - mountPath: /opt/app-root/src
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-upload-to-storage:
+          pvcMount:
+          - mountPath: /opt/app-root/src
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc

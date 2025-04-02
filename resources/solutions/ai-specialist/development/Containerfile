@@ -1,0 +1,8 @@
+ FROM quay.io/modh/odh-pytorch-notebook:v2-2024a-20250116-b42b86c
+
+ USER 0
+
+ RUN INSTALL_PKGS="ultralytics roboflow minio podman" && \
+     pip install --no-cache-dir  $INSTALL_PKGS 
+
+ USER 1001

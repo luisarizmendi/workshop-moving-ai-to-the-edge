@@ -23,6 +23,9 @@ www/
 
 # Ignore sensitive or private information
 secrets.json
+*.crt
+*.key
+*.srl
 
 # Ignore compiled binaries or executables
 *.exe
@@ -36,3 +39,6 @@ package-lock.json
 
 # Ignore yarn.lock for Yarn
 yarn.lock
+
+# ignore temp scripts
+content/modules/ROOT/pages/scripts

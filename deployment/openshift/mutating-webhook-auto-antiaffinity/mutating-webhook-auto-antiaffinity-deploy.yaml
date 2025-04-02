@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: antiaffinity-webhook
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: antiaffinity-webhook
+  template:
+    metadata:
+      labels:
+        app: antiaffinity-webhook
+    spec:
+      containers:
+      - name: webhook
+        image: quay.io/luisarizmendi/mutating-webhook-auto-antiaffinity:latest
+        ports:
+        - containerPort: 8443
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: antiaffinity-webhook
+  namespace: default
+spec:
+  selector:
+    app: antiaffinity-webhook
+  ports:
+  - port: 8443
+    targetPort: 8443
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: antiaffinity-webhook
+webhooks:
+- name: antiaffinity-injector.default.svc
+  clientConfig:
+    service:
+      name: antiaffinity-webhook
+      namespace: default
+      path: "/mutate"
+      port: 8443
+    caBundle: ${BASE64_ENCODED_CA_CRT}
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  failurePolicy: Fail
+  admissionReviewVersions: ["v1"]
+  sideEffects: None

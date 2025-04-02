@@ -1,0 +1,17 @@
+FROM registry.access.redhat.com/ubi9/python-39:latest
+
+WORKDIR /app
+RUN mkdir -p /app && chmod -R 777 /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=5005
+
+EXPOSE 5005
+
+CMD ["flask", "run"]

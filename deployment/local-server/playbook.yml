@@ -1,0 +1,238 @@
+- name: Deploy Gitea & configure shared Nvidia Device
+  hosts: all
+  vars:
+    machine_user: luca
+    gitea_admin: gitea
+    gitea_password: gitea
+    gitea_port: 5000
+    gitea_version: "1.21.7"
+    # to be changed, has to be the same as the podmanhosts hostname
+    server_hostname: 192.168.2.200
+  tasks:
+    - name: Install Git CLI
+      when:  inventory_hostname in groups['registry_machine']
+      become: true
+      ansible.builtin.dnf:
+        state: latest
+        name: "git"
+
+    - name: Install Podman
+      when:  inventory_hostname in lookup('inventory_hostnames', 'registry_machine:shared_nvidia')
+      become: true
+      ansible.builtin.dnf:
+        state: latest
+        name: "podman"
+
+
+    - name: Check if firewalld is installed
+      when:  inventory_hostname in groups['registry_machine']
+      become: true
+      shell: rpm -q firewalld
+      register: firewalld_installed
+      ignore_errors: yes
+
+
+    - name: Open TCP ports
+      when: firewalld_installed.rc == 0 and inventory_hostname in groups['registry_machine']
+      become: true
+      firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        immediate: true
+        state: enabled
+        zone: public
+      with_items:
+        - "{{ gitea_port | default('3000') }}"
+        - 10022
+
+    - name: Reload firewall
+      when:  inventory_hostname in groups['registry_machine']
+      become: true
+      ansible.builtin.systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Enable linger
+      when:  inventory_hostname in groups['registry_machine']
+      command: loginctl enable-linger "{{ machine_user }}"
+      changed_when: false
+
+
+    - name: Create Gitea data directory
+      when:  inventory_hostname in groups['registry_machine']
+      file:
+        path: "/home/{{ machine_user }}/Gitea/gitea"
+        state: directory
+        owner: "{{ machine_user }}"
+        group: "{{ machine_user }}"
+        mode: '0755'
+      become: false
+
+    - name: Allow containers to access and modify files
+      when:  inventory_hostname in groups['registry_machine']
+      become: true
+      shell: |
+        semanage fcontext -a -t container_file_t '/home/{{ machine_user }}/Gitea/gitea(/.*)?'
+        restorecon -R /home/{{ machine_user }}/Gitea/gitea
+
+    - name: Check if container with name "gitea" exists
+      when:  inventory_hostname in groups['registry_machine']
+      containers.podman.podman_container_info:
+        name: gitea
+      register: gitea_info
+      ignore_errors: true
+      become: false
+
+    #- name: Print return information from the previous task
+    #  ansible.builtin.debug:
+    #    var: nginx_info
+
+    - name: Stop and remove gitea container if it does exist already
+      when:  inventory_hostname in groups['registry_machine'] and (gitea_info is defined) and (gitea_info|length > 0)
+      become: false
+      containers.podman.podman_container:
+        name: gitea
+        state: absent
+
+    - name: Create a podman network to connect pods
+      when:  inventory_hostname in groups['registry_machine']
+      containers.podman.podman_network:
+        name: gitea
+      become: false
+
+
+## GITEA 
+
+    - name: Start Gitea
+      when:  inventory_hostname in groups['registry_machine']
+      containers.podman.podman_container:
+        name: gitea
+        hostname: gitea
+        image: "docker.io/gitea/gitea:{{ gitea_version }}"
+        volume:
+          - "/home/{{ machine_user }}/Gitea/gitea:/data"
+          - /etc/localtime:/etc/localtime:ro
+        network: gitea
+        ports:
+          - "{{ gitea_port | default('3000') }}:3000"
+          - "10022:22"
+        env:
+          USER_UID: "1000"
+          USER_GID: "1000"
+          APP-NAME: "My Gitea"
+          GITEA__server__ROOT_URL: "http://{{ ansible_fqdn }}:{{ gitea_port | default('3000') }}"
+          GITEA__server__DOMAIN: "{{ ansible_fqdn }}"
+          GITEA__server__SSH_DOMAIN: "{{ ansible_fqdn }}"
+          #GITEA__server__PROTOCOL: https
+          #GITEA__server__HTTP_PORT: "{{ gitea_port | default('3000') }}"
+          GITEA__database__PATH: /data/gitea/gitea.db
+          GITEA__database__DB_TYPE: sqlite3
+          GITEA__security__INSTALL_LOCK: true
+          #GITEA__webhook__SKIP_TLS_VERIFY: true
+          GITEA__webhook__ALLOWED_HOST_LIST: "*"
+      become: false
+
+
+    - name: Create initial gitea user
+      when:  inventory_hostname in groups['registry_machine']
+      ansible.builtin.shell:
+        cmd: podman exec -it {{ gitea_container | default('gitea') }} su git -c "/app/gitea/gitea admin user create --username {{ gitea_admin | default('gitea')}} --password '{{ gitea_admin | default('gitea')}}' --email 'dont@email.me' --admin"
+      register: gitea_user_create
+      changed_when:
+        - "'created' in gitea_user_create.stdout"
+      failed_when:
+        - "'created' not in gitea_user_create.stdout"
+        - "'already exists' not in gitea_user_create.stdout"
+      become: false
+
+
+    - name: Ensure /home/{{ machine_user }}/.config/systemd/user directories exist
+      when:  inventory_hostname in groups['registry_machine']
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /home/{{ machine_user }}/.config/systemd/user/default.target.wants
+        - /home/{{ machine_user }}/.config/systemd/user/multi-user.target.wants
+
+    - name: Copy systemd service unit template
+      when:  inventory_hostname in groups['registry_machine']
+      template:
+        src: gitea.service.j2
+        dest: /home/{{ machine_user }}/.config/systemd/user/gitea.service
+
+    - name: Enable Gitea systemd service
+      when:  inventory_hostname in groups['registry_machine']
+      shell: |
+        ln -s /home/{{ machine_user }}/.config/systemd/user/gitea.service /home/{{ machine_user }}/.config/systemd/user/default.target.wants/gitea.service
+        ln -s /home/{{ machine_user }}/.config/systemd/user/gitea.service /home/{{ machine_user }}/.config/systemd/user/multi-user.target.wants/gitea.service
+        systemctl --user daemon-reload
+    
+
+    - name: create inventories repo in Gitea
+      when:  inventory_hostname in groups['registry_machine']
+      ansible.builtin.uri:
+          url: "http://{{ ansible_fqdn }}:{{ gitea_port | default('3000') }}/api/v1/admin/users/{{ gitea_admin }}/repos"
+          validate_certs: false
+          user: "{{ gitea_admin }}"
+          password: '{{ gitea_password }}'
+          force_basic_auth: true
+          body_format: json
+          method: POST
+          body:
+            name: "inventories"
+            private: true
+          status_code:
+            - 201
+            - 409
+
+    - name: create users orgs in Gitea
+      when:  inventory_hostname in groups['registry_machine']
+      ansible.builtin.uri:
+          url: "http://{{ ansible_fqdn }}:{{ gitea_port | default('3000') }}/api/v1/orgs"
+          validate_certs: false
+          user: "{{ gitea_admin }}"
+          password: '{{ gitea_password }}'
+          force_basic_auth: true
+          body_format: json
+          method: POST
+          body:
+            username: "99"
+          status_code:
+            - 201
+            - 409
+            - 422
+
+    - name: add insecure registry on both hosts ADD PORT
+      with_inventory_hostnames:
+      - all
+      become: true
+      shell: 
+       cmd: |
+        cat > /etc/containers/registries.conf.d/gitea-registry.conf << EOF
+        [[registry]]
+        location = "{{ server_hostname }}:{{ gitea_port | default('3000') }}"
+        insecure = true
+        EOF
+        
+    - name: push images to local edge registry
+      when:  inventory_hostname in groups['shared_nvidia']
+      become: false
+      containers.podman.podman_image:
+        name: quay.io/luisarizmendi/object-detection-action:prod
+        arch: arm64
+        push: true
+        username: "{{ gitea_admin }}"
+        password: "{{ gitea_password }}"
+        push_args:
+          dest: "{{groups['registry_machine'][0]}}:{{ gitea_port | default('3000') }}/{{ gitea_admin }}/object-detection-action:prod"
+
+    #todo create repo
+    #todo push all needed images from nvidia (so that it is arm based)
+    #  quay.io/luisarizmendi/object-detection-stream-manager:prod
+    #  quay.io/luisarizmendi/object-detection-inference-server:prod
+    #  quay.io/luisarizmendi/object-detection-action:prod
+    # create users orgs  
+    # create folders for users on shared nvidia device
+    # cleanup script
+   

@@ -1,0 +1,167 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-buckets-create
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+              set -e
+
+              # https://github.com/noobaa/noobaa-core/tree/v5.18.1/src/api
+              export NOOBAA_API_URL=https://$(oc get route noobaa-mgmt -n openshift-storage -o jsonpath='{.spec.host}')
+              export NOOBAA_TOKEN=$(oc whoami -t)
+
+              # Wait for openshift-storage.noobaa.io to exist
+              while ! oc get storageclass openshift-storage.noobaa.io &>/dev/null; do
+                echo "Waiting for openshift-storage.noobaa.io StorageClass..."
+                sleep 10
+              done
+              
+              echo "openshift-storage.noobaa.io found."
+
+
+              # Loop through users user01 to user50 and user99
+              for i in $(seq -w 1 50) 99; do
+                user="user$i"
+                namespace="${user}-tools"
+                access_key=$user
+                secret_key="redhat$i"
+
+                for b in ai-models ai-pipeline; do
+                  bucket=${user}-${b}
+
+                  echo "Creating bucket $b"
+              oc apply -f - <<EOF
+              apiVersion: objectbucket.io/v1alpha1
+              kind: ObjectBucketClaim
+              metadata:
+                name: $bucket
+                namespace: $namespace
+              spec:
+                bucketName: $bucket
+                objectBucketName: $bucket
+                storageClassName: openshift-storage.noobaa.io
+              EOF
+
+
+                  # Wait until the secret exists
+                  echo "Waiting for secret $bucket in namespace $namespace..."
+                  until kubectl get secret "$bucket" -n "$namespace" &>/dev/null; do
+                      sleep 2
+                  done
+
+                  echo "Secret created! Extracting credentials..."
+
+                  export AWS_ACCESS_KEY_ID=$(kubectl get secret "$bucket" -n "$namespace" -o jsonpath="{.data.AWS_ACCESS_KEY_ID}" | base64 -d)
+                  export AWS_SECRET_ACCESS_KEY=$(kubectl get secret "$bucket" -n "$namespace" -o jsonpath="{.data.AWS_SECRET_ACCESS_KEY}" | base64 -d)
+
+                  echo "Creating S3 browser for $bucket"
+              oc apply -f - <<EOF
+              kind: Deployment
+              apiVersion: apps/v1
+              metadata:
+                name: s3-browser-$bucket
+                namespace: $namespace
+                labels:
+                  app: s3-browser-$bucket
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: s3-browser-$bucket
+                template:
+                  metadata:
+                    creationTimestamp: null
+                    labels:
+                      app: s3-browser-$bucket
+                  spec:
+                    containers:
+                      - name: semanager
+                        image: quay.io/luisarizmendi/semanager:latest
+                        ports:
+                          - containerPort: 8080
+                            protocol: TCP
+                        env:
+                          - name: ACCESS_KEY_ID
+                            value: $AWS_ACCESS_KEY_ID
+                          - name: SECRET_ACCESS_KEY
+                            value: $AWS_SECRET_ACCESS_KEY
+                          - name: ENDPOINT
+                            value: s3.openshift-storage.svc
+                          - name: BUCKET_NAME
+                            value: $bucket
+                          - name: SKIP_SSL_VERIFICATION
+                            value: 'true'
+                        resources: {}
+                        terminationMessagePath: /dev/termination-log
+                        terminationMessagePolicy: File
+                        imagePullPolicy: Always
+                    restartPolicy: Always
+                    terminationGracePeriodSeconds: 30
+                    dnsPolicy: ClusterFirst
+                    securityContext: {}
+                    schedulerName: default-scheduler
+                strategy:
+                  type: RollingUpdate
+                  rollingUpdate:
+                    maxUnavailable: 25%
+                    maxSurge: 25%
+                revisionHistoryLimit: 10
+                progressDeadlineSeconds: 600
+              ---
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: s3-browser-$bucket
+                namespace: $namespace
+              spec:
+                selector:
+                  app: s3-browser-$bucket
+                ports:
+                  - name: 8080-tcp
+                    protocol: TCP
+                    port: 8080
+                    targetPort: 8080
+              ---
+              apiVersion: route.openshift.io/v1
+              kind: Route
+              metadata:
+                name: s3-browser-$bucket
+                namespace: $namespace
+              spec:
+                to:
+                  kind: Service
+                  name: s3-browser-$bucket
+                  weight: 100
+                port:
+                  targetPort: 8080-tcp
+                tls:
+                  termination: edge
+                  insecureEdgeTerminationPolicy: Redirect
+                wildcardPolicy: None
+              EOF
+
+                done
+              done 
+
+              echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1

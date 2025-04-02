@@ -1,0 +1,15 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: inference-hardhat
+spec:
+  path: /
+  to:
+    name: inference-hardhat
+    weight: 100
+    kind: Service
+  host: ''
+  port:
+    targetPort: 8888
+  alternateBackends: []

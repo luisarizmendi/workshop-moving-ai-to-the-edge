@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-detection-batch-kserve-api
+  labels:
+    app: object-detection-batch-kserve-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-detection-batch-kserve-api
+  template:
+    metadata:
+      labels:
+        app: object-detection-batch-kserve-api
+    spec:
+      containers:
+      - name: batch-model-api
+        image: quay.io/luisarizmendi/object-detection-batch-kserve-api:latest
+        ports:
+        - containerPort: 8800
+        env:
+#          SINGLE MODEL SERVING
+#          - name: INFERENCE_URL
+#            value: 'https://<CHANGE ME TO INFERENCE ENDPOINT>/v2/models/hardhat/infer'
+#
+#          MULTI MODEL SERVING
+#          - name: INFERENCE_URL
+#            value: 'https://<CHANGE ME TO INFERENCE ENDPOINT>'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-detection-batch-kserve-api
+  labels:
+    app: object-detection-batch-kserve-api
+spec:
+  selector:
+    app: object-detection-batch-kserve-api
+  ports:
+  - protocol: TCP
+    port: 8800
+    targetPort: 8800
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: object-detection-batch-kserve-api
+  labels:
+    app: object-detection-batch-kserve-api
+spec:
+  to:
+    kind: Service
+    name: object-detection-batch-kserve-api
+  port:
+    targetPort: 8800
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge

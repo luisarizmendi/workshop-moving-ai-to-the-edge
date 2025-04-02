@@ -1,0 +1,8 @@
+apiVersion: helm.openshift.io/v1beta1
+kind: HelmChartRepository
+metadata:
+  name: larizmen-helm-repo
+spec:
+  name: Luis Arizmendi Helm Charts
+  connectionConfig:
+    url: https://raw.githubusercontent.com/luisarizmendi/helm-chart-repo/main/packages

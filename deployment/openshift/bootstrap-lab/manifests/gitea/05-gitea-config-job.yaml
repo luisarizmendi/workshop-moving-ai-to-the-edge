@@ -1,0 +1,71 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: configure-gitea
+  namespace: gitea
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  template:
+    spec:
+      containers:
+      - name: gitea-configurator
+        image: curlimages/curl:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+
+          # Wait
+          while ! curl -s --head "$GITEA_BASE_URL" | grep "HTTP/1.1 200 OK" > /dev/null; do
+            echo "Waiting for Gitea to be ready..."
+            sleep 5
+          done
+          echo "Gitea is ready waiting to start user creation!"
+          sleep 60
+          AUTH_HEADER="Authorization: Basic $(echo -n "$GITEA_ADMIN_USER:$GITEA_ADMIN_PASS" | base64)"
+
+          # Create users
+          for i in $(seq -w 1 $USER_NUM) 99; do
+            USERNAME="$USER_BASE_NAME$i"
+            PASSWORD="$USER_BASE_PASS$i"
+            EMAIL="user$i@example.com"
+            curl -X POST "$GITEA_BASE_URL/api/v1/admin/users" \
+              -H "Content-Type: application/json" \
+              -H "$AUTH_HEADER" \
+              -d '{
+                "username": "'"$USERNAME"'",
+                "password": "'"$PASSWORD"'",
+                "email": "'"$EMAIL"'",
+                "must_change_password": false
+              }'
+          done
+          
+          # Create repositories
+          for i in $(seq -w 1 $USER_NUM) 99; do
+            USERNAME="$USER_BASE_NAME$i"
+            REPO_NAME="$USERNAME-ai"
+            curl -X POST "$GITEA_BASE_URL/api/v1/admin/users/$USERNAME/repos" \
+              -H "Content-Type: application/json" \
+              -H "$AUTH_HEADER" \
+              -d '{
+                "name": "'"$REPO_NAME"'",
+                "private": false
+              }'
+          done
+        env:
+        - name: GITEA_BASE_URL
+          value: "http://gitea:3000"
+        - name: GITEA_ADMIN_USER
+          value: "gitea"
+        - name: GITEA_ADMIN_PASS
+          value: "R3dh4t1!"
+        - name: USER_BASE_NAME
+          value: "user"
+        - name: USER_BASE_PASS
+          value: "redhat"
+        - name: USER_NUM
+          value: "50"
+      restartPolicy: OnFailure
+
