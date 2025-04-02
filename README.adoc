@@ -1,4 +1,4 @@
-= Personal Protection Equipment detection with Red Hat Device Edge
+= Moving AI to the edge workshop
 
 == Welcome to the Challenge
 
