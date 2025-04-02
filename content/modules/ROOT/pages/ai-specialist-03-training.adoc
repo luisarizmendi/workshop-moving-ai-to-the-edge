@@ -961,7 +961,7 @@ In contrast to Elyra Pipelines, this Kubeflow Pipeline automatically creates and
 
 [TIP]
 
-Keep in mind that if you're short on time and can't wait for a full model training process, you can opt for the so-called '*MockTrain*' by using the reduced dataset you prepared during the Model Development section and configuring only one epoch. However, note that models trained on this dataset won't be suitable for deployment, as they won't achieve accurate object detection. Instead, you'll need to use the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v1/model/pytorch[provided pre-trained model] during the Deployment section to ensure proper functionality.
+Keep in mind that if you're short on time and can't wait for a full model training process, you can opt for the so-called '*MockTrain*' by using the reduced dataset you prepared during the Model Development section and configuring only one epoch. However, note that models trained on this dataset won't be suitable for deployment, as they won't achieve accurate object detection. Instead, you'll need to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] during the Deployment section to ensure proper functionality.
 
 You can view the details of each task while it's running to monitor important information. Additionally, you can check the POD name generated for the task (top right corner, in a red square in the image below), which is useful for accessing real-time logs in the OpenShift Console (since the Logs tab in the OpenShift AI Pipeline view is only available once the task has completed). You can also track the inputs and outputs associated with each task, which will be displayed once the task finishes, providing insight into the data flow and results at each stage of execution.
 
@@ -999,7 +999,7 @@ image::ai-train-schedule.png[]
 
 In this section, a new Kubeflow Pipeline was created based on the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script]. This pipeline successfully trained the YOLO model for hardhat detection, generated the model file, and uploaded it into the MinIO Object Storage. This model file will be essential for the next section, xref:ai-specialist-04-deploy.adoc[Model Serving].
 
-However, if you used a reduced dataset ("*MockTrain*") or limited epochs for faster training and believe the model might not perform adequately in the field, it is advisable to discard the generated model. Instead, you can upload and use the  https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v1/model/pytorch[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
+However, if you used a reduced dataset ("*MockTrain*") or limited epochs for faster training and believe the model might not perform adequately in the field, it is advisable to discard the generated model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
 
 Before jump into the next section, be sure that you stopped your Code Workbench to save some resources in the OpenShift cluster.
 

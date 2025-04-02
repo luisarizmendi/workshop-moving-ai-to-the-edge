@@ -62,8 +62,8 @@ spec:
           # AI
           object_storage_models_access_key: $MODELS_ACCESS_KEY
           object_storage_models_secret_key: $MODELS_SECRET_KEY
-          object_storage_pipelines_access_key: $PIPELINES_ACCESS_KEY
-          object_storage_pipelines_secret_key: $PIPELINES_SECRET_KEY
+          object_storage_pipeline_access_key: $PIPELINES_ACCESS_KEY
+          object_storage_pipeline_secret_key: $PIPELINES_SECRET_KEY
           gitea-user: user${i}
           gitea-password: redhat$i
           registry-url: https://quay.io/user/luisarizmendi/
@@ -81,6 +81,12 @@ spec:
           helm template showroom larizmen-charts/showroom-single-pod --namespace=${NAMESPACE}  \
           --set deployer.domain=${CLUSTER_DOMAIN} \
           --set-file content.user_data=/tmp/values-user${i}.yaml \
+          --set proxy.resources.requests={} \
+          --set content.resources.requests={} \
+          --set terminal.resources.requests={} \
+          --set ocpconsole.resources.requests={} \
+          --set wetty.resources.requests={} \
+          --set novnc.resources.requests={} \
           --set content.repoUrl=https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge \
           --set general.guid=1 \
           --set-string content.contentOnly="true" \

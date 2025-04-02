@@ -73,7 +73,7 @@ In this phase you just need to re-run the training pipeline including the last v
 
 [TIP]
 
-You have a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v2/model/pytorch[second verion of the pre-trained model] that includes the hat detections that you can directly use instead of waiting to train your own model.
+You have a https://huggingface.co/luisarizmendi/hardhat-or-hat[second verion of the pre-trained model] that includes the hat detections that you can directly use instead of waiting to train your own model.
 
 
 

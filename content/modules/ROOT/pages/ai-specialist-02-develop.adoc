@@ -174,9 +174,6 @@ In our case, however, we will need additional packages, such as the one that all
 ----
 # For Training
 !pip install ultralytics roboflow 
-
-# For Storage
-!pip install minio
 ----
 
 [IMPORTANT]
@@ -205,8 +202,8 @@ import torch
 from ultralytics import YOLO
 
 # For Storage
-from minio import Minio
-from minio.error import S3Error
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 ----
 
 
@@ -539,15 +536,16 @@ Once that's done, you can review again the `weights` directory and you will see 
 
 The last code block example that we will see is the one used to store the results (models and metrics) of this prototyping run. 
 
-In order to do that you need to create an Object Storage Client and then use it with the files that you can upload. We are using MinIO as Storage Object and there is a library that creates an Object Storage Client for MinIO:
+In order to do that you need to create an Object Storage Client and then use it with the files that you can upload. We are using OpenShift Data Foundation as Storage Object:
 
 [source,python,role=execute,subs="attributes"]
 ----
-client = Minio(
-    AWS_S3_ENDPOINT_NAME,
-    access_key=AWS_ACCESS_KEY_ID,
-    secret_key=AWS_SECRET_ACCESS_KEY,
-    secure=True
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=f"https://{AWS_S3_ENDPOINT}",  
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    verify=False 
 )
 ----
 
@@ -565,48 +563,50 @@ AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
 
 In the `AWS_S3_ENDPOINT_NAME` we removed the `https://` from the `AWS_S3_ENDPOINT` variable
 
-Once you have the Object Storage Client configured, you just need to select the files and upload them using the `client.fput_object` method. If you don't want to expend time investigating https://min.io/docs/minio/linux/developers/python/API.html[how to use client.fput_object] you can copy paste the code below to save time:
+Once you have the Object Storage Client configured, you just need to select the files and upload them using the `client.fput_object` method:
 
 [source,python,role=execute,subs="attributes"]
 ----
-# File selection
 model_path_train = results_train.save_dir
 weights_path = os.path.join(model_path_train, "weights")
 model_path_test = results_test.save_dir
 
+# Get file lists
 files_train = [os.path.join(model_path_train, f) for f in os.listdir(model_path_train) if os.path.isfile(os.path.join(model_path_train, f))]
 files_models = [os.path.join(weights_path, f) for f in os.listdir(weights_path) if os.path.isfile(os.path.join(weights_path, f))]
 files_test = [os.path.join(model_path_test, f) for f in os.listdir(model_path_test) if os.path.isfile(os.path.join(model_path_test, f))]
 
+directory_name = os.path.basename(model_path_train)
 
-# File upload
-directory_name= os.path.basename(model_path_train)
-
-for file_path_train in files_train:
+def upload_file(file_path, s3_path):
     try:
-        client.fput_object(AWS_S3_BUCKET, "prototype/notebook/" + directory_name + "/train-val/" + os.path.basename(file_path_train), file_path_train)
-        print(f"'{os.path.basename(file_path_train)}' is successfully uploaded as object to bucket '{AWS_S3_BUCKET}'.")
-    except S3Error as e:
+        s3_client.upload_file(file_path, AWS_S3_BUCKET, s3_path)
+        print(f"'{os.path.basename(file_path)}' uploaded successfully to '{s3_path}'.")
+    except (NoCredentialsError, PartialCredentialsError) as e:
+        print("Credentials error: ", e)
+    except Exception as e:
         print("Error occurred: ", e)
 
-for file_path_model in files_models:
-    try:
-        client.fput_object(AWS_S3_BUCKET, "prototype/notebook/" + directory_name + "/" + os.path.basename(file_path_model), file_path_model)
-        print(f"'{os.path.basename(file_path_model)}' is successfully uploaded as object to bucket '{AWS_S3_BUCKET}'.")
-    except S3Error as e:
-        print("Error occurred: ", e)
+# Upload train files
+for file_path in files_train:
+    upload_file(file_path, f"prototype/notebook/{directory_name}/train-val/{os.path.basename(file_path)}")
 
-for file_path_test in files_test:
-    try:
-        client.fput_object(AWS_S3_BUCKET, "prototype/notebook/" + directory_name + "/test/" + os.path.basename(file_path_test), file_path_test)
-        print(f"'{os.path.basename(file_path_test)}' is successfully uploaded as object to bucket '{AWS_S3_BUCKET}'.")
-    except S3Error as e:
-        print("Error occurred: ", e)
+# Upload model weights
+for file_path in files_models:
+    upload_file(file_path, f"prototype/notebook/{directory_name}/{os.path.basename(file_path)}")
+
+# Upload test files
+for file_path in files_test:
+    upload_file(file_path, f"prototype/notebook/{directory_name}/test/{os.path.basename(file_path)}")
 ----
 
-You now can go to MinIO console ( https://minio-ui-minio.apps.{ocp_cluster_url} ) and open your "{user}-ai-models" Bucket. You will find the model with the best performance metrics (`best.pt`) and the last produced with the last training epoch (`last.pt`) along with the performance stats for the Test, Validation and Training sets.
 
-image::ai-build-miniomodel.png[]
+
+To facilitate easy verification of files uploaded to the object bucket, the workshop includes a (https://github.com/luisarizmendi/s3manager)[Web UI to browse the bucket contents]. 
+
+You can go to that console ( https://s3-browser-{user}-ai-models-{user}-tools.apps.${ocp_cluster_url} ) and open the `prototype/notebook` folder. You will find a folder with the "model train name" and inside you will have the model with the best performance metrics (`best.pt`) and the last produced with the last training epoch (`last.pt`) along with the performance stats for the Test, Validation and Training sets.
+
+image::ai-build-storemodel.png[]
 
 Finally, I recommend cleaning up the directories created during the training and evaluation processes to save some space. To achieve this, include a final piece of code in your Notebook that removes these directories.
 
@@ -681,17 +681,35 @@ If you want to run Pipelines in OpenShift AI, you will need to add into your AI 
 ====
 To create a Pipeline Server:
 
-1. Navigate to "Data Science Pipelines" in OpenShift AI and configure a new pipeline server.
-2. Fill in the Data Connection information but this time use the Bucket "{user}-ai-pipelines" and set the region to `none` (as it is not configured in MinIO).
-3. Click "Configure pipeline server".
-4. Once the configuration is ready, restart any running workbenches to apply the updates.
+1- Navigate to "Data Science Pipelines" in (https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url} )[OpenShift AI] and configure a new pipeline server.
+
+
+2- Fill in the Data Connection information:
+
+** Access key: {object_storage_pipeline_access_key}
+** Secret key: {object_storage_pipeline_secret_key}
+** Endpoint: `s3.openshift-storage.svc` 
+** Region: You can keep the Region empty but it's better to include any string (e.g. `local`).
+** Bucket: "{user}-ai-pipeline" 
+
+3- Click "Configure pipeline server".
+4- Once the configuration is ready, restart any running workbenches to apply the updates.
 ====
 
 image::ai-build-pipeline-server.png[]
 
-[NOTE]
 
-To verify that the Pipeline Server has been successfully loaded into your Jupyter Environment, open the Workbench and navigate to "Runtimes" (represented by a gear icon in the left menu). Here, you can confirm that the runtime configuration has been automatically loaded.
+Now there is fix that you need to apply. Due that in the workshop we are not using valid SSL Certificates, if you se the default configured OpenShift Data Foundation object storage API, that targets to https, you will get the following error when you try to run the pipeline:
+
+image::ai-build-pipeline-error.png[]
+
+In order to fix it you need to go into your Jupyter Environment, open the Workbench and navigate to "Runtimes" (represented by a gear icon in the left menu) and change the `https` to `http` in the "Cloud Object Storage Endpoint".
+ 
+image::ai-build-pipeline-endpoint-config.png[]
+
+[NOTE] 
+
+The runtime configuration has been automatically loaded.If the Data Science Pipelines runtime configuration is empty try to restart your workbench once the pipeline server is active.
 
 
 
@@ -794,6 +812,7 @@ results_test = torch.load(results_test_save_path)
 
 It's time to create the Pipeline with the files that you prepared.
 
+
 [example]
 ====
 To create a new Elyra pipeline do the following in your Workbench:
@@ -850,6 +869,10 @@ If you want to play a little bit more with the Elyra Pipelines, try to modify th
 
 It's time to run you Pipeline (click the "play" button on the top bar menu). 
 
+image::ai-build-pipeline-run.png[]
+
+After running the pipeline, you can see the progress in the OpenShift AI console.
+
 [example]
 ====
 You can see the Pipeline progress by:
@@ -882,7 +905,7 @@ Once the Pipeline is finished, you could check that the contents are saved into 
 
 == Solution and Next Steps
 
-In this section, you created an initial prototype of the model by training it with different hyperparameter values to explore its potential. If the performance metrics obtained are not satisfactory, or if you used the "*MockTrain*" dataset with a reduced set of images, you can now https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/raw/refs/heads/main/resources/assets/object-detection-hardhat-or-hat/v1/model/pytorch/best.pt[download and utilize a pretrained model]. This pretrained model was https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/development/prototyping.ipynb[trained using this Jupyter Notebook] using https://universe.roboflow.com/luisarizmendi/hardhat-or-hat/dataset/1[this Roboflow Dataset version], obtaining the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v1[metrics that you can find here].
+In this section, you created an initial prototype of the model by training it with different hyperparameter values to explore its potential. If the performance metrics obtained are not satisfactory, or if you used the "*MockTrain*" dataset with a reduced set of images, you can now https://huggingface.co/luisarizmendi/hardhat-or-hat[download and utilize a pretrained model].
 
 You can now also push to the Git Source repository the files that you created:
 

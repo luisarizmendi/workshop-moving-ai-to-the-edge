@@ -20,11 +20,11 @@
               "env_vars": [
                 {
                   "env_var": "MODEL_EPOCHS",
-                  "value": "50"
+                  "value": "1"
                 },
                 {
                   "env_var": "MODEL_BATCH",
-                  "value": "16"
+                  "value": "1"
                 },
                 {
                   "env_var": "PYTORCH_CUDA_ALLOC_CONF",
