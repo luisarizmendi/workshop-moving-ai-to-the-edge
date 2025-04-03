@@ -8,7 +8,7 @@ metadata:
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
-  generateName: openshift-storage-
+  name: openshift-storage
   namespace: openshift-storage
   annotations:
     argocd.argoproj.io/sync-wave: "1"
