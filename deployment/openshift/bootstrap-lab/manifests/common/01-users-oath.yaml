@@ -21,12 +21,6 @@ spec:
           name: htpasswd-config
 ---
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: v4-0-config-user-idp-0-ca
-  namespace: openshift-authentication
----
-apiVersion: v1
 kind: Secret
 metadata:
   name: v4-0-config-user-idp-0-bind-password
@@ -37,3 +31,9 @@ kind: Secret
 metadata:
   name: v4-0-config-user-idp-1-file-data
   namespace: openshift-authentication
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+    kubectl.kubernetes.io/last-applied-configuration: >-
+      {"apiVersion":"v1","data":{"htpasswd":"++++++++"},"kind":"Secret","metadata":{"annotations":{"argocd.argoproj.io/sync-wave":"0"},"labels":{"app.kubernetes.io/instance":"common"},"name":"htpasswd-config","namespace":"openshift-config"}}
+data:	
+  htpasswd: ++++++++
