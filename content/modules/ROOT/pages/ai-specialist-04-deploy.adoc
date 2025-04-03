@@ -135,11 +135,14 @@ triton server
 deploy
 
 
+Model deployment name: CHANGE!
 
+Serving runtime: NVIDIA Triton Server
+Framework: onnx - 1.20.1
+Accelerator:
 
-
-
-
+Make deployed models available through an external route: selected
+Require token authentication: not selected
 
 
 

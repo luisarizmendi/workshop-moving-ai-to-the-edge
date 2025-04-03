@@ -323,7 +323,7 @@ def push_to_model_registry(
       
         rm = registry.register_model(
             registered_model_name,
-            f"oci://{container_registry_clean}/{user_name}/{modelcar_image_name}/:{modelcar_image_tag}",
+            f"oci://{container_registry_clean}/{user_name}/{modelcar_image_name}:{modelcar_image_tag}",
             version=modelcar_image_tag,
             description=f"{registered_model_name} is a dense neural network that detects Hardhats in images.",
             model_format_name=model_format_name,
