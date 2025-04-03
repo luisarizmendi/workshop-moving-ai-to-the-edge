@@ -2,6 +2,7 @@ apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
   name: triton-25.01
+  namespace: redhat-ods-operator
   labels:
     opendatahub.io/dashboard: "true"
   annotations:
