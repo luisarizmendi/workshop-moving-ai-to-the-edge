@@ -7,6 +7,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 stringData:
   htpasswd: |
+    redhat:$2y$10$5qni.PGTon8NViM9nChtEe/KhyFQEgVjOJ8VBoe.unuHVsEr63Upi
     user01:$2y$05$Mx/MAsnz.xeQmmhAFYVrWORB8tE9RjGlxSHMXqFWSILO0ZhqHo4HG
     user02:$2y$05$k5iovwtK4RzvrswdKAm/EelM2hONRcrB3YQAA46Ojcj23/5wxF2FO
     user03:$2y$05$zgZurAoX4U55nlUFa3UN8eP1OTXrGWM1ZxvVis3qvIjIaEwnrWqWa

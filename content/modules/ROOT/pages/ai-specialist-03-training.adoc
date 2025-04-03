@@ -280,6 +280,11 @@ def yolo_training_pipeline(
     ).after(modelcar_task)
 ----
 
+[NOTE]
+
+As an example that you can also use OpenShift internal services as endpoints, here we fixed the OpenShift Data Foundation endpoint to `s3.openshift-storage.svc`
+
+
 Besides the Pipeline definition, the  https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script] also contains the step (components) definitions.
 
 [NOTE]

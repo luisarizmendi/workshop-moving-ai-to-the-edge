@@ -181,13 +181,14 @@ spec:
                     selfHeal: true
                   syncOptions:
                     - RespectIgnoreDifferences=true 
-                ignoreDifferences:
-                  - group: ""
-                    kind: Secret
-                    name: v4-0-config-user-idp-1-file-data
-                    namespace: openshift-authentication 
-                    jsonPointers:
-                      - /
+                  ignoreDifferences:
+                    - group: ''
+                      kind: '*'
+                      jsonPointers:
+                        - /data
+                        - /metadata
+                      managedFieldsManagers:
+                        - authentication-operator
           EOF
 
           # Wait for the DataScienceCluster to be ready
