@@ -24,7 +24,7 @@ The examples below use https//quay.io[Quay.io] as the Container Registry.
 
 
 
-== Model Serving
+== Serving
 
 image::ai-deploy-nav1.png[]
 
@@ -49,32 +49,6 @@ Although this part is more typically the responsibility of Application Developer
 
 
 
-
-
-
-
-
-
-
-
-
-
-mlops diagram
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Before diving into the deployment details, let’s first understand the overall solution architecture, including the microservices involved and how they communicate. In this architecture we use a webcam to detect objects at the edge, and how those detections can trigger messages/alarms that can be visualized in a dashboard on the Core Datacenter/Cloud.
 
 
@@ -84,7 +58,7 @@ The solution is based on the following microservices, you can clik on the names 
 
 * https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager[Camera Stream Manager]
 
-* Inference server
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-inference-server[Inference server]
 
 * https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-action[Actuator service]
 
@@ -102,38 +76,229 @@ The workflow is the following:
 
 
 
+Although application development is not covered in this workshop, it plays a fundamental role and can also be carried out on OpenShift. You can deploy on top of OpenShift several tools to support application development, such as:
+
+* *OpenShift Developer Hub*: This internal developer portal centralizes access to resources, templates, and documentation, accelerating the onboarding process and standardizing application development across teams. It ensures consistency and visibility into microservices and APIs.
+
+* *OpenShift Dev Spaces*: OpenShift Dev Spaces provides cloud-based development environments accessible directly from the browser. It offers pre-configured, containerized workspaces that mirror production, ensuring developers can write, test, and debug code in an environment that reflects the final deployment conditions.
+
+* *OpenShift Pipelines*: Built on Tekton, OpenShift Pipelines automates CI/CD workflows, enabling fast, consistent builds, tests, and deployments of containerized applications. This tool ensures rapid iteration and integration, reducing downtime and accelerating feature delivery.
+
+* *Quay Container Image Registry*: A secure container image registry stores and manages application images, ensuring that developers can reliably push, pull, and deploy containers to different environments. It supports versioning and helps enforce security and compliance policies.
+
+* *OpenShift GitOps*: Implements GitOps practices for application deployment and lifecycle management.
 
 
-=== OpenShift AI and Inferencing
+All of these tools can be utilized throughout the application development lifecycle, which mirrors the MLOps cycle we are following in this workshop. Both cycles share common stages, such as:
 
+image::dev-workflow.png[]
 
-kserve
+1. *App Planning*: Architecture Design: This foundational phase focuses on system design decisions, technology stack selection, and establishing the technical approach. It sets the blueprint for the entire application development lifecycle.
 
+2. *App Development*: This encompasses the core development activities:
 
+    * Code Development: Writing application code following established design patterns and best practices. This involves implementing features and functionality according to requirements.
+    * Testing: Comprehensive testing. This phase often requires iteration back to code development to address identified issues.
 
-inferece custom vs non custom
+3. *App Release*: Integration, Deployment: After successful testing, the application is prepared for production, involving integration with other systems and services, deployment through CI/CD pipelines,final verification in staging environments and production rollout
 
-
-workshop focus on sidecar container
-
-
-
-
-==== NVIDIA Triton Inference Server in OpenShift AI
-
-triton server
-deploy
-
-
-==== INTEL OpenVino Inference Server in OpenShift AI
-
-
-openvino server
-deploy
+4. *Day-2 Operations*: Monitoring, Tuning: Post-deployment activities focus on application performance monitoring, resource utilization optimization and performance tuning based on real world usage
 
 
 
-==== Custom Inference Server in OpenShift AI
+
+=== Custom Inference Server
+
+The custom inference server is a FastAPI application that provides an object detection system using a built-in model. It offers the following RESTful API endpoints:
+
+1. `/v1/models/{model_name}/infer` (POST)
+- **Purpose**: Make predictions on an image
+- **Request Body**: JSON with base64 encoded image and optional confidence threshold
+- **Returns**: JSON with detections, inference time, and metadata
+
+2. `/v1/models/{model_name}` (GET)
+- **Purpose**: Get model status information
+- **Returns**: JSON with model name, ready status, load time, and device
+
+3. `/v1/models/{model_name}/load` (POST)
+- **Purpose**: Load a model
+- **Parameters**: model_name and model_path
+- **Returns**: Success/failure message
+
+4. `/healthz` (GET)
+- **Purpose**: Health check endpoint
+- **Returns**: System health status, GPU availability, and model status
+
+
+It's also important to mention that the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-inference-server/src/Containerfile[container image] was created embedding the model directly into it, meaning that the model versioning is tied to the container image versioning.
+
+
+Once it is deployed, you can test it by using `curl`, for example you can check the Inference Server health:
+
+----
+curl http://<inference url>:<inference port>/healthz
+----
+
+The answer will provide valuable information about whether GPU inferencing is available and confirm whether the model has been successfully loaded and is ready for inference:
+
+----
+{
+    "status": "healthy",
+    "gpu_available": false,
+    "model_loaded": false,
+    "model_name": null,
+    "timestamp": "2024-01-28T14:30:25.123456"
+}
+----
+
+
+You can also run object detection using a local image file (`image.jpg` infered by the model named `default` in the following example): 
+
+----
+curl -X POST http://<inference url>:<inference port>/v1/models/default/infer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image": "'$(base64 -w 0 image.jpg)'",
+    "confidence_threshold": 0.25
+  }'
+----
+
+The response will include details about any detections made, such as the class name, the confidence score of the detection, and the coordinates of the detection bounding box.
+
+----
+{
+    "detections": [
+        {
+            "class_name": "hardhat",
+            "confidence": 0.72,
+            "bbox": [100.0, 200.0, 300.0, 400.0]
+        }
+    ],
+    "inference_time": 0.156,
+    "model_name": "default",
+    "timestamp": "2024-01-27T10:30:45.123456"
+}
+----
+
+
+
+=== Building the Microservices
+
+[TIP]
+====
+If you don't want to create the images on your own you can use the following:
+
+* https://quay.io/repository/luisarizmendi/object-detection-stream-manager?tab=tags[Camera Stream Manager container image]: quay.io/luisarizmendi/object-detection-stream-manager:prod
+* https://quay.io/repository/luisarizmendi/object-detection-inference-server?tab=tags[Inference server container image]: quay.io/luisarizmendi/object-detection-inference-server:prod
+* https://quay.io/repository/luisarizmendi/object-detection-action?tab=tags[Actuator service container image]: quay.io/luisarizmendi/object-detection-action:prod
+* https://quay.io/repository/luisarizmendi/object-detection-dashboard-backend?tab=tags[Dashboard backend container image]: quay.io/luisarizmendi/object-detection-dashboard-backend:prod
+* https://quay.io/repository/luisarizmendi/object-detection-dashboard-frontend?tab=tags[Dashboard frontend container image]: quay.io/ luisarizmendi/object-detection-dashboard-frontend:prod
+====
+
+When planning to create a container image, it's essential to consider the system architecture of the device where the application will run. For deployments on Public Cloud or Core Data Centers, this is usually straightforward since the architecture will likely be x86. However, for Edge use cases, the situation is different.
+
+In our case, we will build x86 container images for the services that are running on the Cloud and container images for both x86 and ARM architectures for the ones running at the Edge, leveraging the multi-architecture container image feature available in certain Container Image Registries like Quay.
+
+You can find the Containerfiles for each application in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/serving/apps[`src` directory of each application's URL] shared above, along with the application code and other associated files. Feel free to clone the repository and use these files for your own builds.
+
+[NOTE]
+
+The build process is closely tied to the architecture of the system you're using. If you build on an ARM-based system, the resulting container images will default to the ARM architecture unless you specifically perform cross-compilation (which we'll cover in more detail below). For this workshop, we will be using an x86-based system for the build process.
+
+For this workshop, we will be building the container images locally instead of utilizing an automated CI/CD pipeline. For the applications running on the Cloud (x86 only) you just need to build the images in the normal way:
+
+----
+cd <application src directory>
+podman build -t <registry>/<namespace>/<container image name>:<tag> .
+podman login -u <user> <registry>
+podman push <registry>/<namespace>/<container image name>:<tag> 
+----
+
+[NOTE]
+
+Remember to make the images public once you pushed into the registry for simplicity, otherwise you will need to configure the registry credentials in order to pull the images.
+
+
+
+
+For the applications that will run at the Edge, we need to create container images for both x86 and ARM architectures. If you're working on an x86 system, you can build the x86 images using the same procedure as outlined earlier. But what about the ARM images? Strictly speaking, you would need access to an ARM system to build ARM-based images. However, you can use cross-compilation tools to create ARM images directly on x86 systems (and vice versa). In this section, we’ll focus on how to perform cross-compilation on x86 RHEL-based systems.
+
+If your laptop is running a Fedora/RHEL based Linux distribution, you can leverage `qemu-user-static` to enable the creation of ARM images (In MacOS, even with M3 chip, you can direcly `brew` podman with the `--platform` option as shown below, there is no need to install the `qemu-user-static` package)
+
+What is qemu-user-static? `qemu-user-static` is a versatile user-space emulator that enables programs compiled for one architecture to run on another. By using this tool, you can emulate the ARM architecture on an x86 system, making it possible to build and test ARM container images without requiring native ARM hardware.
+
+
+[example]
+====
+Before building the ARM container images, follow these steps to set up qemu-user-static:
+
+1- Install the `qemu-user-static` package in your system 
+
+[source,shell,role=execute,subs="attributes"]
+----
+sudo dnf install podman qemu-user-static
+----
+
+2- Run the `qemu-user-static` container  to enable multi-architecture support
+
+[source,shell,role=execute,subs="attributes"]
+----
+sudo podman run --rm --privileged multiarch/qemu-user-static --reset -p yes
+----
+====
+
+With these steps completed, you can proceed to build ARM-based container images on your x86 system as if you were working on native ARM hardware.
+
+[example]
+====
+In order to create the create the ARM image you will need to run the `podman build` but including the desired ARM architecture with the argument `--platform linux/arm64`.
+
+----
+podman build --platform linux/arm64  -t <arm image>:<tag> .
+----
+====
+
+[IMPORTANT]
+
+From now on, it's recommended to always specify the platform explicitly when building container images (e.g., `linux/arm64` for ARM and `linux/amd64` for x86...yes, the naming is quite similar). This is because Podman "remembers" the last platform you used during the build process, and without explicitly setting the platform, you might unintentionally create an ARM image when you only intended to build a standard x86 image. Explicitly defining the platform ensures clarity and prevents unexpected results.
+
+[TIP]
+
+It's a good idea to mention in the image `tag` if that image is intended to be used in an x86 or ARM system (e,g, `<image>:arm-v1`)
+
+At this point you will have the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager[Camera Stream Manager], https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-inference-server[Inference server] and https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-action[Actuator service] images for both ARM and x86 systems but you had to use different tags, otherwise you will be "overwriting" one image with other, this is not ideal since the image image name will be different depending on the system that you are deploying to.
+
+But that's not a big problem since the multi-arch container images exist.
+
+You can create a "pseudo container image" called a manifest that references multiple images for different architectures. At deployment time, the runtime automatically selects the appropriate image based on the system architecture. This allows you to use the same container image name and tag consistently, regardless of the system on which it is deployed.
+
+
+[example]
+====
+Let's create a multi-arch container image and push it into our registry.
+
+1- Create the manifest
+
+----
+podman manifest create <registry>/<namespace>/<container image name>:<shared tag>
+----
+
+2- Add the images that you created for both architectures 
+
+----
+podman manifest add <registry>/<namespace>/<container image name>:<shared tag> <registry>/<namespace>/<container image name>:<x86 tag>
+podman manifest add <registry>/<namespace>/<container image name>:<shared tag> <registry>/<namespace>/<container image name>:<arm tag>
+----
+
+3- Push the manifest. Pay attention that the command is `podman manifest push`, not just `podman push`
+
+----
+podman manifest push <registry>/<namespace>/<container image name>:<shared tag> 
+----
+====
+
+Now you can use the `<registry>/<namespace>/<container image name>:<shared tag>` to deploy the container seamlessly on both x86 and ARM systems, with the runtime automatically selecting the correct architecture-specific image.
+
 
 
 
@@ -155,19 +320,7 @@ image::ai-deploy-nav2.png[]
 
 So far, you have completed the AI Specialist's tasks by creating the model and taken on some Application Development responsibilities by manually building the container images. Now, before handing over to the Platform Specialist for deploying the applications to the Edge devices, it's a good idea to perform a final test of the model you created. Let’s deploy all the components together and verify if everything works as expected.
 
-For this test, we will use your own laptop as the "Edge Device", but in contrast with the "production" architecture you will be only running the "Camera Stream Manager" on it. The rest of the services will be deployed in the cloud-side applications in a temporary OpenShift project, which can easily be deleted after the testing is complete.
-
-
-
-
-
-
-
-
-
-
-
-
+For this test, we will use your own laptop as the "Edge Device" and deploy the cloud-side applications in a temporary OpenShift project, which can easily be deleted after the testing is complete.
 
 
 
