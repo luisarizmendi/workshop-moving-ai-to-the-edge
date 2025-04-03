@@ -10,6 +10,8 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
     openshift.io/display-name: "NVIDIA Triton Server v25.01"
+    opendatahub.io/apiProtocol: REST
+    opendatahub.io/modelServingSupport: '["single"]'
 spec:
   supportedModelFormats:
   # https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html

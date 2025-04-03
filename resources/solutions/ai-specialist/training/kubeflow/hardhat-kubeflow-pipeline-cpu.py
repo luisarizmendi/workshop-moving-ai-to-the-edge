@@ -291,7 +291,7 @@ def push_to_model_registry(
     
     model_object_prefix = model_name if model_name else "model"
     
-    # To avoid making the user introduce the cluster domain I get it from the Quay endpoint (that should be running in the same cluster)
+    # To avoid making the user introduce the cluster domain I get it from the Quay endpoint (that should be running in the same cluster). That's why in the vars I use the external endpoint for Quay
     cluster_domain= ""
     pattern = re.compile(r"apps\.([^/]+)")
     match = re.search(pattern, container_registry)

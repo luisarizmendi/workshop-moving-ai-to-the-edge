@@ -119,10 +119,34 @@ workshop focus on sidecar container
 
 
 
+
+
+
+1- add <user>-test namespace
+2- Enable single-model serving
+
+ai-deploy-modelserver-selection.png
+
+
+
 ==== NVIDIA Triton Inference Server in OpenShift AI
 
 triton server
 deploy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ==== INTEL OpenVino Inference Server in OpenShift AI
