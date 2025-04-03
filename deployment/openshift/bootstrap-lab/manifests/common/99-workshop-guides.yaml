@@ -25,6 +25,17 @@ spec:
 
             NAMESPACE="user${i}-workshop-guide"
             CLUSTER_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}')
+
+            while ! oc get secret user${i}-ai-models -n user${i}-tools &>/dev/null; do
+                echo "Waiting for secret user${i}-ai-models..."
+                sleep 2
+            done
+
+            while ! oc get secret user${i}-ai-pipeline -n user${i}-tools &>/dev/null; do
+                echo "Waiting for secret user${i}-ai-pipeline..."
+                sleep 2
+            done
+
             MODELS_ACCESS_KEY=$(oc get secret user${i}-ai-models -n user${i}-tools -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 --decode && echo)
             MODELS_SECRET_KEY=$(oc get secret user${i}-ai-models -n user${i}-tools -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 --decode && echo)
             PIPELINES_ACCESS_KEY=$(oc get secret user${i}-ai-pipeline -n user${i}-tools -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 --decode && echo)
@@ -81,12 +92,18 @@ spec:
           helm template showroom larizmen-charts/showroom-single-pod --namespace=${NAMESPACE}  \
           --set deployer.domain=${CLUSTER_DOMAIN} \
           --set-file content.user_data=/tmp/values-user${i}.yaml \
-          --set proxy.resources.requests={} \
-          --set content.resources.requests={} \
-          --set terminal.resources.requests={} \
-          --set ocpconsole.resources.requests={} \
-          --set wetty.resources.requests={} \
-          --set novnc.resources.requests={} \
+          --set proxy.resources.requests.memory=30Mi \
+          --set proxy.resources.requests.cpu=30m \
+          --set content.resources.requests.memory=30Mi \
+          --set content.resources.requests.cpu=30m \
+          --set terminal.resources.requests.memory=30Mi \
+          --set terminal.resources.requests.cpu=30m \
+          --set ocpconsole.resources.requests.memory=30Mi \
+          --set ocpconsole.resources.requests.cpu=30m \
+          --set wetty.resources.requests.memory=30Mi \
+          --set wetty.resources.requests.cpu=30m \
+          --set novnc.resources.requests.memory=30Mi \
+          --set novnc.resources.requests.cpu=30m \
           --set content.repoUrl=https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge \
           --set general.guid=1 \
           --set-string content.contentOnly="true" \

@@ -923,25 +923,22 @@ It's time to run the imported Kubeflow Pipeline:
 1. Click Actions and then `Create run`
 2. Under the "Project and experiment" section, you might want to click "Create new experiment" (and name it `hardhat-detection`)
 3. Give the run a name (e.g. `v1`)
-4. Fill in the Parameters used in your run:
-    * Access Key: "{user}"
-    * Secret Key: "{password}"
-    * Bucket: "{user}-ai-models"
-    * Endpoint: https://minio-api-minio.apps.{ocp_cluster_url}
-    * Model Registry Name: `object-detection-model-registry`
-    * PVC sufix: `-kubeflow-pvc`
-    * Roboflow Key: <your value>
-    * Roboflow Project: <your value>
-    * Roboflow Workspace: <your value>
-    * Roboflow version: <your value>
-    * Batch Size: <your value>
-    * Ephoch number: <your value>
-    * Image Size: `640`
-    * Training name (e.g. `hardhat`)
-    * Learning Rate: Chose your https://docs.ultralytics.com/usage/cfg/#tasks[learning rate] (`0.005`)
-    * Optimizer: Choose your optimizer (`SGD`)
-    * Train Optimizer: Choose your https://docs.ultralytics.com/usage/cfg/#tasks[optimizer] (`SGD`)
-    * Train YOLO Model: Choose the https://docs.ultralytics.com/models/yolo11/#overview[base model] (`yolo11m.pt`)
+4. Fill in the parameters that are empty:
+    * container_registry: `https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}` 
+    * object_access_key: `{object_storage_models_access_key}`
+    * object_secret_key: `{object_storage_models_secret_key}`
+    * object_storage_bucket: `{user}-ai-models`
+    * roboflow_api_key: `<your value>`
+    * roboflow_project: `<your value>`
+    * roboflow_workspace: `<your value>`
+    * roboflow_version: `<your value>`
+    * workshop_username: `{user}`
+
+5. Adjust the "Batch Size" and the "Epochs". If you are running a *Mock Training* you can configure them to "1" to speed-up the pipeline execution.
+
+    * Batch Size: `<your value>`
+    * Ephoch number: `<your value>`
+    
 ====
 
 [NOTE]
@@ -977,19 +974,29 @@ If the Pipeline run POD is scheduled in a node where other workloads using GPUs 
 
 image::ai-train-memoryerror.png[]
 
-After some time, the pipeline will finish. You can at that point go to the Object Storage and check the contents that have been uplaoded to `models` directory in your "{user}-ai-models" bucket.
+When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution while it is building and pushing the "modelcar" container image.
 
-image::ai-train-minio.png[]
 
-Additionally, you can check the newly trained model in the Model Registry (check the left menu in OpenShift AI console), where it will be available along with all the associated metadata details that were added during the registration process.
+image::ai-train-modelcar-pipeline.png[]
 
-The Model Registry serves as the central hub for model publication. From here, you can directly deploy the model to the same OpenShift cluster running OpenShift AI, utilizing one of the supported Model Serving options. However, in this workshop, we won't be using this method. Instead, model inference will be performed at the Edge using Red Hat Enterprise Linux. More details on this approach will be provided in the xref:ai-specialist-04-deploy.adoc[Model Serving] section.
+After some time, the pipeline will finish. You can at that point go to the Object Storage and check that:
 
+
+1- The contents that have been uplaoded to https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[`models` directory in your "{user}-ai-models" bucket].
+
+image::ai-train-model-s3.png[]
+
+2- The "modelcar" container image is available in the internal https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry] (user: {user} ; password: {password})
+
+image::ai-train-model-quay.png[]
+
+3- The newly trained model in the Model Registry (check the left menu in OpenShift AI console), where it will be available along with all the associated metadata details that were added during the registration process.
 
 image::ai-train-registry.png[]
 
+The Model Registry serves as the central hub for model publication. From here, you can directly deploy the model to the same OpenShift cluster running OpenShift AI, utilizing one of the supported Model Serving options. However, in this workshop, we won't be using this method. Instead, model inference will be performed at the Edge using Red Hat Enterprise Linux. More details on this approach will be provided in the xref:ai-specialist-04-deploy.adoc[Model Serving] section.
 
-One last thing to mention about the Pipelines: In this example, you ran the pipeline manually. However, in a production environment, you might want to run it periodically. This can be achieved using the Schedule feature, which allows you to automate the execution of your pipeline at defined intervals, ensuring that model training and updates are performed regularly without manual intervention.
+One final note about Pipelines. In this example, you executed the pipeline manually. However, in a production environment, you will likely want to automate its execution—either by scheduling it to run at regular intervals or triggering it in response to external events (though that is a topic for another discussion). This can be achieved using the Schedule feature, which allows you to automate the execution of your pipeline at defined intervals, ensuring that model training and updates are performed regularly without manual intervention. 
 
 
 image::ai-train-schedule.png[]

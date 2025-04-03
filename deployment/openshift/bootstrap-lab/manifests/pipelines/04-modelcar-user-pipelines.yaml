@@ -5,7 +5,7 @@ metadata:
   name: user-pipelines-create
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   template:
     spec:
@@ -18,11 +18,12 @@ spec:
         - |
           while true; do
               if oc get tasks.tekton.dev -n default &> /dev/null; then
-                  echo "Tekton Task API (tekton.dev/v1) is ready"
+                  echo "Tekton API (tekton.dev/v1) is ready"
                   break
               fi
             sleep 10
           done
+
           # Loop through users user01 to user50 and user99
           for i in $(seq -w 1 50) 99; do
             username="user$i"

@@ -19,7 +19,7 @@ The workshop requires several services and configuration (baseline) in OpenShift
 [example]
 ====
 
-1- Navigate to OpenShift Console (admin user)
+1- Navigate to https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] (admin user)
 
 2- Click on the `+` sign and import the bootstrap-lap YAML. https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/deployment/openshift/bootstrap-lab[Choose the right YAML file] depending on the platform where you are deploying. If using the Demo Platform, choose `bootstrap-lab-rhpds-nvidia.yaml` if you are using the "RHOAI on OCP on AWS with NVIDIA GPUs" lab as a base, or the `bootstrap-lab-empty.yaml` if using the "Red Hat OpenShift Container Platform Cluster (AWS)" lab.
 

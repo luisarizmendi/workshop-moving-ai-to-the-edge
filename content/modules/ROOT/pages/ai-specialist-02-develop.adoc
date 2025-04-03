@@ -123,12 +123,12 @@ image::ai-build-authenticator.png[]
 
 4- Create a new S3 Storage Connection ("Connetions" tab) that will be used by your Jupyter Notebooks to save the model and performance stats. Include:
 
-** Name for the S3 connection: We suggest using `s3-ai-models`
-** Access key: {object_storage_models_access_key}
-** Secret key: {object_storage_models_secret_key}
-** Endpoint: `s3-openshift-storage.apps.{ocp_cluster_url}` 
-** Region: You can keep the Region empty but it's better to include any string (e.g. `local`).
-** Bucket: "{user}-ai-models" 
+** *Name* for the S3 connection: We suggest using `s3-ai-models`
+** *Access key*: `{object_storage_models_access_key}`
+** *Secret key*: `{object_storage_models_secret_key}`
+** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}` 
+** *Region*: You can keep the Region empty but it's better to include any string (e.g. `local`).
+** *Bucket*: `{user}-ai-models `
 
 
 image::ai-build-dataconnection.png[]
@@ -682,11 +682,11 @@ To create a Pipeline Server:
 
 2- Fill in the Data Connection information:
 
-** Access key: {object_storage_pipeline_access_key}
-** Secret key: {object_storage_pipeline_secret_key}
-** Endpoint: `s3-openshift-storage.apps.{ocp_cluster_url}`  
-** Region: You can keep the Region empty but it's better to include any string (e.g. `local`).
-** Bucket: "{user}-ai-pipeline" 
+** *Access key*: `{object_storage_pipeline_access_key}`
+** *Secret key*: `{object_storage_pipeline_secret_key}`
+** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}`  
+** *Region*: You can keep the Region empty but it's better to include any string (e.g. `local`).
+** *Bucket*: `{user}-ai-pipeline`
 
 3- Click "Configure pipeline server".
 4- Once the configuration is ready, restart any running workbenches to apply the updates.
