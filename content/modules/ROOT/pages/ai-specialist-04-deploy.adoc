@@ -164,13 +164,6 @@ For this test, we will use your own laptop as the "Edge Device", but in contrast
 
 
 
-
-
-
-
-
-
-
 === Cloud-side Applications deployment
 
 
@@ -331,20 +324,23 @@ When all pods are running, you will be able to open the Dashboard using the Fron
 The Dashboard application does not use TLS, so the URL must start `http://` and `https://` otherwhile you will get a message "Application is not available" even when then POD is already running.
 
 
-=== Local machine applications deployment
 
-You’ve successfully deployed the cloud-side applications! Now, take the next step by running the remaining applications on your own laptop
 
-[NOTE]
 
-Instructions for Fedora/RHEL based systems and using the interactive mode, so you can review live logs easily (you will need to use three different command line terminals).
 
-[CAUTION]
 
-Be sure that you have the ports `tcp/8080` and `tcp/5000` ports open un your local machine. 
 
-[example]
-====
+
+
+
+
+
+
+
+
+
+
+
 
 1- Deploy the Inference Server:
 
@@ -367,6 +363,41 @@ curl http://localhost:8080/healthz
 {"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
 ----
 
+
+
+
+
+
+
+
+
+4- Deploy the Actuator. It needs also to use the host network. Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
+
+----
+podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
+----
+
+
+
+
+
+
+
+
+=== Local machine applications deployment
+
+You’ve successfully deployed the cloud-side applications! Now, take the next step by running the remaining applications on your own laptop
+
+[NOTE]
+
+Instructions for Fedora/RHEL based systems and using the interactive mode, so you can review live logs easily (you will need to use three different command line terminals).
+
+[CAUTION]
+
+Be sure that you have the ports `tcp/8080` and `tcp/5000` ports open un your local machine. 
+
+[example]
+====
 3- Deploy the Camera stream manager. In this case you will need to run it as privileged to access the system devices (webcams) and also to use the host network, so it can reach out to the inference server.
 
 [source,shell,role=execute,subs="attributes"]
@@ -378,20 +409,22 @@ sudo podman run -it --rm -p 5000:5000 --privileged --network=host quay.io/luisar
 
 This won't work for MAC users since camera access from containers is different in that OS. If you are a MAC user you can still run this service by downloading and running directly the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager/src/object-detection-stream-manager.py[`object-detection-stream-manager.py` python script] on your system with `python object-detection-stream-manager.py`. Remember to install the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager/src/requirements.txt[python dependencies] with `pip install` and to grant permissions to access cameras if needed.
 
-
-
-4- Deploy the Actuator. It needs also to use the host network. Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
-
-----
-podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
-----
-
 ====
 
 
 [NOTE]
 
 You will see logs directly in the console terminal. The Inference Server may already be displaying detection results, and if a `no_helmet` detection occurs, the "actuator" will trigger an alarm. Additionally, the Camera Stream Manager logs important details at startup, such as the selected webcam ID, providing useful insights for debugging and verification
+
+
+
+
+
+
+
+
+
+
 
 
 ==== The Convenient Yet Non-Edge Test Architecture
@@ -497,6 +530,41 @@ sudo podman run -it --rm -p 5000:5000 --privileged -e INFERENCE_SERVER_URL=<INFE
 podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 ====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

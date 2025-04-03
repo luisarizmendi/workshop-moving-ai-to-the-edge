@@ -24,7 +24,7 @@ spec:
             echo "Extracting variables"
 
             NAMESPACE="user${i}-workshop-guide"
-            CLUSTER_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}')
+            CLUSTER_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' | sed 's/^apps\.//')
 
             while ! oc get secret user${i}-ai-models -n user${i}-tools &>/dev/null; do
                 echo "Waiting for secret user${i}-ai-models..."

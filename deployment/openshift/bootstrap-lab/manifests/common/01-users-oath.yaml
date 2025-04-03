@@ -19,4 +19,12 @@ spec:
       htpasswd:
         fileData:
           name: htpasswd-config
- 
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '2'
+  name: v4-0-config-user-idp-1-file-data
+  namespace: openshift-authentication
+type: Opaque

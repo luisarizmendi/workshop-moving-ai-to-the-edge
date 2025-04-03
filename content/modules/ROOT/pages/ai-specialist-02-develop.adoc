@@ -127,8 +127,8 @@ image::ai-build-authenticator.png[]
 ** *Access key*: `{object_storage_models_access_key}`
 ** *Secret key*: `{object_storage_models_secret_key}`
 ** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}` 
-** *Region*: You can keep the Region empty but it's better to include any string (e.g. `local`).
-** *Bucket*: `{user}-ai-models `
+** *Region*: You can keep the Region. If it is empty but it's better to include any string (e.g. `local`).
+** *Bucket*: `{user}-ai-models`
 
 
 image::ai-build-dataconnection.png[]
@@ -677,7 +677,7 @@ If you want to run Pipelines in OpenShift AI, you will need to add into your AI 
 ====
 To create a Pipeline Server:
 
-1- Navigate to "Data Science Pipelines" in (https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url} )[OpenShift AI] and configure a new pipeline server.
+1- Navigate to "Data Science Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] and configure a new pipeline server.
 
 
 2- Fill in the Data Connection information:
@@ -685,7 +685,7 @@ To create a Pipeline Server:
 ** *Access key*: `{object_storage_pipeline_access_key}`
 ** *Secret key*: `{object_storage_pipeline_secret_key}`
 ** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}`  
-** *Region*: You can keep the Region empty but it's better to include any string (e.g. `local`).
+** *Region*: Keep the Region. If it's it is better to include any string (e.g. `local`).
 ** *Bucket*: `{user}-ai-pipeline`
 
 3- Click "Configure pipeline server".
