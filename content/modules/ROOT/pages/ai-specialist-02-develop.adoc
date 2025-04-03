@@ -126,7 +126,7 @@ image::ai-build-authenticator.png[]
 ** Name for the S3 connection: We suggest using `s3-ai-models`
 ** Access key: {object_storage_models_access_key}
 ** Secret key: {object_storage_models_secret_key}
-** Endpoint: Use the internal OpenShift Data Foundation endpoint for object storage, `s3.openshift-storage.svc` 
+** Endpoint: `s3-openshift-storage.apps.{ocp_cluster_url}` 
 ** Region: You can keep the Region empty but it's better to include any string (e.g. `local`).
 ** Bucket: "{user}-ai-models" 
 
@@ -684,7 +684,7 @@ To create a Pipeline Server:
 
 ** Access key: {object_storage_pipeline_access_key}
 ** Secret key: {object_storage_pipeline_secret_key}
-** Endpoint: `s3.openshift-storage.svc` 
+** Endpoint: `s3-openshift-storage.apps.{ocp_cluster_url}`  
 ** Region: You can keep the Region empty but it's better to include any string (e.g. `local`).
 ** Bucket: "{user}-ai-pipeline" 
 
@@ -694,18 +694,9 @@ To create a Pipeline Server:
 
 image::ai-build-pipeline-server.png[]
 
+[NOTE]
 
-A fix is required to address an issue in the workshop. Since we are not using valid SSL certificates, the default OpenShift Data Foundation object storage API is configured to use HTTPS. As a result, when you attempt to run the pipeline, you will encounter the following error:
-
-image::ai-build-pipeline-error.png[]
-
-To resolve this, open your Jupyter Environment, launch the Workbench, and navigate to "Runtimes" (represented by a gear icon in the left menu). Locate the "Cloud Object Storage Endpoint" setting and change `https` to `http`.
- 
-image::ai-build-pipeline-endpoint-config.png[]
-
-[NOTE] 
-
-The runtime configuration has been automatically loaded.If the Data Science Pipelines runtime configuration is empty try to restart your workbench once the pipeline server is active.
+To verify that the Pipeline Server has been successfully loaded into your Jupyter Environment, open the Workbench and navigate to "Runtimes" (represented by a gear icon in the left menu). Here, you can confirm that the runtime configuration has been automatically loaded. If the Data Science Pipelines runtime configuration is empty try to restart your workbench once the pipeline server is active.
 
 
 
