@@ -892,7 +892,7 @@ Once the Pipeline is finished, you could check that the contents are saved into 
 
 == Solution and Next Steps
 
-In this section, you created an initial prototype of the model by training it with different hyperparameter values to explore its potential. If the performance metrics obtained are not satisfactory, or if you used the "*MockTrain*" dataset with a reduced set of images, you can now https://huggingface.co/luisarizmendi/hardhat-or-hat[download and utilize a pretrained model].
+In this section, you created an initial prototype of the model by training it with different hyperparameter values to explore its potential. If the performance metrics obtained are not satisfactory, or if you used the "*MockTrain*" dataset with a reduced set of images, you can now https://huggingface.co/luisarizmendi/hardhat-or-hat[download and utilize the version 1 of the pretrained model].
 
 You can now also push to the Git Source repository the files that you created:
 
