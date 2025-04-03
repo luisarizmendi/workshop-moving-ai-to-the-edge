@@ -623,7 +623,7 @@ Using custom container base images in your pipeline tasks is a great idea becaus
 
 By creating a custom container base image, you can preconfigure the environment with all the required dependencies for tasks like running Jupyter Notebooks. This means you won’t have to repeatedly set up the environment, ensuring a smoother and faster execution of your pipelines.
 
-The first step is to create a Containerfile tailored for OpenShift. In this example, we’ll use a base image prepared for PyTorch and install the necessary dependencies such as Ultralytics, Roboflow, and MinIO. The resulting Containerfile would look something like this:
+The first step is to create a Containerfile tailored for OpenShift. In this example, we’ll use a base image prepared for PyTorch and install the necessary dependencies such as Ultralytics, and Roboflow. The resulting Containerfile would look something like this:
 
 [source,containerfile,role=execute,subs="attributes"]
 ----
@@ -631,7 +631,7 @@ FROM quay.io/modh/odh-pytorch-notebook:v2-2024a-20250116-b42b86c
 
 USER 0
 
-RUN INSTALL_PKGS="ultralytics roboflow minio" && \
+RUN INSTALL_PKGS="ultralytics roboflow" && \
     pip install --no-cache-dir  $INSTALL_PKGS 
 
 USER 1001

@@ -2,7 +2,7 @@
 
  USER 0
 
- RUN INSTALL_PKGS="ultralytics roboflow minio podman" && \
+ RUN INSTALL_PKGS="ultralytics roboflow podman" && \
      pip install --no-cache-dir  $INSTALL_PKGS 
 
  USER 1001

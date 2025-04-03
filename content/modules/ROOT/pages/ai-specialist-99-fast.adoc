@@ -108,7 +108,7 @@ You have the full guide for this task in the xref:ai-specialist-02-develop.adoc[
 
 This section will guide you through the essential steps of engineering, training, and evaluation to create the first model prototype.
 
-In this step you will be using OpenShift AI and MinIO. 
+In this step you will be using OpenShift AI and OpenShift Data Foundation. 
 
 OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks] for experimentation and model training.
 

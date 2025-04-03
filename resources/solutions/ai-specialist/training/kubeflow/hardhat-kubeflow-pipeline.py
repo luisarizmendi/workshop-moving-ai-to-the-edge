@@ -483,7 +483,7 @@ def create_modelcar(
 # Define the pipeline
 @dsl.pipeline(
     name='YOLO Training Pipeline',
-    description='Pipeline to download data, train YOLO model, and upload results to MinIO'
+    description='Pipeline to download data, train YOLO model, and upload results to OpenShift Data Foundation'
 )
 def yolo_training_pipeline(
 
