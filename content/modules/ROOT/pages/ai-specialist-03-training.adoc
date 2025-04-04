@@ -984,7 +984,7 @@ If the Pipeline run POD is scheduled in a node where other workloads using GPUs 
 image::ai-train-memoryerror.png[]
 
 
-=== Modelcar container image generation with OpenShift Pipelines
+=== OpenShift Pipeline Run
 
 
 When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution:
@@ -1230,10 +1230,11 @@ The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[p
 
 [NOTE]
 
-You can also download the https://huggingface.co/luisarizmendi/hardhat-or-hat/tree/main/v1/model/onnx/1[version 1 (v1) of the model, more specifically the `onnx` version] and upload it into the the right location on the Object Storage using the https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[Object Storage browser], replacing the one that was created by the Kubeflow Pipeline, and then create the `modelcar` container image into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry]by re-runing the OpenShift Pipeline after changing the file with the mode. Go to the Pipelines menu in the OpenShift Console, select the pipeline and move into the "PipelinesRun" tab, there you can click the three dots on the right and select "Rerun".
+You can also download the https://huggingface.co/luisarizmendi/hardhat-or-hat/tree/main/v1/model/onnx/1[version 1 (v1) of the model, more specifically the `onnx` version] and upload it into the the right location (`serving` directory) on the Object Storage using the https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[Object Storage browser], replacing the one that was created by the Kubeflow Pipeline, and then create the `modelcar` container image into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry]by re-runing the OpenShift Pipeline after changing the file with the mode. Go to the Pipelines menu in the OpenShift Console, select the pipeline and move into the "PipelinesRun" tab, there you can click the three dots on the right and select "Rerun".
 
+Before jump into the next section, be sure that you stopped your Code Workbench to save some resources in the OpenShift cluster. 
 
-Before jump into the next section, be sure that you stopped your Code Workbench to save some resources in the OpenShift cluster.
+Now you are ready to continue!
 
 
 

@@ -24,7 +24,7 @@
 
 * xref:ai-specialist-04-deploy.adoc[*4. Model Serving*]
 * xref:ai-specialist-04-deploy.adoc#_serving[- Serving]
-* xref:ai-specialist-04-deploy.adoc#_live_testing[- Live Testing]
+* xref:ai-specialist-04-deploy.adoc#_end_-_to_-_end_validation[- End-to-End Validation]
 
 * xref:ai-specialist-05-update.adoc[*5. Day-2 Operations*]
 * xref:ai-specialist-05-update.adoc#_monitoring[- Monitoring]

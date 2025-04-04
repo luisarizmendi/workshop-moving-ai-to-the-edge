@@ -313,7 +313,7 @@ Now you can use the `<registry>/<namespace>/<container image name>:<shared tag>`
 
 
 
-== Live Testing
+== End-to-End Validation
 
 image::ai-deploy-nav2.png[]
 

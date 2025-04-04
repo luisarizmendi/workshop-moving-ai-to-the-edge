@@ -34,14 +34,139 @@ OpenShift AI provides robust serving platforms to deploy models as inference end
 
 * Multi-model serving (https://github.com/kserve/modelmesh[`ModelMesh`]): Optimized for small and medium-sized models sharing resources.
 
-As mentioned, these options are not available for our use case since the deployment will occur at the Edge, remember that for our use case the MLOps workflow diagram is:
+We can use those to deploy our models in the same OpenShift cluster where the OpenShift AI platform is running but, as mentioned, these options could not be directly available for your edge use case, remember that for our use case the MLOps workflow diagram is:
 
 image::ai-build-rhoai-features.png[]
 
-When deploying on Red Hat Enterprise Linux, there are several options for Model Serving. However, to simplify things in this workshop, we have created a custom Python-based inference server.
+If you are using https://www.redhat.com/en/topics/edge-computing/microshift[Microshfit] or OpenShift at the Edge you can use the `Kserve` Custom Resource Definitions but if you plan to deploy your model directly on RHEL, without a Kubernetes API, you will need to use a different approach, for example running containers directly with Podman using https://www.redhat.com/en/blog/quadlet-podman[Quadlets] to configure them. 
+
+In any case you also have to take some decisions. We've already explored several options for deploying a model, for example, you can use the model file directly with an inference server running on your system, run the inference server inside a container, use a container image that bundles both the model and the inference server, or run separate containers for the model and the inference server (this is what we are doing in this workshop). But there are other decisions to be taken besides how to distribute the model, for example if you want to do the model serving with an off-the-self (or vendor-backed) inference server or use one custom server created add-hoc, each has it's own pros and cons.
+
+Vendor-backed inference servers offer several advantages. They are typically feature-rich, providing built-in capabilities such as model management, versioning, and performance optimization. They also come with out-of-the-box support for popular machine learning frameworks, which simplifies integration. Additionally, they significantly reduce development effort, allowing teams to focus more on deploying and scaling rather than building infrastructure from scratch.
+
+However, these solutions also have downsides. They tend to consume more system resources due to their general-purpose nature and extensive feature sets. Customization options can be limited, as these tools are often designed to fit broad use cases. There's also a level of dependency on the vendor, which can impact flexibility and long-term support strategies.
+
+On the other hand, custom inference servers are optimized for specific use cases, making them lightweight and highly flexible. They allow you to tailor performance and resource usage precisely to your needs. But this comes at the cost of increased development and maintenance effort. They typically offer fewer features and require self-support, which may not be ideal for teams without strong in-house expertise.
+
+In this workshop we will be using an off-the-self inference server, https://github.com/triton-inference-server/server[Triton Server], more specifically the https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[one provided by NVIDIA]. Triton uses the KServe community standard inference protocols to define HTTP/REST and GRPC APIs plus several extensions so it is a good fit.
 
 
-Although this part is more typically the responsibility of Application Developers rather than AI Specialists, for the purposes of this workshop we will briefly introduce the applications involved in the use case. Since the workshop doesn't cover the full application development lifecycle, this overview will help you understand how the AI model fits into the broader system.
+
+
+
+
+
+
+
+
+
+=== Promoting model to production
+
+
+
+pod tag in quay
+
+
+
+
+
+
+
+
+
+=== OpenShift AI and Inferencing
+
+
+
+
+
+inferece custom vs non custom
+
+
+workshop focus on sidecar container
+
+
+
+
+
+
+
+1- add <user>-test namespace
+2- Enable single-model serving
+
+ai-deploy-modelserver-selection.png
+
+
+
+==== NVIDIA Triton Inference Server in OpenShift AI
+
+triton server
+deploy
+
+
+
+
+* copia el uri
+
+
+Model deployment name: CHANGE!
+
+Serving runtime: NVIDIA Triton Server
+Framework: onnx - 1.20.1
+Accelerator:
+
+Make deployed models available through an external route: selected
+Require token authentication: not selected
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+== End-to-End Validation
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+image::ai-deploy-nav2.png[]
+
+
+So far, you have completed the AI Specialist's tasks by creating the model and taken on some Application Development responsibilities by manually building the container images. Now, before handing over to the Platform Specialist for deploying the applications to the Edge devices, it's a good idea to perform a final test of the model you created. Let’s deploy all the components together and verify if everything works as expected.
+
+For this test, we will use your own laptop as the "Edge Device", but in contrast with the "production" architecture you will be only running the "Camera Stream Manager" on it. The rest of the services will be deployed in the cloud-side applications in a temporary OpenShift project, which can easily be deleted after the testing is complete.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -99,95 +224,6 @@ The workflow is the following:
 2. The Inference Server, that contains the AI model detecting objects, returns the predictions
 3. The "Action" service calls the inference endpoint and if detects certain objects it will trigger an alarm, that is sent to the database hosted in a remote site.
 4. The information of the device is shown in the Dashboard
-
-
-
-
-
-=== OpenShift AI and Inferencing
-
-
-kserve
-
-
-
-inferece custom vs non custom
-
-
-workshop focus on sidecar container
-
-
-
-
-
-
-
-1- add <user>-test namespace
-2- Enable single-model serving
-
-ai-deploy-modelserver-selection.png
-
-
-
-==== NVIDIA Triton Inference Server in OpenShift AI
-
-triton server
-deploy
-
-
-
-
-* copia el uri
-
-
-Model deployment name: CHANGE!
-
-Serving runtime: NVIDIA Triton Server
-Framework: onnx - 1.20.1
-Accelerator:
-
-Make deployed models available through an external route: selected
-Require token authentication: not selected
-
-
-
-
-
-
-
-
-
-==== INTEL OpenVino Inference Server in OpenShift AI
-
-
-openvino server
-deploy
-
-
-
-==== Custom Inference Server in OpenShift AI
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-== Live Testing
-
-image::ai-deploy-nav2.png[]
-
-
-So far, you have completed the AI Specialist's tasks by creating the model and taken on some Application Development responsibilities by manually building the container images. Now, before handing over to the Platform Specialist for deploying the applications to the Edge devices, it's a good idea to perform a final test of the model you created. Let’s deploy all the components together and verify if everything works as expected.
-
-For this test, we will use your own laptop as the "Edge Device", but in contrast with the "production" architecture you will be only running the "Camera Stream Manager" on it. The rest of the services will be deployed in the cloud-side applications in a temporary OpenShift project, which can easily be deleted after the testing is complete.
 
 
 
