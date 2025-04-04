@@ -544,9 +544,9 @@ If you want to directly use it, please remove the images labeled with `hat`, as 
 
 === Mock Training Dataset
 
-Now you’re ready to proceed to the xref:ai-specialist-02-prototype.adoc[Model Development] section. However, it’s important to keep in mind that model training is a time-intensive process. Depending on your hardware and hyperparameter configuration, training can take anywhere from several hours to multiple days. If your goal is to complete this workshop in a single session, you’ll need to consider an alternative approach: the "xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*]."
+Now you’re ready to proceed to the xref:ai-specialist-02-prototype.adoc[Model Development] section. However, it’s important to keep in mind that model training is a time-intensive process. Depending on your hardware and hyperparameter configuration, training can take anywhere from several hours to multiple days. If your goal is to complete this workshop in a single session, you’ll need to consider an alternative approach: the "xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training]."
 
-Using the xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*] dataset involves having significantly reduced number of images to shorten the training time. While this means the resulting model won’t be viable for real-world use, it will allow you to complete all the steps in the training phase within the limited timeframe.
+Using the xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training] dataset involves having significantly reduced number of images to shorten the training time. While this means the resulting model won’t be viable for real-world use, it will allow you to complete all the steps in the training phase within the limited timeframe.
 
 [NOTE]
 A pre-trained model will be provided as the solution in the xref:ai-specialist-02-prototype.adoc[Model Development] section, which you can use to complete the subsequent steps.
