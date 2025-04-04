@@ -1,4 +1,4 @@
-= Welcome to Personal Protection Equipment detection with Red Hat Device Edge
+= Welcome to moving AI to the edge workshop
 :page-layout: home
 :!sectids:
 

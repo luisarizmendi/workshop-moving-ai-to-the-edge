@@ -167,7 +167,7 @@ image::ai-build-gitclone.png[]
 
 Now you have your prototyping Jupyter Notebook ready. In order to start the prototype training you just need to click the "Run all blocks" (`>>` icon) icon on the top bar menu (click "Restart" button once it appears in the screen).
 
-Even being a Mock Training it could take some time to finish if you are using CPUs instead of GPUs, in the meanwhile you can take a look at the cell's output. 
+Even being a xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*] it could take some time to finish if you are using CPUs instead of GPUs, in the meanwhile you can take a look at the cell's output. 
 
 You now can go to MinIO console ( https://minio-ui-minio.apps.{ocp_cluster_url} ) and open your "{user}-ai-models" Bucket. You will find the model with the best performance metrics (`best.pt`) and the last produced with the last training epoch (`last.pt`) along with the performance stats for the Test, Validation and Training sets.
 
@@ -176,7 +176,7 @@ image::ai-build-miniomodel.png[]
 
 [NOTE]
 
-Remember that you performed a Mock Training with a reduced number of epochs and few data, so you cannot use that model to detect hardhats. During the deployment phase you will use a https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
+Remember that you performed a xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*] with a reduced number of epochs and few data, so you cannot use that model to detect hardhats. During the deployment phase you will use a https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
 
 At this point you can navigate to "Data Science Projects" and stop your Workbench to save resources in the OpenShift cluster. 
 

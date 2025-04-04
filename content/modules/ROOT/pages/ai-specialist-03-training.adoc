@@ -939,12 +939,16 @@ It's time to run the imported Kubeflow Pipeline:
     * roboflow_version: `<your value>`
     * workshop_username: `{user}`
 
-5. Adjust the "Batch Size" and the "Epochs". If you are running a *Mock Training* you can configure them to "1" to speed-up the pipeline execution.
+5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*]*] you can configure them to "1" to speed-up the pipeline execution.
 
     * Batch Size: `<your value>`
     * Ephoch number: `<your value>`
     
 ====
+
+[NOTE]
+
+You might want to choose the xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*]*] `roboflow_project` to save time running the pipeline during the workshop. 
 
 [NOTE]
 
@@ -954,7 +958,7 @@ image::ai-train-pipeline-run.png[]
 
 [CAUTION]
 
-Be careful not to copy any extra spaces in the names, as this will cause the download task to fail.
+Be careful *not to copy any extra spaces in the names*, as this will cause the download task to fail.
 
 
 [NOTE]
@@ -1011,7 +1015,40 @@ image::ai-train-schedule.png[]
 
 In this section, a new Kubeflow Pipeline was created based on the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script]. This pipeline successfully trained the YOLO model for hardhat detection, generated the model file, and uploaded it into the OpenShift Data Foundation Object Storage. This model file will be essential for the next section, xref:ai-specialist-04-deploy.adoc[Model Serving].
 
-However, if you used a reduced dataset ("*MockTrain*") or limited epochs for faster training and believe the model might not perform adequately in the field, it is advisable to discard the generated model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
+
+
+
+
+
+
+
+
+
+
+
+
+However, probably you used a reduced dataset ("*MockTrain*") or limited epochs for faster training 
+
+
+
+and believe the model might not perform adequately in the field, it is advisable to discard the generated model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Before jump into the next section, be sure that you stopped your Code Workbench to save some resources in the OpenShift cluster.
 

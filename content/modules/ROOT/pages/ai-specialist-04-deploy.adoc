@@ -135,6 +135,11 @@ triton server
 deploy
 
 
+
+
+* copia el uri
+
+
 Model deployment name: CHANGE!
 
 Serving runtime: NVIDIA Triton Server
