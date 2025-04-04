@@ -97,7 +97,6 @@ image::ai-deploy-single-model-server.png[]
 
 [example]
 ====
-
 1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
 
 2- Move to "Model Registry" and select your model
@@ -138,26 +137,110 @@ image::ai-build-deploy-model-registry.png[]
 
 The Inference Server may take some time to become available upon initial deployment. Please note that you may need to refresh the page to confirm whether the server has been successfully deployed.
 
-If you want to see the deployment progress or check the Inference Server logs you can go to the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] and check "Workloads > Pods". If you click on the Pod's name you will have access to the "Events" and "Logs" (the Pod is composed by four containers and one init container and you can select each of them to see their logs by using the dropdown menu that by default shows `kserve-container`).
+If you want to see the deployment progress or check the Inference Server logs you can go to the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] and check "Workloads > Pods". If you click on the Pod's name you will have access to the "Events" and "Logs".
+
+he Pod consists of four containers and one init container. You can view the logs for each by selecting them from the dropdown menu, which defaults to `kserve-container`. In the `modelcar-init` container, you can observe how the model file is copied from the container image—created by the OpenShift Pipeline—to the Inference Server. To monitor the Inference Server itself, check the logs in the `kserve-container`. Once the server is fully initialized, you should see a log entry similar to the following:
+
+image::ai-deploy-inference-logs.png[]
 
 
+When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] console, you will be able to copy the endpoint that we need to use to access to it (copy the "external" endpoint).
+
+image::ai-deploy-serving-endpoint.png[]
 
 
+Now that the Inference Server is running and you have the endpoint needed to access it, let’s deploy a test application that uses the server to tag a set of images.
+
+[example]
+====
+
+1- Go to the to https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]
+
+2- Click on the `+` button on the top right corner of the UI to deploy a new YAML file
+
+3- Be sure that you are in the right project (`{user}-ai-test` if you used the recommended name) and paste the following YAML
 
 
+[source,yaml,role=execute,subs="attributes"]
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-detection-batch-kserve-api
+  labels:
+    app: object-detection-batch-kserve-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-detection-batch-kserve-api
+  template:
+    metadata:
+      labels:
+        app: object-detection-batch-kserve-api
+    spec:
+      containers:
+      - name: batch-model-api
+        image: quay.io/luisarizmendi/object-detection-batch-kserve-api:latest
+        ports:
+        - containerPort: 8800
+        env:
+          - name: INFERENCE_URL
+            value: 'https://<CHANGE ME TO INFERENCE ENDPOINT>/v2/models/hardhat/infer'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-detection-batch-kserve-api
+  labels:
+    app: object-detection-batch-kserve-api
+spec:
+  selector:
+    app: object-detection-batch-kserve-api
+  ports:
+  - protocol: TCP
+    port: 8800
+    targetPort: 8800
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: object-detection-batch-kserve-api
+  labels:
+    app: object-detection-batch-kserve-api
+spec:
+  to:
+    kind: Service
+    name: object-detection-batch-kserve-api
+  port:
+    targetPort: 8800
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+----
+
+4- Change the `<CHANGE ME TO INFERENCE ENDPOINT>` string with the external endpoint value that you copied from the deployed Inference Server
+
+5- Click "Create"
+
+6- Wait until the POD is in "Running" status and then move to "Networking > Routes"
+
+7- Open the application's URL
+====
 
 
+You’ll see a UI with the endpoint of your Inference Server pre-selected. You can now upload images of people wearing or not wearing hard hats to the application (for example, images from the "Test" set of your dataset), then click "Submit".
 
+[CAUTION]
 
+Make sure the uploaded images do not show `0 KB` in size. Chrome does not support drag-and-drop in all contexts, and depending on where the files are stored on your computer, they may fail to upload.
 
+The inference process may take some time depending on the number of images and whether you're using a GPU. Once it completes, you should see a result similar to the following:
 
+image::ai-deploy-test-app-inference.png[]
 
-
-
-
-
-
-
+As you can see, hardhats were detected on the images, so we are good to promote this model as the "production" model.
 
 
 === Promoting model to production
