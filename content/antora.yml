@@ -43,6 +43,8 @@ asciidoc:
     object_storage_pipeline_secret_key: <object_storage_pipeline_secret_key>
     registry-url: https://quay.io/user/luisarizmendi/
     page-links:
+    - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge
+      text: GitHub repository
     - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist
       text: AI Specialist solutions
     - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/platform-specialist

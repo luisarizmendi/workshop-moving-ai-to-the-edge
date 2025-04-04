@@ -939,7 +939,7 @@ It's time to run the imported Kubeflow Pipeline:
     * roboflow_version: `<your value>`
     * workshop_username: `{user}`
 
-5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training] you can configure them to "1" to speed-up the pipeline execution.
+5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mock_training_dataset[xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] you can configure them to "1" to speed-up the pipeline execution.
 
     * Batch Size: `<your value>`
     * Ephoch number: `<your value>`
@@ -948,7 +948,7 @@ It's time to run the imported Kubeflow Pipeline:
 
 [NOTE]
 
-You might want to choose the xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training] `roboflow_project` to save time running the pipeline during the workshop. 
+You might want to choose the xref:ai-specialist-01-data.adoc#_mock_training_dataset[xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] `roboflow_project` to save time running the pipeline during the workshop. 
 
 [NOTE]
 
@@ -967,7 +967,7 @@ In contrast to Elyra Pipelines, this Kubeflow Pipeline automatically creates and
 
 [TIP]
 
-Keep in mind that if you're short on time and can't wait for a full model training process, you can opt for the so-called 'xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training]' by using the reduced dataset you prepared during the Model Development section and configuring only one epoch. However, note that models trained on this dataset won't be suitable for deployment, as they won't achieve accurate object detection. Instead, you'll need to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] during the Deployment section to ensure proper functionality.
+Keep in mind that if you're short on time and can't wait for a full model training process, you can opt for the so-called 'xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]' by using the reduced dataset you prepared during the Model Development section and configuring only one epoch. However, note that models trained on this dataset won't be suitable for deployment, as they won't achieve accurate object detection. Instead, you'll need to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] during the Deployment section to ensure proper functionality.
 
 You can view the details of each task while it's running to monitor important information. Additionally, you can check the POD name generated for the task (top right corner, in a red square in the image below), which is useful for accessing real-time logs in the OpenShift Console (since the Logs tab in the OpenShift AI Pipeline view is only available once the task has completed). You can also track the inputs and outputs associated with each task, which will be displayed once the task finishes, providing insight into the data flow and results at each stage of execution.
 
@@ -1027,7 +1027,7 @@ In this section, a new Kubeflow Pipeline was created based on the https://github
 
 
 
-However, probably you used a reduced dataset ("xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training]") or limited epochs for faster training 
+However, probably you used a reduced dataset ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") or limited epochs for faster training 
 
 
 
