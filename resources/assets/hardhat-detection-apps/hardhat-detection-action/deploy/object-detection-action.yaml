@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-detection-action
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-detection-action
+  template:
+    metadata:
+      labels:
+        app: object-detection-action
+    spec:
+      containers:
+        - name: object-detection-action
+          image: quay.io/luisarizmendi/object-detection-action:x86
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ALERT_ENDPOINT
+              value: "<DASHBOARD_BACKEND_OCP_ROUTE>/alert"
+            - name: ALIVE_ENDPOINT
+              value: "<DASHBOARD_BACKEND_OCP_ROUTE>/alive"
+            - name: DETECTIONS_ENDPOINT
+              value: "<INFERENCE_SERVER_OCP_ROUTE>/current_detections"
+            - name: CHECK_INTERVAL
+              value: "1"
+            - name: ALERT_DURATION
+              value: "5"
+            - name: RESET_CHECKS
+              value: "3"
+            - name: ALIVE_INTERVAL
+              value: "5"
+          imagePullPolicy: Always

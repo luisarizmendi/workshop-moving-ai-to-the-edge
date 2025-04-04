@@ -16,13 +16,16 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
+
           # Loop through users user01 to user50 and user99
           for i in $(seq -w 1 50) 99; do
             username="user$i"
             password="redhat$i"
-            for n in ai tools workshop-guide; do
-              namespace=${username}-${n}
-              echo "Creating namespace: $namespace"
+
+
+            namespace=${username}-tools
+            echo "Creating $namespace"
+
           oc apply -f - <<EOF
           apiVersion: v1
           kind: Namespace
@@ -60,7 +63,6 @@ spec:
                   }
                 }
               }
-          ---
           kind: Secret
           apiVersion: v1
           metadata:
@@ -82,7 +84,64 @@ spec:
           stringData:
             username: ${username}
           EOF
-            done
+
+
+            namespace=${username}-workshop-guide
+            echo "Creating $namespace"
+
+          oc apply -f - <<EOF
+          ---
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: $namespace
+          EOF
+
+
+            namespace=${username}-test
+            echo "Creating $namespace"
+
+          oc apply -f - <<EOF
+          ---
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: $namespace
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: job-access-role
+            namespace: $namespace
+          rules:
+            - apiGroups: ["route.openshift.io"]
+              resources: ["routes"]
+              verbs: ["get", "list", "create"]
+            - apiGroups: ["serving.kserve.io"]
+              resources: ["inferenceservices"]
+              verbs: ["get", "list"]
+            - apiGroups: ["apps"]
+              resources: ["deployments"]
+              verbs: ["get", "list", "create"]
+            - apiGroups: [""]
+              resources: ["services"]
+              verbs: ["get", "list", "create"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: job-access-rolebinding
+            namespace: $namespace
+          subjects:
+            - kind: ServiceAccount
+              name: default
+              namespace: $namespace
+          roleRef:
+            kind: Role
+            name: job-access-role
+            apiGroup: rbac.authorization.k8s.io         
+          EOF
+
           done 
 
           echo "Environment ready!"

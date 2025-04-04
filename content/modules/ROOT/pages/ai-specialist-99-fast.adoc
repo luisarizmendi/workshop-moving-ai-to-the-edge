@@ -320,11 +320,11 @@ Let’s deploy all the components together and verify if everything works as exp
 ====
 Deploy the Cloud-side sevices in OpenShift
 
-1- Navegate to https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]
+1- Navegate to the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]
 
 2- Log in using your OpenShift credentials: {openshift-user}  /  {openshift-password}.
 
-3- Create a new OpenShift Project (`{user}-ai-test`)
+3- Create a new OpenShift Project (`{user}--test`)
 
 4- Click on the `+` icon on the top right corner of the OpenShift console.
 

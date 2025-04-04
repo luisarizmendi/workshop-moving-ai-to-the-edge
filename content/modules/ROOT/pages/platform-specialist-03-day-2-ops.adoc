@@ -135,7 +135,7 @@ Assuming you haven't deployed that in the xref:ai-specialist-04-deploy.adoc[AI S
 
 You can follow these steps from your Workstation:
 
-. Create a new OpenShift Project (`{user}-ai-test`)
+. Create a new OpenShift Project (`{user}--test`)
 
 . Deploy the backend using the following manifests (you can use the `+` icon on the top right corner of the OpenShift Console to paste them)
 +
@@ -262,7 +262,7 @@ spec:
     targetPort: 3000
 ----
 
-Go to Routes in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] and take note of the Backend and Frontend URLs
+Go to Routes in the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] and take note of the Backend and Frontend URLs.
 
 You can now test the access to the dashboard navigating to the Dashboard Frontend URL.
 
