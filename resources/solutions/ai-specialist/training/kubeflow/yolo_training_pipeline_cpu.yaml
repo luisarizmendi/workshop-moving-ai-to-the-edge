@@ -432,7 +432,7 @@ deploymentSpec:
           : str(metrics[\"mAP50-95\"]),\n            \"precision\": str(metrics[\"\
           precision\"]),\n            \"recall\": str(metrics[\"recall\"])\n     \
           \   }\n\n        rm = registry.register_model(\n            registered_model_name,\n\
-          \            f\"oci://{container_registry_clean}/{user_name}/{modelcar_image_name}:{modelcar_image_tag}\"\
+          \            f\"oci://{container_registry_clean}/{user_name}/modelcar-{modelcar_image_name}:{modelcar_image_tag}\"\
           ,\n            version=modelcar_image_tag,\n            description=f\"\
           {registered_model_name} is a dense neural network that detects Hardhats\
           \ in images.\",\n            model_format_name=model_format_name,\n    \
@@ -602,7 +602,7 @@ root:
               componentInputParameter: train_name
             modelcar_image_tag:
               runtimeValue:
-                constant: 04-03-17_59
+                constant: 04-04-15_20
             object_storage_access_key:
               componentInputParameter: object_access_key
             object_storage_bucket:
@@ -620,7 +620,7 @@ root:
                 constant: ai-modelcar
             pipeline_run_name:
               runtimeValue:
-                constant: modelcar-run-04-03-17_59
+                constant: modelcar-run-04-04-15_20
             user_name:
               componentInputParameter: workshop_username
         taskInfo:
@@ -708,7 +708,7 @@ root:
               componentInputParameter: train_name
             modelcar_image_tag:
               runtimeValue:
-                constant: 04-03-17_59
+                constant: 04-04-15_20
             roboflow_project:
               componentInputParameter: roboflow_project
             roboflow_version:
@@ -775,7 +775,7 @@ root:
               componentInputParameter: object_secret_key
             tag:
               runtimeValue:
-                constant: 04-03-17_59
+                constant: 04-04-15_20
             test_dir:
               taskOutputParameter:
                 outputParameterKey: test_dir

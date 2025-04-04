@@ -7,26 +7,9 @@ Key aspects to take into account while AI Model releasing:
 * *Versioning and Registry*: The model is versioned in a registry with metadata like training data, performance metrics, and hyperparameters. This step was already done by the Kubeflow Pipeline by publishing the model into the OpenShift AI Model Registry.
 * *Packaging*: The model and its dependencies are prepared for consistent execution by containerizing them or converting them into standardized formats like ONNX or TorchScript. During the workshop, we demonstrated how to "export" the model from its native PyTorch format into other formats. For instance, TorchScript is particularly well-suited for edge deployments due to its compact size and efficiency. However, for simplicity in this workshop, you will continue using the native PyTorch file format. This approach ensures flexibility while allowing you to explore the practical benefits of exporting models in production scenarios.
 * *Validation*: Additional tests, such as performance, integration, and scalability, are conducted in staging environments to ensure the model meets production requirements. In this workshop, we will perform a simple live test of the model to verify its functionality before proceeding with full deployment to edge devices.
-* *Deployment*: Techniques like blue-green or canary deployments are commonly used to ensure a smooth and reliable transition to production. While OpenShift AI offers Model Serving capabilities through `KServe` and `ModelMesh` for models within the same cluster, deploying inference on a different environment—such as a Single Node OpenShift cluster or directly on Red Hat Enterprise Linux—requires a separate workflow to handle model transfer and deployment. In this workshop, we demonstrate the use of a custom Inference Server to host the PyTorch model, tailored for deployment beyond the primary OpenShift AI cluster.
+* *Deployment*: Techniques like blue-green or canary deployments are commonly used to ensure a smooth and reliable transition to production. While OpenShift AI offers Model Serving capabilities through `KServe` and `ModelMesh` for models within the same cluster, deploying inference on a different environment—such as a Single Node OpenShift cluster or directly on Red Hat Enterprise Linux—requires a separate workflow to handle model transfer and deployment. 
 * *Monitoring*: Metrics such as latency, resource usage, and data drift are continuously tracked to ensure the model's performance remains optimal. However, when deploying models at the Edge, the monitoring tools provided by OpenShift AI (e.g., TrustyAI, Grafana) cannot be used directly. Alternative monitoring strategies suited for Edge environments will be explored in detail in the next section.
 
-In this section, we will explore how to deploy our model on a custom inference server and examine the overall application architecture, which is built on microservices. This architecture leverages the model's predictions to create a system that raises alarms when individuals are not wearing hardhats. Additionally, we will demonstrate how to conduct a quick live test of the trained model to ensure it functions as expected.
-
-image::ai-deploy-nav0.png[]
-
-=== Tools and preparations
-
-In this step, you will build several container images locally. To do this, ensure you have either `docker` or `podman` installed on your laptop. Additionally, you will need access to a Container Image Registry to publish these images.
-
-[NOTE]
-
-The examples below use https//quay.io[Quay.io] as the Container Registry.
-
-
-
-== Model Serving
-
-image::ai-deploy-nav1.png[]
 
 OpenShift AI provides robust serving platforms to deploy models as inference endpoints:
 
@@ -51,6 +34,123 @@ On the other hand, custom inference servers are optimized for specific use cases
 In this workshop we will be using an off-the-self inference server, https://github.com/triton-inference-server/server[Triton Server], more specifically the https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[one provided by NVIDIA]. Triton uses the KServe community standard inference protocols to define HTTP/REST and GRPC APIs plus several extensions so it is a good fit.
 
 
+As an AI specialist, you won’t be deploying directly to edge devices, but you can still deploy your model—along with an inference server—on your OpenShift cluster to conduct meaningful testing. In fact, you can go a step further and deploy the entire service architecture to perform end-to-end testing, allowing you to observe how your model behaves within a realistic, production-like environment.
+
+In this section, we will explore how to deploy our model and examine the inference performance. After that you will also deploy the associated microservices to do an end-to-end validation of the architecture used for the workshop use case. This architecture leverages the model's predictions to create a system that raises alarms when individuals are not wearing hardhats. 
+
+image::ai-deploy-nav0.png[]
+
+
+=== Tools and preparations
+
+We’ll use the following tools:
+
+* OpenShift AI: To deploy and monitor the Inference Server
+
+* Quay Container Image Registry: Where we have our `modelcar` container image
+
+* OpenShift: To deploy the use case microservices that work along with the inference server to provide an end-to-end solution.
+
+
+
+== Inference testing
+
+image::ai-deploy-nav1.png[]
+
+Let's dive into deploying the Inference Server with our model! 
+
+
+=== Inferencing with OpenShift AI
+
+
+
+
+
+
+
+
+
+
+[example]
+====
+1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
+
+2- Move to "Data Science Projects"
+
+3- Click "Create project" and give that new project a name (ie. `{user}-ai-test`)
+
+4- Click the "Models" tab
+
+5- Select "single-model" platform
+
+image::ai-deploy-single-model-server.png[]
+
+====
+
+
+
+
+
+
+
+
+
+[example]
+====
+
+1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
+
+2- Move to "Model Registry" and select your model
+
+3- Click on the version that you want to test
+
+4- Copy the OCI URI
+
+5- Select "Deploy" in the "Actions" dropdown menu on the top right corner
+
+6- Select the project that you just created and fill-in the form:
+
+* Model name: Change it to a meanful name. Do not keep the default since it could be a very long name that can prevent the inference server to run correctly, for example `hardhat-test`
+
+* Serving runtime: `NVIDIA Triton Server v25.01`
+
+* Framework: `onnx - 1.20.1`
+
+* Accelerator: If you have GPUs available choose your accelerator.
+
+* Make deployed models available through an external route: `selected`
+
+* Require token authentication: `not selected`
+
+* Create a new connection:
+
+  * Connection type: `URI - v1`
+  * Conection name: I suggest something like `<modelcar-name>-<tag>`
+  * URI: Paste here the OCI URI that you copied
+
+image::ai-build-deploy-model-registry.png[]
+
+7- Click "Deploy"
+
+====
+
+[NOTE] 
+
+The Inference Server may take some time to become available upon initial deployment. Please note that you may need to refresh the page to confirm whether the server has been successfully deployed.
+
+If you want to see the deployment progress or check the Inference Server logs you can go to the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] and check "Workloads > Pods". If you click on the Pod's name you will have access to the "Events" and "Logs" (the Pod is composed by four containers and one init container and you can select each of them to see their logs by using the dropdown menu that by default shows `kserve-container`).
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -62,67 +162,25 @@ In this workshop we will be using an off-the-self inference server, https://gith
 
 === Promoting model to production
 
+How do you promote a model to production? The approach depends on how you plan to distribute it. In our case, we are distributing the model as a `modelcar`, which is essentially a dedicated container image. Promoting the model becomes straightforward: it's as simple as assigning the correct container image tag to the image you wish to use. For example, you can use a `prod` tag for the model intended for production. To do this, you’ll need to select the container image with the model you’ve just created and apply the appropriate tag. Let’s take a look at how to do this in Quay.
+
+[example]
+====
+
+1- Go to https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry]
+
+2- Click on the `modelcar` container image name
+
+3- Click on the labels icon on the left menu
+
+4- Click on the gear icon on the right and  select "Add new tag"
+
+5- Assign the `prod` tag to that image
 
 
-pod tag in quay
+image::ai-deploy-promote.png[]
 
-
-
-
-
-
-
-
-
-=== OpenShift AI and Inferencing
-
-
-
-
-
-inferece custom vs non custom
-
-
-workshop focus on sidecar container
-
-
-
-
-
-
-
-1- add <user>-test namespace
-2- Enable single-model serving
-
-ai-deploy-modelserver-selection.png
-
-
-
-==== NVIDIA Triton Inference Server in OpenShift AI
-
-triton server
-deploy
-
-
-
-
-* copia el uri
-
-
-Model deployment name: CHANGE!
-
-Serving runtime: NVIDIA Triton Server
-Framework: onnx - 1.20.1
-Accelerator:
-
-Make deployed models available through an external route: selected
-Require token authentication: not selected
-
-
-
-
-
-
+====
 
 
 
@@ -673,6 +731,38 @@ image::ai-deploy-screenshot_dashboard_main.png[]
 
 image::ai-deploy-screenshot_dashboard_detail.png[]
 ====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=== Promoting model to production
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -25,7 +25,7 @@ This phase covered feature engineering and the development of the initial model 
 The focus in this section was on training the model using scalable and reproducible pipelines. The workshop introduced tools like Kubeflow Pipelines within OpenShift AI to automate the training process, manage large datasets, and ensure consistent model performance.
 
 === Model Serving
-Participants learned how to deploy the trained model into a production environment. This included packaging the model, validating its performance, and deploying it using a custom inference server tailored for edge environments. The section also emphasized the importance of monitoring the deployed model to maintain optimal performance.
+Participants learned how to deploy the trained model into a production environment. This included packaging the model, validating its performance, and deploying it using an inference server tailored for edge environments. The section also emphasized the importance of monitoring the deployed model to maintain optimal performance.
 
 === Day-2 Operations
 The final section addressed the ongoing maintenance of the deployed model. Topics included monitoring for data and concept drift, updating datasets, and retraining the model to adapt to new conditions or data patterns. The importance of continuous monitoring and updating was highlighted to ensure the model remained effective over time.

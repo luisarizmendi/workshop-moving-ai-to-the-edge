@@ -328,7 +328,7 @@ image::ai-data-classes.png[]
 
 [IMPORTANT]
 
-To maintain consistency with the applications we've developed  (xref:app-developer-00-intro.adoc[APP Developer Module]), we will be using two labels: `helmet` and `no_helmet`. Please adjust your class names accordingly to align with this naming convention.
+To maintain consistency with the applications we've developed, we will be using two labels: `helmet` and `no_helmet`. Please adjust your class names accordingly to align with this naming convention.
 
 [example]
 ====

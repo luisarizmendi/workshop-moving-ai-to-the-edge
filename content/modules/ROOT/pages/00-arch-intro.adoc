@@ -117,7 +117,7 @@ Before beginning the workshop steps, you will need some necessary environment de
 ==== OpenShift Cluster
 
 * Web Console: https://console-openshift-console.apps.{ocp_cluster_url}
-* API: {openshift-api}
+* API: https://api.{ocp_cluster_url}:6443
 * OpenShift AI: https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}
 * Username: {openshift-user}
 * Password: {openshift-password}
