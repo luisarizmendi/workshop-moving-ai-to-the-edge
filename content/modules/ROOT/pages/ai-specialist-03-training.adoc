@@ -939,7 +939,7 @@ It's time to run the imported Kubeflow Pipeline:
     * roboflow_version: `<your value>`
     * workshop_username: `{user}`
 
-5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*]*] you can configure them to "1" to speed-up the pipeline execution.
+5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training]*] you can configure them to "1" to speed-up the pipeline execution.
 
     * Batch Size: `<your value>`
     * Ephoch number: `<your value>`
@@ -948,7 +948,7 @@ It's time to run the imported Kubeflow Pipeline:
 
 [NOTE]
 
-You might want to choose the xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*Mock Training*]*] `roboflow_project` to save time running the pipeline during the workshop. 
+You might want to choose the xref:ai-specialist-01-data.adoc#_mocktrain_dataset[*xref:ai-specialist-01-data.adoc#_mocktrain_dataset[Mock Training]*] `roboflow_project` to save time running the pipeline during the workshop. 
 
 [NOTE]
 
