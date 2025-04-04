@@ -181,14 +181,14 @@ spec:
                     selfHeal: true
                   syncOptions:
                     - RespectIgnoreDifferences=true 
-                  ignoreDifferences:
-                    - group: ''
-                      kind: '*'
-                      jsonPointers:
-                        - /data
-                        - /metadata
-                      managedFieldsManagers:
-                        - authentication-operator
+                ignoreDifferences:
+                  - group: ''
+                    kind: '*'
+                    jsonPointers:
+                      - /data
+                      - /metadata
+                    managedFieldsManagers:
+                      - authentication-operator
           EOF
 
           # Wait for the DataScienceCluster to be ready

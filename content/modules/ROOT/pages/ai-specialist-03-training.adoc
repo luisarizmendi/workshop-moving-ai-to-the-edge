@@ -983,10 +983,213 @@ If the Pipeline run POD is scheduled in a node where other workloads using GPUs 
 
 image::ai-train-memoryerror.png[]
 
-When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution while it is building and pushing the "modelcar" container image.
+
+=== Modelcar container image generation with OpenShift Pipelines
+
+
+When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution:
 
 
 image::ai-train-modelcar-pipeline.png[]
+
+
+This OpenShift Pipeline runs three different Tekton tasks:
+
+1- `containerfile-create`: This task creates the Containerfile and the model directory in the shared Persistent Volume.
+
+[source,yaml,role=execute,subs="attributes"]
+----
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: modelcar-containerfile-create
+spec:
+  steps:
+    - computeResources: {}
+      image: 'registry.access.redhat.com/ubi8/ubi-minimal:latest'
+      name: generate-containerfile
+      script: |
+        #!/usr/bin/env bash
+        echo 'FROM registry.access.redhat.com/ubi9/ubi-micro:9.4' > $(workspaces.data.path)/Dockerfile
+        echo 'COPY ./models /models' >> $(workspaces.data.path)/Dockerfile
+        echo 'USER 1001' >> $(workspaces.data.path)/Dockerfile
+    - computeResources: {}
+      image: 'registry.access.redhat.com/ubi8/ubi-minimal:latest'
+      name: create-models-dir
+      script: |
+        #!/usr/bin/env bash
+        mkdir -p $(workspaces.data.path)/models
+  workspaces:
+    - description: The workspace to store the downloaded files
+      name: data
+----
+
+
+
+2- `get-model-file`: Downloads the model along with the directory structure and additional files from the Object Storage
+
+[source,yaml,role=execute,subs="attributes"]
+----
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: modelcar-download-model
+  params:
+    - name: objectApiUrl
+      type: string
+    - name: objectBucket
+      type: string
+    - name: objectAccessKey
+      type: string
+    - name: objectSecretKey
+      type: string
+    - name: directoryPath
+      type: string
+  steps:
+    - computeResources: {}
+      image: 'quay.io/luisarizmendi/s3cmd:latest'
+      name: download-from-object
+      script: |
+        #!/usr/bin/env sh
+        set -e
+
+        # Create s3cmd config
+        cat > /tmp/.s3cfg << EOF
+        [default]
+        access_key = $(params.objectAccessKey)
+        secret_key = $(params.objectSecretKey)
+        host_base = $(params.objectApiUrl)
+        host_bucket = $(params.objectApiUrl)
+        use_https = True
+        signature_v2 = False
+        # Disable SSL verification
+        check_ssl_certificate = False
+        check_ssl_hostname = False
+        EOF
+
+        # Create target directory for recursive copy
+        rm -rf $(workspaces.data.path)/models
+        mkdir -p $(workspaces.data.path)/models
+
+        echo "Copying from Object Storage in $(params.objectBucket)/$(params.directoryPath)/ to $(workspaces.data.path)/models/"
+
+        # Use s3cmd to copy the directory
+        s3cmd -c /tmp/.s3cfg get --recursive s3://$(params.objectBucket)/$(params.directoryPath)/ $(workspaces.data.path)/models/
+
+        # Check if the download was successful
+        if [ 0 -ne 0 ]; then
+          echo "Failed to download files from object storage"
+          exit 1
+        fi
+
+        echo "----- $(workspaces.data.path) ------"
+        ls $(workspaces.data.path)
+        echo "-----------"
+  workspaces:
+    - description: The workspace to store the downloaded files
+      name: data
+----
+
+In summary, this task generates a directory structure https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/training/modelcar[like the one shown here ] consists of a `Containerfile` at the root level and a `models` folder that will contain the model itself.
+
+[IMPORTANT]
+
+Depending on the inference server you plan to use (covered in the next module), your model must follow specific requirements—such as file format, directory structure, and optional configuration files. In our example we will use https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[NVIDIA Triton server] so we have our model in the `onnx` extension with the  `<model name>/<version>/model.onnx` directory structure and included the `config.pbtxt` inference server configuration file shown below.
+
+
+[source,text,role=execute,subs="attributes"]
+----
+name: "hardhat"
+platform: "onnxruntime_onnx"
+max_batch_size: 0  
+input [
+  {
+    name: "images"
+    data_type: TYPE_FP32
+    dims: [1, 3, 640, 640]  
+  }
+]
+output [
+  {
+    name: "output0"
+    data_type: TYPE_FP32
+    dims: [ 1, 6, 8400 ]
+  }
+]
+backend: "onnxruntime"
+----
+
+
+3- `build-and-push`: Performs the container image build using https://hub.tekton.dev/tekton/task/kaniko[Kaniko] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
+
+
+[source,yaml,role=execute,subs="attributes"]
+----
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: modelcar-build-and-push
+spec:
+  params:
+    - description: Name (reference) of the image to build.
+      name: IMAGE
+      type: string
+    - default: ./Dockerfile
+      description: Path to the Dockerfile to build.
+      name: DOCKERFILE
+      type: string
+    - default: ./
+      description: The build context used by Kaniko.
+      name: CONTEXT
+      type: string
+    - default: []
+      name: EXTRA_ARGS
+      type: array
+    - default: 'gcr.io/kaniko-project/executor:v1.5.1@sha256:c6166717f7fe0b7da44908c986137ecfeab21f31ec3992f6e128fff8a94be8a5'
+      description: The image on which builds will run (default is v1.5.1)
+      name: BUILDER_IMAGE
+      type: string
+  results:
+    - description: Digest of the image just built.
+      name: IMAGE_DIGEST
+      type: string
+    - description: URL of the image just built.
+      name: IMAGE_URL
+      type: string
+  steps:
+    - args:
+        - $(params.EXTRA_ARGS)
+        - '--dockerfile=$(params.DOCKERFILE)'
+        - '--context=$(workspaces.source.path)/$(params.CONTEXT)'
+        - '--destination=$(params.IMAGE)'
+        - '--digest-file=$(results.IMAGE_DIGEST.path)'
+        - '--skip-tls-verify'
+      computeResources: {}
+      image: $(params.BUILDER_IMAGE)
+      name: build-and-push
+      securityContext:
+        runAsUser: 0
+      workingDir: $(workspaces.source.path)
+    - computeResources: {}
+      image: 'docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9'
+      name: write-url
+      script: |
+        set -e
+        image="$(params.IMAGE)"
+        echo -n "" | tee "$(results.IMAGE_URL.path)"
+  workspaces:
+    - description: Holds the context and Dockerfile
+      name: source
+    - description: Includes a docker config.json
+      mountPath: /kaniko/.docker
+      name: dockerconfig
+      optional: true
+----
+
+
+
+=== Pipeline execution review
+
 
 After some time, the pipeline will finish. You can at that point go to the Object Storage and check that:
 
@@ -1015,39 +1218,19 @@ image::ai-train-schedule.png[]
 
 In this section, a new Kubeflow Pipeline was created based on the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script]. This pipeline successfully trained the YOLO model for hardhat detection, generated the model file, and uploaded it into the OpenShift Data Foundation Object Storage. This model file will be essential for the next section, xref:ai-specialist-04-deploy.adoc[Model Serving].
 
+However, probably you used the reduced ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset and a limited number of `epochs` for faster training, so the model produced won't perform adequately in the field. It is advisable to discard that model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
 
 
+[IMPORTANT]
+
+If the model you use isn't capable of delivering strong performance, you won't achieve reliable or accurate results during the inference phase, so if you used the ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset you must update your `modelcar` image with the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
 
 
+The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] in your environment is to pull https://quay.io/repository/luisarizmendi/hardhat-or-hat-modelcar[the v1 of this pre-created modelcar image] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
 
+[NOTE]
 
-
-
-
-
-
-
-However, probably you used a reduced dataset ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") or limited epochs for faster training 
-
-
-
-and believe the model might not perform adequately in the field, it is advisable to discard the generated model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+You can also download the https://huggingface.co/luisarizmendi/hardhat-or-hat/tree/main/v1/model/onnx/1[version 1 (v1) of the model, more specifically the `onnx` version] and upload it into the the right location on the Object Storage using the https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[Object Storage browser], replacing the one that was created by the Kubeflow Pipeline, and then create the `modelcar` container image into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry]by re-runing the OpenShift Pipeline after changing the file with the mode. Go to the Pipelines menu in the OpenShift Console, select the pipeline and move into the "PipelinesRun" tab, there you can click the three dots on the right and select "Rerun".
 
 
 Before jump into the next section, be sure that you stopped your Code Workbench to save some resources in the OpenShift cluster.

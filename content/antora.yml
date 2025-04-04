@@ -45,6 +45,8 @@ asciidoc:
     page-links:
     - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge
       text: GitHub repository
+    - url: https://huggingface.co/luisarizmendi/hardhat-or-hat
+      text: Pre-trained models
     - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist
       text: AI Specialist solutions
     - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/platform-specialist
