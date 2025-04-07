@@ -325,9 +325,8 @@ spec:
 
             echo "Creating Dashboard Backend"
 
-            ++++
+            ----
             oc apply -f - <<EOF
-
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -383,8 +382,10 @@ spec:
               port:
                 targetPort: 5005
             EOF
-            ++++
-            
+            ----
+
+
+
             while true; do
               HOST=$(oc get route object-detection-dashboard-backend -n $NAMESPACE -o jsonpath='{.status.ingress[0].host}')
               if [[ -n "$HOST" ]]; then
@@ -559,7 +560,7 @@ podman create \
   --name inference-container \
   --pod hardhat-inference-pod \
   --volume model-storage:/mnt/models:z \
-  quay.io/modh/openvino_model_server@sha256:e4ece481b8dd866163da7ffcd3e95389ef7fb3d32a9a0dbb056b07839652a4f7 \
+  nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134\
   --model_name=hardhat \
   --port=8001 \
   --rest_port=8888 \
@@ -598,57 +599,24 @@ You can check that the GPU is being detected by checking the `healthz` endpoint,
 curl http://localhost:8080/healthz
 {"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
 ----
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1- Deploy the Inference Server:
-
-[source,shell,role=execute,subs="attributes"]
-----
-podman run -it --rm -p 8080:8080 quay.io/luisarizmendi/object-detection-inference-server:prod
-----
+====
 
 [NOTE]
 
-This is a large image, the pull could take time
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 If you have an https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[NVIDA GPU and you have it configured in your system] (`sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`), you might want to use it for inferencing by running `podman run -it --rm -p 8080:8080 --device nvidia.com/gpu=all --security-opt=label=disable quay.io/luisarizmendi/object-detection-inference-server:prod`
 
@@ -668,7 +636,29 @@ If you have an https://docs.nvidia.com/datacenter/cloud-native/container-toolkit
 
 
 
-====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 Now that you have the inference server you can proceed with the Camera stream manager deployment. This is the service that will take images from your Webcam and send them to the Inference Server. It will also publish the detections in an endpoint.
