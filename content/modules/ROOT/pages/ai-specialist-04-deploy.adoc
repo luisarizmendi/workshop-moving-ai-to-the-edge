@@ -327,7 +327,7 @@ spec:
 
             ++++
             oc apply -f - <<EOF
-            ++++
+
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -383,7 +383,8 @@ spec:
               port:
                 targetPort: 5005
             EOF
-
+            ++++
+            
             while true; do
               HOST=$(oc get route object-detection-dashboard-backend -n $NAMESPACE -o jsonpath='{.status.ingress[0].host}')
               if [[ -n "$HOST" ]]; then
