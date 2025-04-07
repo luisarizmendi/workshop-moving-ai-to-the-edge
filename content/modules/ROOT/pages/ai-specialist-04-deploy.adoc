@@ -325,7 +325,7 @@ spec:
 
             echo "Creating Dashboard Backend"
 
-            oc apply -f - <<EOF
+            oc apply -f - <<\EOF
             apiVersion: apps/v1
             kind: Deployment
             metadata:
@@ -394,7 +394,7 @@ spec:
 
             echo "Creating Dashboard Frontend"
 
-            oc apply -f - <<EOF
+            oc apply -f - <<\EOF
             apiVersion: apps/v1
             kind: Deployment
             metadata:
