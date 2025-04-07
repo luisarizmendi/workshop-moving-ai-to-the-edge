@@ -894,24 +894,13 @@ image::ai-deploy-screenshot_dashboard_detail.png[]
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 == Promoting model to production
 
-How do you promote a model to production? The approach depends on how you plan to distribute it. In our case, we are distributing the model as a `modelcar`, which is essentially a dedicated container image. Promoting the model becomes straightforward: it's as simple as assigning the correct container image tag to the image you wish to use. For example, you can use a `prod` tag for the model intended for production. To do this, you’ll need to select the container image with the model you’ve just created and apply the appropriate tag. Let’s take a look at how to do this in Quay.
+Now that you are sure that the model that you generated covers what will be needed in the field, you need to "promote" it to be used in production.
+
+How do you promote a model to production? The approach depends on how you plan to distribute it. 
+
+In our case, we are distributing the model as a `modelcar`, which is essentially a dedicated container image. Promoting the model becomes straightforward: it's as simple as assigning the correct container image tag to the image you wish to use. For example, you can use a `prod` tag for the model intended for production. To do this, you’ll need to select the container image with the model you’ve just created and apply the appropriate tag. Let’s take a look at how to do this in Quay.
 
 [example]
 ====
@@ -932,14 +921,14 @@ image::ai-deploy-promote.png[]
 ====
 
 
-
-
-
 == Solution and Next Steps
 
-In this step, you have completed key application development tasks, including building container images for the required applications. The code and corresponding Container files for each application can be found in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/serving/apps[`serving/apps` directory of the `ai-specialist` solution resources].
+In this step, you have completed key application development tasks, including building container images for the required applications. The code and corresponding Container files for each application can be found in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps[`hardhat-detection-apps` directory of the `resources/assets` resources].
 
 
 At this stage, you are well-positioned to hand over the solution to the xref:platform-specialist-00-intro.adoc[Platform Specialist] for deployment on Edge Devices. However, if you prefer to skip that step or have already completed it in a previous part of the workshop, you can proceed to the final task for the AI Specialist: the xref:ai-specialist-05-update.adoc[Day-2 Operations] section.
+
+
+Throughout this module, you worked with several applications that make up the overall solution architecture. To deepen your understanding, we encourage you to explore these components further—review their source code and examine how the container images were built. You can find this additional content in the xref:ai-specialist-bonus-apps.adoc[Bonus: Building the APPs] module.
 
 Do not remove the services that you deployed for your model testing since you will need it in the next section.
