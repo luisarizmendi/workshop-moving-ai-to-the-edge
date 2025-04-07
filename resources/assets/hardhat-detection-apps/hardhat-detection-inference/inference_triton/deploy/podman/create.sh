@@ -15,7 +15,7 @@ podman create \
   --entrypoint /bin/sh \
   quay.io/skopeo/stable \
   -c "mkdir -p /mnt/models && \
-    skopeo copy --override-os linux docker://quay.io/luisarizmendi/modelcar-hardhat-or-hat:onnx oci-archive:/tmp/modelcar.tar && \
+    skopeo copy --override-os linux docker://quay.io/luisarizmendi/modelcar-hardhat:v1 oci-archive:/tmp/modelcar.tar && \
     mkdir -p /tmp/image && \
     tar -xf /tmp/modelcar.tar -C /tmp/image && \
     for layer in /tmp/image/blobs/sha256/*; do \
@@ -28,7 +28,7 @@ podman create \
   --name inference-container \
   --pod hardhat-inference-pod \
   --volume model-storage:/mnt/models:z \
-  quay.io/modh/openvino_model_server@sha256:e4ece481b8dd866163da7ffcd3e95389ef7fb3d32a9a0dbb056b07839652a4f7 \
+  nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
   --model_name=hardhat \
   --port=8001 \
   --rest_port=8888 \

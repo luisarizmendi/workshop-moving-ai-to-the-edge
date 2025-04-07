@@ -596,7 +596,7 @@ podman create \
   --entrypoint /bin/sh \
   quay.io/skopeo/stable \
   -c "mkdir -p /mnt/models && \
-    skopeo copy --override-os linux docker://https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/<INSERT YOUR MODEL:TAG> oci-archive:/tmp/modelcar.tar && \
+    skopeo copy --override-os linux docker://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/<INSERT YOUR MODEL:TAG> oci-archive:/tmp/modelcar.tar && \
     mkdir -p /tmp/image && \
     tar -xf /tmp/modelcar.tar -C /tmp/image && \
     for layer in /tmp/image/blobs/sha256/*; do \
@@ -613,7 +613,7 @@ podman create \
   --name inference-container \
   --pod hardhat-inference-pod \
   --volume model-storage:/mnt/models:z \
-  nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134\
+  nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
   --model_name=hardhat \
   --port=8001 \
   --rest_port=8888 \
@@ -727,9 +727,6 @@ This won't work for MAC users since camera access from containers is different i
 
 The final step is to deploy the "Actuator". This service will send keepalives to the Dashboard and also an alarm is the Camera stream manager detects `no-hardhat` label in the images.
 
-
-
-
 [example]
 ====
 The "Actuator" service needs also to use the host network. 
@@ -740,19 +737,10 @@ Also you will need to include the Dashboard backend route. Please, don't forget 
 podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 
+[NOTE]
+
+The "Actuator" service needs also to use the host network. Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
 ====
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ==== The Convenient yet non-Edge test architecture (Inference at the Cloud)
@@ -769,27 +757,13 @@ Let's deploy this architecture:
 1- You should have the Inference Server already deployed, you don't need to deploy it locally, just take note of the inference URL again.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4- You still need to deploy the other services locally (although you could also potentially deploy the Actuator in the cloud too), but there is a difference on how you deploy the Camera Stream Manager, since you need to indicate the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://inference-server-user99-test.apps.cluster-2cndn.2cndn.sandbox73.opentlc.com`).
+2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://inference-server-user99-test.apps.cluster-2cndn.2cndn.sandbox73.opentlc.com`).
 
 ----
 sudo podman run -it --rm -p 5000:5000 --privileged -e INFERENCE_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE> quay.io/luisarizmendi/object-detection-stream-manager:prod
 ----
 
-5- Deploy the Actuator. 
+3- Deploy the Actuator in the same way than in the previous point: 
 
 ----
 podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
@@ -802,24 +776,6 @@ podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUT
 
 
 
-
-
-
-
-
-
-[example]
-====
-The "Actuator" service needs also to use the host network. Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
-
-----
-podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
-----
-
-
-
-
-====
 
 
 
