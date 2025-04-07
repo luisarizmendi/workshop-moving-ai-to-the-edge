@@ -16,6 +16,30 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
+
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
+
           while true; do
               if oc get tasks.tekton.dev -n default &> /dev/null; then
                   echo "Tekton API (tekton.dev/v1) is ready"
@@ -38,7 +62,7 @@ spec:
             done    
 
           echo "Creating cross-namespace-pipeline-runner"
-          oc apply -f - <<EOFUP
+          apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRole
@@ -65,7 +89,7 @@ spec:
           EOFUP
 
           echo "Creating pipeline ServiceAccount"
-          oc apply -f - <<EOFUP
+          apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: v1
           kind: ServiceAccount
@@ -90,7 +114,7 @@ spec:
             apiGroup: rbac.authorization.k8s.io
           EOFUP
 
-          oc apply -f - <<EOFUP
+          apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: v1
           kind: PersistentVolumeClaim
@@ -106,7 +130,7 @@ spec:
           EOFUP
 
           echo "Creating modelcar-containerfile-create Task"
-          oc apply -f - <<EOFUP
+          apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: tekton.dev/v1
           kind: Task
@@ -134,7 +158,7 @@ spec:
           EOFUP
 
           echo "Creating modelcar-download-model Task"
-          oc apply -f - <<EOFUP
+          apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: tekton.dev/v1
           kind: Task
@@ -201,7 +225,7 @@ spec:
 
 
           echo "Creating modelcar-build-and-push Task"
-          oc apply -f - <<EOFUP      
+          apply_with_retries  oc apply -f - <<EOFUP      
           ---
           apiVersion: tekton.dev/v1
           kind: Task
@@ -262,7 +286,7 @@ spec:
           EOFUP
 
           echo "Creating ai-modelcar Pipeline"
-          oc apply -f - <<EOFUP
+          apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: tekton.dev/v1
           kind: Pipeline

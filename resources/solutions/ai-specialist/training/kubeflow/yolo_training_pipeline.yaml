@@ -396,8 +396,23 @@ deploymentSpec:
           \        group=\"tekton.dev\",\n        version=\"v1\",\n        namespace=f\"\
           {user_name}-tools\",\n        plural=\"pipelineruns\",\n        body=pipeline_run_manifest\n\
           \    )\n    print(f\"Tekton PipelineRun '{pipeline_run_name}' triggered\
-          \ for pipeline '{pipeline_name}'.\")\n\n    time.sleep(5)\n\n    return\
-          \ pipeline_run_name\n\n"
+          \ for pipeline '{pipeline_name}'.\")\n\n    time.sleep(5)\n\n    # Poll\n\
+          \    timeout_seconds = 1800  \n    poll_interval = 10\n    elapsed = 0\n\
+          \n    while elapsed < timeout_seconds:\n        time.sleep(poll_interval)\n\
+          \        elapsed += poll_interval\n\n        run = custom_api.get_namespaced_custom_object(\n\
+          \            group=\"tekton.dev\",\n            version=\"v1\",\n      \
+          \      namespace=f\"{user_name}-tools\",\n            plural=\"pipelineruns\"\
+          ,\n            name=pipeline_run_name\n        )\n\n        conditions =\
+          \ run.get(\"status\", {}).get(\"conditions\", [])\n        if not conditions:\n\
+          \            continue\n\n        condition = conditions[0]\n        status\
+          \ = condition.get(\"status\")\n        reason = condition.get(\"reason\"\
+          )\n        message = condition.get(\"message\", \"\")\n\n        if status\
+          \ == \"True\" and reason == \"Succeeded\":\n            print(f\"PipelineRun\
+          \ {pipeline_run_name} succeeded.\")\n            break\n        elif status\
+          \ == \"False\":\n            raise RuntimeError(f\"PipelineRun {pipeline_run_name}\
+          \ failed: {reason} - {message}\")\n\n    else:\n        raise TimeoutError(f\"\
+          PipelineRun {pipeline_run_name} did not complete within timeout.\")\n\n\
+          \    return pipeline_run_name\n\n"
         image: python:3.9
     exec-createpvc:
       container:
@@ -688,7 +703,7 @@ root:
               componentInputParameter: train_name
             modelcar_image_tag:
               runtimeValue:
-                constant: 04-04-15_20
+                constant: 04-07-12_30
             object_storage_access_key:
               componentInputParameter: object_access_key
             object_storage_bucket:
@@ -706,7 +721,7 @@ root:
                 constant: ai-modelcar
             pipeline_run_name:
               runtimeValue:
-                constant: modelcar-run-04-04-15_20
+                constant: modelcar-run-04-07-12_30
             user_name:
               componentInputParameter: workshop_username
         taskInfo:
@@ -832,7 +847,7 @@ root:
               componentInputParameter: train_name
             modelcar_image_tag:
               runtimeValue:
-                constant: 04-04-15_20
+                constant: 04-07-12_30
             roboflow_project:
               componentInputParameter: roboflow_project
             roboflow_version:
@@ -900,7 +915,7 @@ root:
               componentInputParameter: object_secret_key
             tag:
               runtimeValue:
-                constant: 04-04-15_20
+                constant: 04-07-12_30
             test_dir:
               taskOutputParameter:
                 outputParameterKey: test_dir

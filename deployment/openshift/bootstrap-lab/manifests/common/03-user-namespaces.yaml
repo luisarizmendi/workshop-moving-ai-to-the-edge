@@ -35,7 +35,7 @@ spec:
           apiVersion: rbac.authorization.k8s.io/v1
           kind: RoleBinding
           metadata:
-            name: ${username}-adminc
+            name: ${username}-admin
             namespace: $namespace
           roleRef:
             apiGroup: rbac.authorization.k8s.io
@@ -63,6 +63,7 @@ spec:
                   }
                 }
               }
+          ---
           kind: Secret
           apiVersion: v1
           metadata:

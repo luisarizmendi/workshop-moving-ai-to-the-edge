@@ -150,17 +150,6 @@ image::ai-deploy-serving-endpoint.png[]
 Now that the Inference Server is running and you have the endpoint needed to access it, let’s deploy a test application that uses the server to tag a set of images.
 
 
-
-
-
-
-
-
-
-
-
-
-
 [example]
 ====
 
@@ -470,7 +459,10 @@ spec:
       restartPolicy: Never
 ----
 
-6- When all pods are running, go to "Routes" and you will be able to open the Dashboard using the Frontend URL. You will see an empty page with the "Device Monitoring Dashboard" title.
+6- When all pods are running, you can  
+
+http://object-detection-dashboard-frontend-{user}-test.apps.{ocp_cluster_url}
+[open the Dashboard using the Frontend URL]. You will see an empty page with the "Device Monitoring Dashboard" title.
 
 [CAUTION]
 
@@ -490,52 +482,243 @@ Instructions below are for Fedora/RHEL based systems and using the interactive m
 
 Be sure that you have the ports `tcp/8080` and `tcp/5000` ports open un your local machine. 
 
-[example]
-====
-3- Deploy the Camera stream manager. In this case you will need to run it as privileged to access the system devices (webcams) and also to use the host network, so it can reach out to the inference server.
 
-[source,shell,role=execute,subs="attributes"]
-----
-sudo podman run -it --rm -p 5000:5000 --privileged --network=host quay.io/luisarizmendi/object-detection-stream-manager:prod
-----
-
-[NOTE]
-
-This won't work for MAC users since camera access from containers is different in that OS. If you are a MAC user you can still run this service by downloading and running directly the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager/src/object-detection-stream-manager.py[`object-detection-stream-manager.py` python script] on your system with `python object-detection-stream-manager.py`. Remember to install the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager/src/requirements.txt[python dependencies] with `pip install` and to grant permissions to access cameras if needed.
-
-====
+Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your laptop, you can deploy the Inference Server using it for testing. But what if you don’t have one? You have two options at this point. 
 
 
-[NOTE]
-
-You will see logs directly in the console terminal. The Inference Server may already be displaying detection results, and if a `no_helmet` detection occurs, the "actuator" will trigger an alarm. Additionally, the Camera Stream Manager logs important details at startup, such as the selected webcam ID, providing useful insights for debugging and verification
-
-
-
-
-
-
-
-
-
-
-
-
-==== The Convenient Yet Non-Edge Test Architecture
-
-Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your laptop, you can deploy the Inference Server using it, as demonstrated in the previous step. But what if you don’t have one?
-
-You have two options:
-
-Stick to the Edge Computing setup, accepting slower frame detection. While not ideal, my tests have shown it remains functional.
-
-Leverage an OpenShift Cluster with GPUs (if available through this workshop). This allows you to deploy the Inference Server in the Cloud instead of your local machine for testing.
+Stick to the Edge Computing setup (inferencing at the edge/laptop), accepting slower frame detection. While not ideal, my tests have shown it remains functional, or leverage an OpenShift Cluster with GPUs (if available through this workshop). This allows you to deploy the Inference Server in the Cloud instead of your local machine for testing.
 
 While the second option provides faster inferencing, it is not a true Edge Computing architecture. [.underline]*Sending images from the edge to the Cloud introduces network delays and additional costs*, two key drawbacks that edge computing is designed to mitigate. However, for a quick test, it offers a practical way to achieve high-speed inferencing.
 
 [NOTE]
 
 This deployment is also useful for comparing Edge vs. Non-Edge setups. You can test with or without a GPU in both environments to evaluate user experience, delays, and performance trade-offs.
+
+
+So in summary, no you can either reuse the inference server you already deployed on OpenShift, or you can try a more realistic architecture by deploying a new inference server locally on your laptop. The second option is recommended if your laptop has a GPU or if your OpenShift environment doesn’t provide GPU support, in that case, at least you avoid the latency of sending inference requests to the cloud.
+
+Let’s review both options.
+
+
+==== Production-like test architecture (Inference at the Edge)
+
+In this case you have to deploy in your laptop:
+* Camera stream manager
+* Actuator
+* Inference server
+
+Let's start by the Inference server. Follow the steps below to deploy the Inference Server (you have a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman/create.sh[Shell script that automates the Inference Server deployment])
+
+
+[example]
+====
+
+1- Create the Volume that will be shared by the Init-Container with the `modelcar` and the Inference Server
+
+[source,shell,role=execute,subs="attributes"]
+----
+podman volume create model-storage
+----
+
+2- Create the POD that will contain both the `modelcar` and the Inference Server
+
+[source,shell,role=execute,subs="attributes"]
+----
+podman pod create --name hardhat-inference-pod --publish 8888:8888
+----
+
+3- Create the Init-Container based in the `modelcar` container image that you created. Before running the command below include your `modelcar` image name and tag.
+
+[source,shell, subs="attributes"]
+----
+podman create \
+  --name model-downloader \
+  --pod hardhat-inference-pod \
+  --volume model-storage:/mnt/models:z \
+  --init-ctr once \
+  --entrypoint /bin/sh \
+  quay.io/skopeo/stable \
+  -c "mkdir -p /mnt/models && \
+    skopeo copy --override-os linux docker://https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/<INSERT YOUR MODEL:TAG> oci-archive:/tmp/modelcar.tar && \
+    mkdir -p /tmp/image && \
+    tar -xf /tmp/modelcar.tar -C /tmp/image && \
+    for layer in /tmp/image/blobs/sha256/*; do \
+      tar -tf \"\$layer\" | grep '^models/' && tar -xf \"\$layer\" -C /mnt/models --strip-components=1 || true; \
+    done && \
+    rm -rf /tmp/modelcar.tar /tmp/image"
+----
+
+4- Run the Inference Server as part of the POD
+
+[source,shell,role=execute,subs="attributes"]
+----
+podman create \
+  --name inference-container \
+  --pod hardhat-inference-pod \
+  --volume model-storage:/mnt/models:z \
+  quay.io/modh/openvino_model_server@sha256:e4ece481b8dd866163da7ffcd3e95389ef7fb3d32a9a0dbb056b07839652a4f7 \
+  --model_name=hardhat \
+  --port=8001 \
+  --rest_port=8888 \
+  --model_path=/mnt/models \
+  --file_system_poll_wait_seconds=0 \
+  --grpc_bind_address=0.0.0.0 \
+  --rest_bind_address=0.0.0.0 \
+  --target_device=AUTO \
+  --metrics_enable
+----
+
+5- Start the POD
+[source,shell,role=execute,subs="attributes"]
+----
+podman pod start hardhat-inference-pod
+----
+====
+
+[NOTE]
+
+These are large images, the pull could take time
+
+
+[NOTE]
+
+If after the test you want to remove the POD you can run `podman pod stop hardhat-inference-pod && podman pod rm hardhat-inference-pod`
+
+
+The Inference service will be available at http://localhost:8888. 
+
+
+You can check that the GPU is being detected by checking the `healthz` endpoint, see an example below.
+
+[source,shell, subs="attributes"]
+----
+curl http://localhost:8080/healthz
+{"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
+----
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1- Deploy the Inference Server:
+
+[source,shell,role=execute,subs="attributes"]
+----
+podman run -it --rm -p 8080:8080 quay.io/luisarizmendi/object-detection-inference-server:prod
+----
+
+[NOTE]
+
+This is a large image, the pull could take time
+
+If you have an https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[NVIDA GPU and you have it configured in your system] (`sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`), you might want to use it for inferencing by running `podman run -it --rm -p 8080:8080 --device nvidia.com/gpu=all --security-opt=label=disable quay.io/luisarizmendi/object-detection-inference-server:prod`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+====
+
+
+Now that you have the inference server you can proceed with the Camera stream manager deployment. This is the service that will take images from your Webcam and send them to the Inference Server. It will also publish the detections in an endpoint.
+
+
+[example]
+====
+In this case you will need to run it as privileged to access the system devices (webcams) and also to use the host network (to simplify inter-container communication), so it can reach out to the inference server.
+
+[source,shell,role=execute,subs="attributes"]
+----
+sudo podman run -it --rm -p 5000:5000 --privileged --network=host quay.io/luisarizmendi/object-detection-stream-manager:prod
+----
+
+You will see logs directly in the console terminal. The Inference Server may already be displaying detection results, and if a `no_helmet` detection occurs, the "Actuator" will trigger an alarm. Additionally, the Camera Stream Manager logs important details at startup, such as the selected webcam ID, providing useful insights for debugging and verification
+====
+
+[NOTE]
+
+This won't work for MAC users since camera access from containers is different in that OS. If you are a MAC user you can still run this service by downloading and running directly the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/object-detection-stream-manager.py[`object-detection-stream-manager.py` python script] on your system with `python object-detection-stream-manager.py`. Remember to install the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/requirements.txt[python dependencies] with `pip install` and to grant permissions to access cameras if needed.
+
+
+The final step is to deploy the "Actuator". This service will send keepalives to the Dashboard and also an alarm is the Camera stream manager detects `no-hardhat` label in the images.
+
+
+
+
+[example]
+====
+The "Actuator" service needs also to use the host network. 
+
+Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
+
+----
+podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
+----
+
+====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+==== The Convenient yet non-Edge test architecture (Inference at the Cloud)
 
 Now, let’s examine the [.underline]*non-edge architecture* we’ll set up for testing. As you can see, the difference comparing it with the "pure" edge deployment is where the Inference Server is located.
 
@@ -637,6 +820,21 @@ podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUT
 
 
 
+[example]
+====
+The "Actuator" service needs also to use the host network. Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
+
+----
+podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
+----
+
+
+
+
+====
+
+
+
 
 
 
@@ -670,9 +868,6 @@ For this test, we will use your own laptop as the "Edge Device", but in contrast
 
 
 
-
-
-http://object-detection-dashboard-frontend-user99-test.apps.cluster-khkxl.khkxl.sandbox8.opentlc.com
 
 be sure http that chrome redirects to https
 

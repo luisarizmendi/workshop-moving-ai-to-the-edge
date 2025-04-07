@@ -475,6 +475,41 @@ def create_modelcar(
 
     time.sleep(5)
 
+    # Poll
+    timeout_seconds = 1800  
+    poll_interval = 10
+    elapsed = 0
+
+    while elapsed < timeout_seconds:
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+
+        run = custom_api.get_namespaced_custom_object(
+            group="tekton.dev",
+            version="v1",
+            namespace=f"{user_name}-tools",
+            plural="pipelineruns",
+            name=pipeline_run_name
+        )
+
+        conditions = run.get("status", {}).get("conditions", [])
+        if not conditions:
+            continue
+
+        condition = conditions[0]
+        status = condition.get("status")
+        reason = condition.get("reason")
+        message = condition.get("message", "")
+
+        if status == "True" and reason == "Succeeded":
+            print(f"PipelineRun {pipeline_run_name} succeeded.")
+            break
+        elif status == "False":
+            raise RuntimeError(f"PipelineRun {pipeline_run_name} failed: {reason} - {message}")
+
+    else:
+        raise TimeoutError(f"PipelineRun {pipeline_run_name} did not complete within timeout.")
+
     return pipeline_run_name
 
 
