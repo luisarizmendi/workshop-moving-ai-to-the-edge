@@ -361,7 +361,6 @@ Follow the steps below to create the https://github.com/luisarizmendi/workshop-m
 
 5- Paste there the content shown below to deploy the Dashboard and Click "Create".
 
-[source,yaml,role=execute,subs="attributes"]
 ----
 apiVersion: batch/v1
 kind: Job
