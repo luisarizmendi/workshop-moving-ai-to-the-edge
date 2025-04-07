@@ -218,7 +218,6 @@ Now that the Inference Server is running and you have the endpoint needed to acc
 
 3- Be sure that you are in the right project (`{user}-test`) and paste the following YAML
 
-[source,yaml,role=execute,subs="attributes"]
 ----
 apiVersion: apps/v1
 kind: Deployment
