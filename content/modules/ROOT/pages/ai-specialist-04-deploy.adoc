@@ -147,6 +147,65 @@ When the Inference server appears as avialable in the https://rhods-dashboard-re
 image::ai-deploy-serving-endpoint.png[]
 
 
+Once the POD is running you can test the access to the Inference Server by checking the health endpoint:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
+
+
+
+
+[example]
+====
+
+
+
+3- Go to routes and take note of the Inference Server route. Now you can check that the GPU is being detected by checking the `healthz` endpoint, see an example below.
+
+----
+curl http://inference-server-user99-test.apps.cluster-2cndn.2cndn.sandbox73.opentlc.com/healthz
+{"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
+----
+
+
+====
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Now that the Inference Server is running and you have the endpoint needed to access it, let’s deploy a test application that uses the server to tag a set of images.
 
 
@@ -325,7 +384,6 @@ spec:
 
             echo "Creating Dashboard Backend"
 
-            ----
             oc apply -f - <<EOF
             apiVersion: apps/v1
             kind: Deployment
@@ -382,9 +440,6 @@ spec:
               port:
                 targetPort: 5005
             EOF
-            ----
-
-
 
             while true; do
               HOST=$(oc get route object-detection-dashboard-backend -n $NAMESPACE -o jsonpath='{.status.ingress[0].host}')
@@ -594,15 +649,6 @@ The Inference service will be available at http://localhost:8888.
 
 You can check that the GPU is being detected by checking the `healthz` endpoint, see an example below.
 
-[source,shell, subs="attributes"]
-----
-curl http://localhost:8080/healthz
-{"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
-----
-====
-
-[NOTE]
-
 
 
 
@@ -716,77 +762,28 @@ podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUT
 Now, let’s examine the [.underline]*non-edge architecture* we’ll set up for testing. As you can see, the difference comparing it with the "pure" edge deployment is where the Inference Server is located.
 
 
-image::ai-deploy-noy-edge-arch.png[]
+image::ai-deploy-non-edge-arch.png[]
 
 [example]
 ====
 Let's deploy this architecture:
 
-1- Start by the Inference Server. In this case we will need the Kubernetes manifests that we will apply in OpenShift (you can use the project that you created, `{user}-test`):
+1- You should have the Inference Server already deployed, you don't need to deploy it locally, just take note of the inference URL again.
 
 
-[source,yaml,role=execute,subs="attributes"]
-----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: inference-server
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: inference-server
-  template:
-    metadata:
-      labels:
-        app: inference-server
-    spec:
-      containers:
-        - name: inference-server
-          image: quay.io/luisarizmendi/object-detection-inference-server:prod
-          ports:
-            - containerPort: 8080
-          resources:
-            limits:
-              nvidia.com/gpu: 1 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: inference-server
-spec:
-  selector:
-    app: inference-server
-  ports:
-  - protocol: TCP
-    port: 8080
-    targetPort: 8080
-  type: ClusterIP
-
----
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: inference-server
-  labels:
-    app: inference-server
-spec:
-  to:
-    kind: Service
-    name: inference-server
-  port:
-    targetPort: 8080
-----
 
 
-2- Wait until the POD is in `Running` state.
 
-3- Go to routes and take note of the Inference Server route. Now you can check that the GPU is being detected by checking the `healthz` endpoint, see an example below.
 
-----
-curl http://inference-server-user99-test.apps.cluster-2cndn.2cndn.sandbox73.opentlc.com/healthz
-{"status":"healthy","gpu_available":true,"model_loaded":true,"model_name":"1","timestamp":"2025-01-28T22:34:31.102136"}
-----
+
+
+
+
+
+
+
+
+
 
 4- You still need to deploy the other services locally (although you could also potentially deploy the Actuator in the cloud too), but there is a difference on how you deploy the Camera Stream Manager, since you need to indicate the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://inference-server-user99-test.apps.cluster-2cndn.2cndn.sandbox73.opentlc.com`).
 

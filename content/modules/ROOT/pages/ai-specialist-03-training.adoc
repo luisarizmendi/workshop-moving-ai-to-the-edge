@@ -120,9 +120,7 @@ def yolo_training_pipeline(
     train_epochs: int = 50,
     train_batch_size: int = 16,
     train_img_size: int = 640,
-    
-    inference_outputdims: str = "[ 1, 6, 8400 ]",
-    
+       
     container_registry_secret_name: str = "container-registry-credentials",
     
     model_registry_name: str = "object-detection-model-registry"
@@ -215,7 +213,7 @@ def yolo_training_pipeline(
         secret_key=object_secret_key,
         bucket=object_storage_bucket,
         tag=model_tag,
-        outputdims=inference_outputdims
+        outputdims=train_task.outputs['inference_outputdims']
     ).after(train_task)
     upload_task.set_caching_options(enable_caching=False)
     kubernetes.mount_pvc(
@@ -352,6 +350,7 @@ One significant enhancement in this Kubeflow step, compared to the Elyra pipelin
 
 [source,python,role=execute,subs="attributes"]
 ----
+
 # Component 2: Train Model
 @dsl.component(
     base_image="quay.io/luisarizmendi/pytorch-custom:latest",
@@ -363,26 +362,41 @@ def train_model(
     batch_size: int = 16,
     img_size: int = 640,
     name: str = "yolo",
+    yolo_model: str = "yolo11m.pt",
+    optimizer: str = "SGD",
+    learning_rate: float = 0.005,
 ) -> NamedTuple('Outputs', [
     ('train_dir', str),
     ('test_dir', str),
-    ('metrics', dict)
+    ('metrics', dict),
+    ('inference_outputdims', str)
 ]):
     import torch
     from ultralytics import YOLO
     import pandas as pd
     import os
-
+    import onnx
+    
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+    print(f"Using device: {device}")
+    
     CONFIG = {
         'name': name,
-        'model': 'yolo11m.pt',
+        'model': yolo_model,
         'data': f"{dataset_path}/data.yaml",
         'epochs': epochs,
         'batch': batch_size,
         'imgsz': img_size,
         'device': device,
+        'optimizer': optimizer,
+        'lr0': 0.001,
+        'lrf': learning_rate,
+        'momentum': 0.9,
+        'weight_decay': 0.0005,
+        'warmup_epochs': 3,
+        'warmup_bias_lr': 0.01,
+        'warmup_momentum': 0.8,
+        'amp': False,
     }
 
     # Configure PyTorch
@@ -397,8 +411,19 @@ def train_model(
         batch=CONFIG['batch'],
         imgsz=CONFIG['imgsz'],
         device=CONFIG['device'],
+        
+        # Optimizer parameters
+        optimizer=CONFIG['optimizer'],
+        lr0=CONFIG['lr0'],
+        lrf=CONFIG['lrf'],
+        momentum=CONFIG['momentum'],
+        weight_decay=CONFIG['weight_decay'],
+        warmup_epochs=CONFIG['warmup_epochs'],
+        warmup_bias_lr=CONFIG['warmup_bias_lr'],
+        warmup_momentum=CONFIG['warmup_momentum'],
+        amp=CONFIG['amp'],
     )
-
+    
     # Evaluate model
     results_test = model.val(
         data=CONFIG['data'],
@@ -406,6 +431,16 @@ def train_model(
         device=CONFIG['device'],
         imgsz=CONFIG['imgsz']
     )
+
+    # Export to ONNX format
+    export_path = model.export(format='onnx')
+    onnx_model = onnx.load(export_path)
+    output_tensor = onnx_model.graph.output[0]
+    inference_outputdims = [
+        d.dim_value if (d.dim_value > 0) else -1
+        for d in output_tensor.type.tensor_type.shape.dim
+    ]
+    print("Exported model output shape:", inference_outputdims)
 
     # Compute metrics from CSV
     results_csv_path = os.path.join(results_train.save_dir, "results.csv")
@@ -422,11 +457,13 @@ def train_model(
     return NamedTuple('Outputs', [
         ('train_dir', str),
         ('test_dir', str),
-        ('metrics', dict)
+        ('metrics', dict),
+        ('inference_outputdims', str)
     ])(
         train_dir=str(results_train.save_dir),
         test_dir=str(results_test.save_dir),
-        metrics=metrics
+        metrics=metrics,
+        inference_outputdims=str(inference_outputdims)
     )
 ----
 
@@ -1118,6 +1155,11 @@ output [
 ]
 backend: "onnxruntime"
 ----
+
+[IMPORTANT]
+
+The content is generated automatically by the Pipeline but be aware that the output value configured in this file is critical, as the Inference Server will fail to start if it doesn't match the model's expected output dimensions. In this example, the value is set to `[1, 6, 8400]`. This corresponds to a model with two classes (`hardhat` and `no-hardhat`). The second number (`6`) reflects the number of predicted values per anchor, which includes class scores and bounding box parameters. When you add more classes (as you'll do in the final module), you must increase this second value accordingly. For instance, if you add one additional class, the value should be updated to `[1, 7, 8400]`.
+
 
 
 3- `build-and-push`: Performs the container image build using https://hub.tekton.dev/tekton/task/kaniko[Kaniko] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].

@@ -4,7 +4,6 @@
 # Inputs:
 #    container_registry: str
 #    container_registry_secret_name: str [Default: 'container-registry-credentials']
-#    inference_outputdims: str [Default: '[ 1, 6, 8400 ]']
 #    model_registry_name: str [Default: 'object-detection-model-registry']
 #    object_access_key: str
 #    object_secret_key: str
@@ -277,6 +276,8 @@ components:
           parameterType: STRING
     outputDefinitions:
       parameters:
+        inference_outputdims:
+          parameterType: STRING
         metrics:
           parameterType: STRUCT
         test_dir:
@@ -567,12 +568,13 @@ deploymentSpec:
           \    batch_size: int = 16,\n    img_size: int = 640,\n    name: str = \"\
           yolo\",\n    yolo_model: str = \"yolo11m.pt\",\n    optimizer: str = \"\
           SGD\",\n    learning_rate: float = 0.005,\n) -> NamedTuple('Outputs', [\n\
-          \    ('train_dir', str),\n    ('test_dir', str),\n    ('metrics', dict)\n\
-          ]):\n    import torch\n    from ultralytics import YOLO\n    import pandas\
-          \ as pd\n    import os\n\n    device = torch.device(\"cuda:0\" if torch.cuda.is_available()\
-          \ else \"cpu\")\n    print(f\"Using device: {device}\")\n\n    CONFIG =\
-          \ {\n        'name': name,\n        'model': yolo_model,\n        'data':\
-          \ f\"{dataset_path}/data.yaml\",\n        'epochs': epochs,\n        'batch':\
+          \    ('train_dir', str),\n    ('test_dir', str),\n    ('metrics', dict),\n\
+          \    ('inference_outputdims', str)\n]):\n    import torch\n    from ultralytics\
+          \ import YOLO\n    import pandas as pd\n    import os\n    import onnx\n\
+          \n    device = torch.device(\"cuda:0\" if torch.cuda.is_available() else\
+          \ \"cpu\")\n    print(f\"Using device: {device}\")\n\n    CONFIG = {\n \
+          \       'name': name,\n        'model': yolo_model,\n        'data': f\"\
+          {dataset_path}/data.yaml\",\n        'epochs': epochs,\n        'batch':\
           \ batch_size,\n        'imgsz': img_size,\n        'device': device,\n \
           \       'optimizer': optimizer,\n        'lr0': 0.001,\n        'lrf': learning_rate,\n\
           \        'momentum': 0.9,\n        'weight_decay': 0.0005,\n        'warmup_epochs':\
@@ -590,7 +592,11 @@ deploymentSpec:
           \        amp=CONFIG['amp'],\n    )\n\n    # Evaluate model\n    results_test\
           \ = model.val(\n        data=CONFIG['data'],\n        split='test',\n  \
           \      device=CONFIG['device'],\n        imgsz=CONFIG['imgsz']\n    )\n\n\
-          \    # Export to ONNX format\n    model.export(format='onnx', imgsz=CONFIG['imgsz'])\n\
+          \    # Export to ONNX format\n    export_path = model.export(format='onnx')\n\
+          \    onnx_model = onnx.load(export_path)\n    output_tensor = onnx_model.graph.output[0]\n\
+          \    inference_outputdims = [\n        d.dim_value if (d.dim_value > 0)\
+          \ else -1\n        for d in output_tensor.type.tensor_type.shape.dim\n \
+          \   ]\n    print(\"Exported model output shape:\", inference_outputdims)\n\
           \n    # Compute metrics from CSV\n    results_csv_path = os.path.join(results_train.save_dir,\
           \ \"results.csv\")\n    results_df = pd.read_csv(results_csv_path)\n\n \
           \   # Extract metrics\n    metrics = {\n        \"precision\": results_df[\"\
@@ -598,9 +604,10 @@ deploymentSpec:
           ].iloc[-1],\n        \"mAP50\": results_df[\"metrics/mAP50(B)\"].iloc[-1],\n\
           \        \"mAP50-95\": results_df[\"metrics/mAP50-95(B)\"].iloc[-1]\n  \
           \  }\n\n    return NamedTuple('Outputs', [\n        ('train_dir', str),\n\
-          \        ('test_dir', str),\n        ('metrics', dict)\n    ])(\n      \
-          \  train_dir=str(results_train.save_dir),\n        test_dir=str(results_test.save_dir),\n\
-          \        metrics=metrics\n    )\n\n"
+          \        ('test_dir', str),\n        ('metrics', dict),\n        ('inference_outputdims',\
+          \ str)\n    ])(\n        train_dir=str(results_train.save_dir),\n      \
+          \  test_dir=str(results_test.save_dir),\n        metrics=metrics,\n    \
+          \    inference_outputdims=str(inference_outputdims)\n    )\n\n"
         image: quay.io/luisarizmendi/pytorch-custom:latest
         resources:
           accelerator:
@@ -703,7 +710,7 @@ root:
               componentInputParameter: train_name
             modelcar_image_tag:
               runtimeValue:
-                constant: 04-07-12_30
+                constant: 04-07-15_31
             object_storage_access_key:
               componentInputParameter: object_access_key
             object_storage_bucket:
@@ -721,7 +728,7 @@ root:
                 constant: ai-modelcar
             pipeline_run_name:
               runtimeValue:
-                constant: modelcar-run-04-07-12_30
+                constant: modelcar-run-04-07-15_31
             user_name:
               componentInputParameter: workshop_username
         taskInfo:
@@ -847,7 +854,7 @@ root:
               componentInputParameter: train_name
             modelcar_image_tag:
               runtimeValue:
-                constant: 04-07-12_30
+                constant: 04-07-15_31
             roboflow_project:
               componentInputParameter: roboflow_project
             roboflow_version:
@@ -910,12 +917,14 @@ root:
             endpoint:
               componentInputParameter: object_storage_endpoint
             outputdims:
-              componentInputParameter: inference_outputdims
+              taskOutputParameter:
+                outputParameterKey: inference_outputdims
+                producerTask: train-model
             secret_key:
               componentInputParameter: object_secret_key
             tag:
               runtimeValue:
-                constant: 04-07-12_30
+                constant: 04-07-15_31
             test_dir:
               taskOutputParameter:
                 outputParameterKey: test_dir
@@ -932,10 +941,6 @@ root:
         parameterType: STRING
       container_registry_secret_name:
         defaultValue: container-registry-credentials
-        isOptional: true
-        parameterType: STRING
-      inference_outputdims:
-        defaultValue: '[ 1, 6, 8400 ]'
         isOptional: true
         parameterType: STRING
       model_registry_name:

@@ -8,4 +8,4 @@ args = parser.parse_args()
 
 # Load and export the model
 model = YOLO(args.model_path)
-model.export(format="onnx")
+model.export(format='onnx', imgsz=640)

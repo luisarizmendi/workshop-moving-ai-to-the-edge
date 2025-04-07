@@ -58,13 +58,15 @@ def train_model(
 ) -> NamedTuple('Outputs', [
     ('train_dir', str),
     ('test_dir', str),
-    ('metrics', dict)
+    ('metrics', dict),
+    ('inference_outputdims', str)
 ]):
     import torch
     from ultralytics import YOLO
     import pandas as pd
     import os
-
+    import onnx
+    
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
@@ -121,7 +123,14 @@ def train_model(
     )
 
     # Export to ONNX format
-    model.export(format='onnx', imgsz=CONFIG['imgsz'])
+    export_path = model.export(format='onnx')
+    onnx_model = onnx.load(export_path)
+    output_tensor = onnx_model.graph.output[0]
+    inference_outputdims = [
+        d.dim_value if (d.dim_value > 0) else -1
+        for d in output_tensor.type.tensor_type.shape.dim
+    ]
+    print("Exported model output shape:", inference_outputdims)
 
     # Compute metrics from CSV
     results_csv_path = os.path.join(results_train.save_dir, "results.csv")
@@ -138,11 +147,13 @@ def train_model(
     return NamedTuple('Outputs', [
         ('train_dir', str),
         ('test_dir', str),
-        ('metrics', dict)
+        ('metrics', dict),
+        ('inference_outputdims', str)
     ])(
         train_dir=str(results_train.save_dir),
         test_dir=str(results_test.save_dir),
-        metrics=metrics
+        metrics=metrics,
+        inference_outputdims=str(inference_outputdims)
     )
 
     
@@ -543,9 +554,7 @@ def yolo_training_pipeline(
     train_epochs: int = 50,
     train_batch_size: int = 16,
     train_img_size: int = 640,
-    
-    inference_outputdims: str = "[ 1, 6, 8400 ]",
-    
+       
     container_registry_secret_name: str = "container-registry-credentials",
     
     model_registry_name: str = "object-detection-model-registry"
@@ -645,7 +654,7 @@ def yolo_training_pipeline(
         secret_key=object_secret_key,
         bucket=object_storage_bucket,
         tag=model_tag,
-        outputdims=inference_outputdims
+        outputdims=train_task.outputs['inference_outputdims']
     ).after(train_task)
     upload_task.set_caching_options(enable_caching=False)
     kubernetes.mount_pvc(
