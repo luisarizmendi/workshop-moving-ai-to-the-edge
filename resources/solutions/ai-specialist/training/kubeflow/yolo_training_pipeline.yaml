@@ -46,8 +46,6 @@ components:
           parameterType: STRING
         pipeline_name:
           parameterType: STRING
-        pipeline_run_name:
-          parameterType: STRING
         user_name:
           parameterType: STRING
     outputDefinitions:
@@ -226,6 +224,8 @@ components:
           parameterType: STRING
         modelcar_image_tag:
           parameterType: STRING
+        output_dims:
+          parameterType: STRING
         roboflow_project:
           parameterType: STRING
         roboflow_version:
@@ -298,8 +298,6 @@ components:
           parameterType: STRING
         secret_key:
           parameterType: STRING
-        tag:
-          parameterType: STRING
         test_dir:
           parameterType: STRING
         train_dir:
@@ -311,6 +309,8 @@ components:
         model_artifact_s3_path:
           parameterType: STRING
         model_path:
+          parameterType: STRING
+        tag:
           parameterType: STRING
 deploymentSpec:
   executors:
@@ -341,21 +341,21 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef create_modelcar(\n        pipeline_name: str,\n        pipeline_run_name:\
-          \ str,\n\n        user_name: str,\n\n        object_storage_endpoint: str,\n\
-          \        object_storage_bucket: str,\n        object_storage_path: str,\n\
-          \        object_storage_access_key: str,\n        object_storage_secret_key:\
-          \ str,\n\n        modelcar_image_name: str,\n        modelcar_image_tag:\
-          \ str,\n\n        container_registry_credentials: str,\n        container_registry:\
-          \ str,\n\n) -> str:\n\n    from kubernetes import client, config\n    import\
-          \ time\n    import random\n    import string\n    import re\n\n    modelcar_image_name=f\"\
-          modelcar-{modelcar_image_name}\"\n\n    # Underscores  are not allowed in\
-          \ k8s names\n    pipeline_run_name = pipeline_run_name.replace(\"_\", \"\
-          -\")\n    random_str = ''.join(random.choices(string.ascii_lowercase + string.digits,\
-          \ k=3))\n    pipeline_run_name += f\"-{random_str}\"\n\n    container_registry_clean\
-          \ = re.sub(r\"^https?://([^/]+).*\", r\"\\1\", container_registry)\n   \
-          \ print(f\"Using this Container Registry: {container_registry_clean}\")\n\
-          \n    config.load_incluster_config()\n    custom_api = client.CustomObjectsApi()\n\
+          \ *\n\ndef create_modelcar(\n        pipeline_name: str,\n\n        user_name:\
+          \ str,\n\n        object_storage_endpoint: str,\n        object_storage_bucket:\
+          \ str,\n        object_storage_path: str,\n        object_storage_access_key:\
+          \ str,\n        object_storage_secret_key: str,\n\n        modelcar_image_name:\
+          \ str,\n        modelcar_image_tag: str,\n\n        container_registry_credentials:\
+          \ str,\n        container_registry: str,\n\n) -> str:\n\n    from kubernetes\
+          \ import client, config\n    import time\n    import random\n    import\
+          \ string\n    import re\n\n    pipeline_run_name=f\"modelcar-run-{modelcar_image_tag}\"\
+          \n    modelcar_image_name=f\"modelcar-{modelcar_image_name}\"\n\n    # Underscores\
+          \  are not allowed in k8s names\n    pipeline_run_name = pipeline_run_name.replace(\"\
+          _\", \"-\")\n    random_str = ''.join(random.choices(string.ascii_lowercase\
+          \ + string.digits, k=3))\n    pipeline_run_name += f\"-{random_str}\"\n\n\
+          \    container_registry_clean = re.sub(r\"^https?://([^/]+).*\", r\"\\1\"\
+          , container_registry)\n    print(f\"Using this Container Registry: {container_registry_clean}\"\
+          )\n\n    config.load_incluster_config()\n    custom_api = client.CustomObjectsApi()\n\
           \n    pipeline_run_manifest = {\n        \"apiVersion\": \"tekton.dev/v1\"\
           ,\n        \"kind\": \"PipelineRun\",\n        \"metadata\": {\n       \
           \     \"name\": pipeline_run_name,\n            \"namespace\": f\"{user_name}-tools\"\
@@ -502,19 +502,20 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef push_to_model_registry(\n    user_name: str,\n    model_name:\
           \ str,\n    model_format_name: str,\n    metrics: dict,\n    model_registry_name:\
-          \ str,\n\n    container_registry: str,\n    modelcar_image_name: str,\n\
-          \    modelcar_image_tag: str,\n\n    roboflow_workspace: str,\n    roboflow_project:\
-          \ str,\n    roboflow_version: int,\n    train_epochs: int,\n    train_batch_size:\
-          \ int,\n    train_img_size: int\n):\n    from model_registry import ModelRegistry\n\
-          \    from model_registry import utils\n    import os\n    import json\n\
-          \    import re\n\n    container_registry_clean = re.sub(r\"^https?://([^/]+).*\"\
-          , r\"\\1\", container_registry)\n\n    model_object_prefix = model_name\
-          \ if model_name else \"model\"\n\n    # To avoid making the user introduce\
-          \ the cluster domain I get it from the Quay endpoint (that should be running\
-          \ in the same cluster). That's why in the vars I use the external endpoint\
-          \ for Quay\n    cluster_domain= \"\"\n    pattern = re.compile(r\"apps\\\
-          .([^/]+)\")\n    match = re.search(pattern, container_registry)\n    cluster_domain\
-          \ = match.group(1) if match else None\n\n    server_address = f\"https://{model_registry_name}-rest.apps.{cluster_domain}\"\
+          \ str,\n    output_dims: str,\n    container_registry: str,\n    modelcar_image_name:\
+          \ str,\n    modelcar_image_tag: str,\n\n    roboflow_workspace: str,\n \
+          \   roboflow_project: str,\n    roboflow_version: int,\n    train_epochs:\
+          \ int,\n    train_batch_size: int,\n    train_img_size: int\n):\n    from\
+          \ model_registry import ModelRegistry\n    from model_registry import utils\n\
+          \    import os\n    import json\n    import re\n\n    container_registry_clean\
+          \ = re.sub(r\"^https?://([^/]+).*\", r\"\\1\", container_registry)\n\n \
+          \   model_object_prefix = model_name if model_name else \"model\"\n\n  \
+          \  # To avoid making the user introduce the cluster domain I get it from\
+          \ the Quay endpoint (that should be running in the same cluster). That's\
+          \ why in the vars I use the external endpoint for Quay\n    cluster_domain=\
+          \ \"\"\n    pattern = re.compile(r\"apps\\.([^/]+)\")\n    match = re.search(pattern,\
+          \ container_registry)\n    cluster_domain = match.group(1) if match else\
+          \ None\n\n    server_address = f\"https://{model_registry_name}-rest.apps.{cluster_domain}\"\
           \n\n    print(f\"Publishing model into {server_address}\")\n\n    #namespace_file_path\
           \ = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'\n    #with\
           \ open(namespace_file_path, 'r') as namespace_file:\n    #    namespace\
@@ -527,9 +528,9 @@ deploymentSpec:
           : str(train_batch_size),\n            \"Image Size\": str(train_img_size),\n\
           \            \"mAP50\": str(metrics[\"mAP50\"]),\n            \"mAP50-95\"\
           : str(metrics[\"mAP50-95\"]),\n            \"precision\": str(metrics[\"\
-          precision\"]),\n            \"recall\": str(metrics[\"recall\"])\n     \
-          \   }\n\n        rm = registry.register_model(\n            registered_model_name,\n\
-          \            f\"oci://{container_registry_clean}/{user_name}/modelcar-{modelcar_image_name}:{modelcar_image_tag}\"\
+          precision\"]),\n            \"recall\": str(metrics[\"recall\"]),\n    \
+          \        \"output dims\": str(output_dims)\n        }\n\n        rm = registry.register_model(\n\
+          \            registered_model_name,\n            f\"oci://{container_registry_clean}/{user_name}/modelcar-{modelcar_image_name}:{modelcar_image_tag}\"\
           ,\n            version=modelcar_image_tag,\n            description=f\"\
           {registered_model_name} is a dense neural network that detects Hardhats\
           \ in images.\",\n            model_format_name=model_format_name,\n    \
@@ -643,13 +644,14 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef upload_to_storage(\n    train_dir: str,\n    tag: str,\n    test_dir:\
-          \ str,\n    endpoint: str,\n    access_key: str,\n    secret_key: str,\n\
-          \    bucket: str,\n    outputdims: str,\n    model_path: dsl.OutputPath(str)\n\
-          ) -> NamedTuple('Outputs', [\n    ('model_artifact_s3_path', str),\n   \
-          \ ('files_model', str)\n]):\n    import boto3\n    from botocore.exceptions\
-          \ import NoCredentialsError, PartialCredentialsError\n    import os\n\n\
-          \    s3_client = boto3.client(\n        \"s3\",\n        endpoint_url=f\"\
+          \ *\n\ndef upload_to_storage(\n    train_dir: str,\n    test_dir: str,\n\
+          \    endpoint: str,\n    access_key: str,\n    secret_key: str,\n    bucket:\
+          \ str,\n    outputdims: str,\n    model_path: dsl.OutputPath(str)\n) ->\
+          \ NamedTuple('Outputs', [\n    ('model_artifact_s3_path', str),\n    ('files_model',\
+          \ str),\n    ('tag', str)\n]):\n    import boto3\n    from botocore.exceptions\
+          \ import NoCredentialsError, PartialCredentialsError\n    import os\n  \
+          \  from datetime import datetime\n\n    tag=datetime.now().strftime(\"%m-%d-%H_%M\"\
+          )\n\n    s3_client = boto3.client(\n        \"s3\",\n        endpoint_url=f\"\
           https://{endpoint}\",\n        aws_access_key_id=access_key,\n        aws_secret_access_key=secret_key,\n\
           \        verify=False \n    )\n\n    # Get paths for files\n    weights_path\
           \ = os.path.join(train_dir, \"weights\")\n\n    files_train = [os.path.join(train_dir,\
@@ -683,9 +685,9 @@ deploymentSpec:
           , bucket, f\"{directory_name}/serving/hardhat/config.pbtxt\")\n    except\
           \ Exception as e:\n        print(f\"Error uploading config.pbtxt: {e}\"\
           )\n\n    model_artifact_s3_path = directory_name\n\n    return NamedTuple('Outputs',\
-          \ [\n        ('model_artifact_s3_path', str),\n        ('files_model', str)\n\
-          \    ])(\n        model_artifact_s3_path,\n        os.path.basename(files_model)\n\
-          \    )\n\n"
+          \ [\n        ('model_artifact_s3_path', str),\n        ('files_model', str),\n\
+          \        ('tag', str)\n    ])(\n        model_artifact_s3_path,\n      \
+          \  os.path.basename(files_model),\n        tag\n    )\n\n"
         image: quay.io/luisarizmendi/pytorch-custom:latest
 pipelineInfo:
   description: Pipeline to download data, train YOLO model, and upload results to
@@ -709,8 +711,9 @@ root:
             modelcar_image_name:
               componentInputParameter: train_name
             modelcar_image_tag:
-              runtimeValue:
-                constant: 04-07-15_31
+              taskOutputParameter:
+                outputParameterKey: tag
+                producerTask: upload-to-storage
             object_storage_access_key:
               componentInputParameter: object_access_key
             object_storage_bucket:
@@ -726,9 +729,6 @@ root:
             pipeline_name:
               runtimeValue:
                 constant: ai-modelcar
-            pipeline_run_name:
-              runtimeValue:
-                constant: modelcar-run-04-07-15_31
             user_name:
               componentInputParameter: workshop_username
         taskInfo:
@@ -835,6 +835,7 @@ root:
         dependentTasks:
         - create-modelcar
         - train-model
+        - upload-to-storage
         inputs:
           parameters:
             container_registry:
@@ -853,8 +854,13 @@ root:
             modelcar_image_name:
               componentInputParameter: train_name
             modelcar_image_tag:
-              runtimeValue:
-                constant: 04-07-15_31
+              taskOutputParameter:
+                outputParameterKey: tag
+                producerTask: upload-to-storage
+            output_dims:
+              taskOutputParameter:
+                outputParameterKey: inference_outputdims
+                producerTask: train-model
             roboflow_project:
               componentInputParameter: roboflow_project
             roboflow_version:
@@ -922,9 +928,6 @@ root:
                 producerTask: train-model
             secret_key:
               componentInputParameter: object_secret_key
-            tag:
-              runtimeValue:
-                constant: 04-07-15_31
             test_dir:
               taskOutputParameter:
                 outputParameterKey: test_dir

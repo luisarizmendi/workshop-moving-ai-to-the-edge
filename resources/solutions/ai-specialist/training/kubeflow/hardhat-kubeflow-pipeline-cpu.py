@@ -163,7 +163,6 @@ def train_model(
 )
 def upload_to_storage(
     train_dir: str,
-    tag: str,
     test_dir: str,
     endpoint: str,
     access_key: str,
@@ -173,11 +172,15 @@ def upload_to_storage(
     model_path: dsl.OutputPath(str)
 ) -> NamedTuple('Outputs', [
     ('model_artifact_s3_path', str),
-    ('files_model', str)
+    ('files_model', str),
+    ('tag', str)
 ]):
     import boto3
     from botocore.exceptions import NoCredentialsError, PartialCredentialsError
     import os
+    from datetime import datetime
+
+    tag=datetime.now().strftime("%m-%d-%H_%M")
 
     s3_client = boto3.client(
         "s3",
@@ -262,10 +265,12 @@ backend: "onnxruntime"
 
     return NamedTuple('Outputs', [
         ('model_artifact_s3_path', str),
-        ('files_model', str)
+        ('files_model', str),
+        ('tag', str)
     ])(
         model_artifact_s3_path,
-        os.path.basename(files_model)
+        os.path.basename(files_model),
+        tag
     )
 
 
@@ -280,7 +285,7 @@ def push_to_model_registry(
     model_format_name: str,
     metrics: dict,
     model_registry_name: str,
-   
+    output_dims: str,
     container_registry: str,
     modelcar_image_name: str,
     modelcar_image_tag: str,
@@ -329,7 +334,8 @@ def push_to_model_registry(
             "mAP50": str(metrics["mAP50"]),
             "mAP50-95": str(metrics["mAP50-95"]),
             "precision": str(metrics["precision"]),
-            "recall": str(metrics["recall"])
+            "recall": str(metrics["recall"]),
+            "output dims": str(output_dims)
         }
       
         rm = registry.register_model(
@@ -357,7 +363,6 @@ def push_to_model_registry(
 
 def create_modelcar(
         pipeline_name: str,
-        pipeline_run_name: str,
         
         user_name: str,
         
@@ -380,7 +385,8 @@ def create_modelcar(
     import random
     import string
     import re
-    
+
+    pipeline_run_name=f"modelcar-run-{modelcar_image_tag}"
     modelcar_image_name=f"modelcar-{modelcar_image_name}"
 
     # Underscores  are not allowed in k8s names
@@ -558,12 +564,6 @@ def yolo_training_pipeline_cpu(
     
     model_registry_name: str = "object-detection-model-registry"
 ):
-
-    from datetime import datetime
-    import os 
-       
-    model_tag=datetime.now().strftime("%m-%d-%H_%M")
-   
     
     # Create PV
     pvc = kubernetes.CreatePVC(
@@ -619,7 +619,6 @@ def yolo_training_pipeline_cpu(
         access_key=object_access_key,
         secret_key=object_secret_key,
         bucket=object_storage_bucket,
-        tag=model_tag,
         outputdims=train_task.outputs['inference_outputdims']
     ).after(train_task)
     upload_task.set_caching_options(enable_caching=False)
@@ -631,13 +630,10 @@ def yolo_training_pipeline_cpu(
     delete_pvc = kubernetes.DeletePVC(
         pvc_name=pvc.outputs['name']
     ).after(upload_task)
-    
-
     # Create ModelCar
 
     modelcar_task = create_modelcar(
         pipeline_name="ai-modelcar" ,
-        pipeline_run_name=f"modelcar-run-{model_tag}",
       
         user_name=workshop_username,
         
@@ -650,7 +646,7 @@ def yolo_training_pipeline_cpu(
         container_registry_credentials=container_registry_secret_name,
         container_registry=container_registry,
         modelcar_image_name=train_name,
-        modelcar_image_tag=model_tag,
+        modelcar_image_tag=upload_task.outputs['tag'],
         
     ).after(upload_task)
     modelcar_task.set_caching_options(enable_caching=False)
@@ -664,10 +660,10 @@ def yolo_training_pipeline_cpu(
         model_format_name="ONNX" ,
         metrics=train_task.outputs['metrics'],
         model_registry_name=model_registry_name,
-        
+        output_dims=train_task.outputs['inference_outputdims'],
         container_registry=container_registry,
         modelcar_image_name=train_name,
-        modelcar_image_tag=model_tag,
+        modelcar_image_tag=upload_task.outputs['tag'],
         
         roboflow_workspace=roboflow_workspace,
         roboflow_project=roboflow_project,

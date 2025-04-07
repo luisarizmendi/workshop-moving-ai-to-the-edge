@@ -120,17 +120,12 @@ def yolo_training_pipeline(
     train_epochs: int = 50,
     train_batch_size: int = 16,
     train_img_size: int = 640,
-       
+      
     container_registry_secret_name: str = "container-registry-credentials",
     
     model_registry_name: str = "object-detection-model-registry"
 ):
-
-    from datetime import datetime
-    import os 
-       
-    model_tag=datetime.now().strftime("%m-%d-%H_%M")
-
+    
     # Create PV
     pvc = kubernetes.CreatePVC(
         pvc_name_suffix="-kubeflow-pvc",
@@ -144,6 +139,8 @@ def yolo_training_pipeline(
         size="1Gi",
         storage_class_name="ocs-storagecluster-ceph-rbd",
     )    
+
+
 
     # Download dataset
     download_task = download_dataset(
@@ -169,6 +166,8 @@ def yolo_training_pipeline(
         value="True",           
         effect="NoSchedule"
     )
+
+
 
     # Train model
     train_task = train_model(
@@ -204,6 +203,8 @@ def yolo_training_pipeline(
         effect="NoSchedule"
     )
     
+        
+    
     # Upload results
     upload_task = upload_to_storage(
         train_dir=train_task.outputs['train_dir'],
@@ -212,7 +213,6 @@ def yolo_training_pipeline(
         access_key=object_access_key,
         secret_key=object_secret_key,
         bucket=object_storage_bucket,
-        tag=model_tag,
         outputdims=train_task.outputs['inference_outputdims']
     ).after(train_task)
     upload_task.set_caching_options(enable_caching=False)
@@ -236,10 +236,12 @@ def yolo_training_pipeline(
         pvc_name=pvc_shm.outputs['name']
     ).after(train_task)
 
+    
+
     # Create ModelCar
+
     modelcar_task = create_modelcar(
         pipeline_name="ai-modelcar" ,
-        pipeline_run_name=f"modelcar-run-{model_tag}",
       
         user_name=workshop_username,
         
@@ -252,10 +254,12 @@ def yolo_training_pipeline(
         container_registry_credentials=container_registry_secret_name,
         container_registry=container_registry,
         modelcar_image_name=train_name,
-        modelcar_image_tag=model_tag,
+        modelcar_image_tag=upload_task.outputs['tag'],
         
     ).after(upload_task)
     modelcar_task.set_caching_options(enable_caching=False)
+
+
 
     # Push to model registry
     push_to_model_registry(
@@ -264,10 +268,10 @@ def yolo_training_pipeline(
         model_format_name="ONNX" ,
         metrics=train_task.outputs['metrics'],
         model_registry_name=model_registry_name,
-        
+        output_dims=train_task.outputs['inference_outputdims'],
         container_registry=container_registry,
         modelcar_image_name=train_name,
-        modelcar_image_tag=model_tag,
+        modelcar_image_tag=upload_task.outputs['tag'],
         
         roboflow_workspace=roboflow_workspace,
         roboflow_project=roboflow_project,
@@ -350,7 +354,6 @@ One significant enhancement in this Kubeflow step, compared to the Elyra pipelin
 
 [source,python,role=execute,subs="attributes"]
 ----
-
 # Component 2: Train Model
 @dsl.component(
     base_image="quay.io/luisarizmendi/pytorch-custom:latest",
@@ -505,7 +508,6 @@ The trained model native PyTorch `.pt` is uploaded to the bucket specified by th
 )
 def upload_to_storage(
     train_dir: str,
-    tag: str,
     test_dir: str,
     endpoint: str,
     access_key: str,
@@ -515,11 +517,15 @@ def upload_to_storage(
     model_path: dsl.OutputPath(str)
 ) -> NamedTuple('Outputs', [
     ('model_artifact_s3_path', str),
-    ('files_model', str)
+    ('files_model', str),
+    ('tag', str)
 ]):
     import boto3
     from botocore.exceptions import NoCredentialsError, PartialCredentialsError
     import os
+    from datetime import datetime
+
+    tag=datetime.now().strftime("%m-%d-%H_%M")
 
     s3_client = boto3.client(
         "s3",
@@ -604,10 +610,12 @@ backend: "onnxruntime"
 
     return NamedTuple('Outputs', [
         ('model_artifact_s3_path', str),
-        ('files_model', str)
+        ('files_model', str),
+        ('tag', str)
     ])(
         model_artifact_s3_path,
-        os.path.basename(files_model)
+        os.path.basename(files_model),
+        tag
     )
 ----
 
@@ -657,7 +665,6 @@ The OpenShift pipeline will perform the following actions: it fetches the requir
 
 def create_modelcar(
         pipeline_name: str,
-        pipeline_run_name: str,
         
         user_name: str,
         
@@ -680,7 +687,8 @@ def create_modelcar(
     import random
     import string
     import re
-    
+
+    pipeline_run_name=f"modelcar-run-{modelcar_image_tag}"
     modelcar_image_name=f"modelcar-{modelcar_image_name}"
 
     # Underscores  are not allowed in k8s names
@@ -786,6 +794,41 @@ def create_modelcar(
 
     time.sleep(5)
 
+    # Poll
+    timeout_seconds = 1800  
+    poll_interval = 10
+    elapsed = 0
+
+    while elapsed < timeout_seconds:
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+
+        run = custom_api.get_namespaced_custom_object(
+            group="tekton.dev",
+            version="v1",
+            namespace=f"{user_name}-tools",
+            plural="pipelineruns",
+            name=pipeline_run_name
+        )
+
+        conditions = run.get("status", {}).get("conditions", [])
+        if not conditions:
+            continue
+
+        condition = conditions[0]
+        status = condition.get("status")
+        reason = condition.get("reason")
+        message = condition.get("message", "")
+
+        if status == "True" and reason == "Succeeded":
+            print(f"PipelineRun {pipeline_run_name} succeeded.")
+            break
+        elif status == "False":
+            raise RuntimeError(f"PipelineRun {pipeline_run_name} failed: {reason} - {message}")
+
+    else:
+        raise TimeoutError(f"PipelineRun {pipeline_run_name} did not complete within timeout.")
+
     return pipeline_run_name
 ----
 
@@ -810,7 +853,7 @@ def push_to_model_registry(
     model_format_name: str,
     metrics: dict,
     model_registry_name: str,
-   
+    output_dims: str,
     container_registry: str,
     modelcar_image_name: str,
     modelcar_image_tag: str,
@@ -832,7 +875,7 @@ def push_to_model_registry(
     
     model_object_prefix = model_name if model_name else "model"
     
-    # To avoid making the user introduce the cluster domain I get it from the Quay endpoint (that should be running in the same cluster)
+    # To avoid making the user introduce the cluster domain I get it from the Quay endpoint (that should be running in the same cluster). That's why in the vars I use the external endpoint for Quay
     cluster_domain= ""
     pattern = re.compile(r"apps\.([^/]+)")
     match = re.search(pattern, container_registry)
@@ -859,12 +902,13 @@ def push_to_model_registry(
             "mAP50": str(metrics["mAP50"]),
             "mAP50-95": str(metrics["mAP50-95"]),
             "precision": str(metrics["precision"]),
-            "recall": str(metrics["recall"])
+            "recall": str(metrics["recall"]),
+            "output dims": str(output_dims)
         }
       
         rm = registry.register_model(
             registered_model_name,
-            f"oci://{container_registry_clean}/{user_name}/{modelcar_image_name}/:{modelcar_image_tag}",
+            f"oci://{container_registry_clean}/{user_name}/modelcar-{modelcar_image_name}:{modelcar_image_tag}",
             version=modelcar_image_tag,
             description=f"{registered_model_name} is a dense neural network that detects Hardhats in images.",
             model_format_name=model_format_name,
