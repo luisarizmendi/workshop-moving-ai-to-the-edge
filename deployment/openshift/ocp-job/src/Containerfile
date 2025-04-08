@@ -25,7 +25,7 @@ FROM quay.io/openshift/origin-cli:latest
 
 USER root
 
-RUN dnf install -y ansible-core jq tar gzip && dnf clean all
+RUN dnf install -y ansible-core jq tar gzip skopeo && dnf clean all
 
 COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
 COPY --from=builder /src/odf-cli/bin/odf /usr/local/bin/odf

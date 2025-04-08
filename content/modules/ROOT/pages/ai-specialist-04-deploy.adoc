@@ -516,9 +516,7 @@ spec:
       restartPolicy: Never
 ----
 
-6- When all pods are running, you can  
-
-http://object-detection-dashboard-frontend-{user}-test.apps.{ocp_cluster_url}
+6- When all pods are running, you can  http://object-detection-dashboard-frontend-{user}-test.apps.{ocp_cluster_url}
 [open the Dashboard using the Frontend URL]. You will see an empty page with the "Device Monitoring Dashboard" title.
 
 [CAUTION]
@@ -581,7 +579,7 @@ podman volume create model-storage
 
 [source,shell,role=execute,subs="attributes"]
 ----
-podman pod create --name hardhat-inference-pod --publish 8888:8888
+podman pod create --name hardhat-inference-pod --publish 8000:8000
 ----
 
 3- Create the Init-Container based in the `modelcar` container image that you created. Before running the command below include your `modelcar` image name and tag.
@@ -589,20 +587,20 @@ podman pod create --name hardhat-inference-pod --publish 8888:8888
 [source,shell, subs="attributes"]
 ----
 podman create \
-  --name model-downloader \
-  --pod hardhat-inference-pod \
-  --volume model-storage:/mnt/models:z \
-  --init-ctr once \
-  --entrypoint /bin/sh \
-  quay.io/skopeo/stable \
-  -c "mkdir -p /mnt/models && \
-    skopeo copy --override-os linux docker://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/<INSERT YOUR MODEL:TAG> oci-archive:/tmp/modelcar.tar && \
-    mkdir -p /tmp/image && \
-    tar -xf /tmp/modelcar.tar -C /tmp/image && \
-    for layer in /tmp/image/blobs/sha256/*; do \
-      tar -tf \"\$layer\" | grep '^models/' && tar -xf \"\$layer\" -C /mnt/models --strip-components=1 || true; \
-    done && \
-    rm -rf /tmp/modelcar.tar /tmp/image"
+    --name model-downloader \
+    --pod hardhat-inference-pod \
+    --volume model-storage:/mnt/models:z \
+    --init-ctr=always \
+    --restart no \
+    quay.io/luisarizmendi/ocp-job:latest \
+    /bin/bash -c "mkdir -p /mnt/models && \
+        /usr/bin/skopeo copy --override-os linux docker://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/<INSERT YOUR MODEL:TAG> oci-archive:/tmp/modelcar.tar && \
+        mkdir -p /tmp/image && \
+        tar -xf /tmp/modelcar.tar -C /tmp/image && \
+        for layer in /tmp/image/blobs/sha256/*; do \
+            tar -tf \"\$layer\" | grep '^models/' && tar -xf \"\$layer\" -C /mnt/models --strip-components=1 || true; \
+        done && \
+        rm -rf /tmp/modelcar.tar /tmp/image"
 ----
 
 4- Run the Inference Server as part of the POD
@@ -610,20 +608,39 @@ podman create \
 [source,shell,role=execute,subs="attributes"]
 ----
 podman create \
-  --name inference-container \
-  --pod hardhat-inference-pod \
-  --volume model-storage:/mnt/models:z \
-  nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
-  --model_name=hardhat \
-  --port=8001 \
-  --rest_port=8888 \
-  --model_path=/mnt/models \
-  --file_system_poll_wait_seconds=0 \
-  --grpc_bind_address=0.0.0.0 \
-  --rest_bind_address=0.0.0.0 \
-  --target_device=AUTO \
-  --metrics_enable
+    --name buena-inference-container \
+    --pod hardhat-inference-pod \
+    --volume model-storage:/mnt/models:z \
+    --mount type=tmpfs,destination=/dev/shm \
+    --device nvidia.com/gpu=all --security-opt=label=disable \
+    -e PORT=8000 \
+    nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
+    /bin/sh -c 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false"'
 ----
+
+
+
+
+
+
+
+
+
+
+
+
+[CAUTION]
+
+If you have an https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[NVIDA GPU and you have it configured in your system] (`sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`), you might want to use it for inferencing by running `podman run -it --rm -p 8080:8080 --device nvidia.com/gpu=all --security-opt=label=disable quay.io/luisarizmendi/object-detection-inference-server:prod`
+
+
+
+
+
+
+
+
+
 
 5- Start the POD
 [source,shell,role=execute,subs="attributes"]
@@ -639,7 +656,7 @@ These are large images, the pull could take time
 
 [NOTE]
 
-If after the test you want to remove the POD you can run `podman pod stop hardhat-inference-pod && podman pod rm hardhat-inference-pod`
+If after the test you want to remove the POD you can run `podman pod stop hardhat-inference-pod && podman pod rm hardhat-inference-pod && podman volume rm model-storage`
 
 
 The Inference service will be available at http://localhost:8888. 
@@ -655,14 +672,6 @@ You can check that the GPU is being detected by checking the `healthz` endpoint,
 
 
 
-
-
-
-
-
-
-
-If you have an https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[NVIDA GPU and you have it configured in your system] (`sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`), you might want to use it for inferencing by running `podman run -it --rm -p 8080:8080 --device nvidia.com/gpu=all --security-opt=label=disable quay.io/luisarizmendi/object-detection-inference-server:prod`
 
 
 
@@ -763,6 +772,11 @@ Let's deploy this architecture:
 sudo podman run -it --rm -p 5000:5000 --privileged -e INFERENCE_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE> quay.io/luisarizmendi/object-detection-stream-manager:prod
 ----
 
+[CAUTION]
+
+The `INFERENCE_SERVER_URL` must be a fully qualified URL, including the full path to the inference endpoint. In your case, it should be something like`<URL>/v2/models/hardhat/infer`.
+
+c
 3- Deploy the Actuator in the same way than in the previous point: 
 
 ----
@@ -777,7 +791,7 @@ podman run -it --rm --network=host -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUT
 
 
 
-
+open http://localhost:5000/video_stream
 
 
 

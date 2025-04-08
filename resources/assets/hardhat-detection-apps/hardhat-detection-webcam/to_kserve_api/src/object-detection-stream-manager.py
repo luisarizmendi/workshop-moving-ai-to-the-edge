@@ -69,7 +69,7 @@ def call_inference_server(image):
             INFERENCE_SERVER_URL,
             json=payload,
             headers=headers,
-            timeout=1
+            timeout=15
         )
         response.raise_for_status()
         return response.json()

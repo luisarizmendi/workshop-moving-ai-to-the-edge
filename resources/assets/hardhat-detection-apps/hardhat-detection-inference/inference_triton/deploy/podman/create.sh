@@ -1,47 +1,50 @@
 #!/bin/bash
 
+# Create volume and pod
 podman volume create model-storage
 
-echo "Creating pod with init container..."
+echo "Creating pod..."
+podman pod create --name hardhat-inference-pod --publish 8000:8000
 
-podman pod create --name hardhat-inference-pod --publish 8888:8888
-
-# init container 
+# Init container
 podman create \
-  --name model-downloader \
-  --pod hardhat-inference-pod \
-  --volume model-storage:/mnt/models:z \
-  --init-ctr once \
-  --entrypoint /bin/sh \
-  quay.io/skopeo/stable \
-  -c "mkdir -p /mnt/models && \
-    skopeo copy --override-os linux docker://quay.io/luisarizmendi/modelcar-hardhat:v1 oci-archive:/tmp/modelcar.tar && \
-    mkdir -p /tmp/image && \
-    tar -xf /tmp/modelcar.tar -C /tmp/image && \
-    for layer in /tmp/image/blobs/sha256/*; do \
-      tar -tf \"\$layer\" | grep '^models/' && tar -xf \"\$layer\" -C /mnt/models --strip-components=1 || true; \
-    done && \
-    rm -rf /tmp/modelcar.tar /tmp/image"
+    --name model-downloader  \
+    --pod hardhat-inference-pod \
+    --volume model-storage:/mnt/models:z \
+    --init-ctr=always \
+    --restart no \
+    quay.io/luisarizmendi/ocp-job:latest \
+    /bin/bash -c "mkdir -p /mnt/models && \
+        /usr/bin/skopeo copy --override-os linux docker://quay.io/luisarizmendi/modelcar-hardhat:v1 oci-archive:/tmp/modelcar.tar && \
+        mkdir -p /tmp/image && \
+        tar -xf /tmp/modelcar.tar -C /tmp/image && \
+        for layer in /tmp/image/blobs/sha256/*; do \
+            tar -tf \"\$layer\" | grep '^models/' && tar -xf \"\$layer\" -C /mnt/models --strip-components=1 || true; \
+        done && \
+        rm -rf /tmp/modelcar.tar /tmp/image"
 
-# main container
+# Main container
 podman create \
-  --name inference-container \
-  --pod hardhat-inference-pod \
-  --volume model-storage:/mnt/models:z \
-  nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
-  --model_name=hardhat \
-  --port=8001 \
-  --rest_port=8888 \
-  --model_path=/mnt/models \
-  --file_system_poll_wait_seconds=0 \
-  --grpc_bind_address=0.0.0.0 \
-  --rest_bind_address=0.0.0.0 \
-  --target_device=AUTO \
-  --metrics_enable
+    --name inference-container \
+    --pod hardhat-inference-pod \
+    --volume model-storage:/mnt/models:z \
+    --mount type=tmpfs,destination=/dev/shm \
+    --security-opt=label=disable --device nvidia.com/gpu=all \
+    -e PORT=8000 \
+    nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
+    /bin/sh -c 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false"'
+
 
 echo "Starting the pod..."
-podman pod start hardhat-inference-pod
+podman pod start hardhat-inference-pod 
+
+
+
 
 echo "Deployment complete. The service is available at: http://localhost:8888"
 
-echo "To stop the deployment: podman pod stop hardhat-inference-pod && podman pod rm hardhat-inference-pod"
+echo "To stop the deployment: podman pod stop hardhat-inference-pod && podman pod rm hardhat-inference-pod && podman volume rm model-storage"
+
+
+
+
