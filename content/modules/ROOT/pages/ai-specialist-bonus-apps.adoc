@@ -46,7 +46,7 @@ When planning to create a container image, it's essential to consider the system
 
 In our case, we will build x86 container images for the services that are running on the Cloud and container images for both x86 and ARM architectures for the ones running at the Edge, leveraging the multi-architecture container image feature available in certain Container Image Registries like Quay.
 
-You can find the Containerfiles for each application in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/serving/apps[`src` directory of each application's URL] shared above, along with the application code and other associated files. Feel free to clone the repository and use these files for your own builds.
+You can find the Containerfiles for each application in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps[`src` directory of each application's URL] shared above, along with the application code and other associated files. Feel free to clone the repository and use these files for your own builds.
 
 [NOTE]
 
@@ -113,7 +113,7 @@ From now on, it's recommended to always specify the platform explicitly when bui
 
 It's a good idea to mention in the image `tag` if that image is intended to be used in an x86 or ARM system (e,g, `<image>:arm-v1`)
 
-At this point you will have the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager[Camera Stream Manager] and https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-action[Actuator service] images for both ARM and x86 systems but you had to use different tags, otherwise you will be "overwriting" one image with other, this is not ideal since the image image name will be different depending on the system that you are deploying to.
+At this point you will have the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam[Camera Stream Manager] and https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-action[Actuator service] images for both ARM and x86 systems but you had to use different tags, otherwise you will be "overwriting" one image with other, this is not ideal since the image image name will be different depending on the system that you are deploying to.
 
 But that's not a big problem since the multi-arch container images exist.
 

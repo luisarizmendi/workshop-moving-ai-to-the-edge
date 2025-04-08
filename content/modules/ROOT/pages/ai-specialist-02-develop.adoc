@@ -606,6 +606,12 @@ image::ai-build-storemodel.png[]
 
 Finally, I recommend cleaning up the directories created during the training and evaluation processes to save some space. To achieve this, include a final piece of code in your Notebook that removes these directories.
 
+[source,python,role=execute,subs="attributes"]
+----
+!rm -rf {model_path_train}
+!rm -rf {model_path_test}
+----
+
 
 == Prototyping Pipeline (optional) 
 
@@ -689,6 +695,7 @@ To create a Pipeline Server:
 ** *Bucket*: `{user}-ai-pipeline`
 
 3- Click "Configure pipeline server".
+
 4- Once the configuration is ready, restart any running workbenches to apply the updates.
 ====
 

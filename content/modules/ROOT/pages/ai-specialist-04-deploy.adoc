@@ -548,7 +548,7 @@ If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.c
 
 These are large images, the pull could take time
 
-The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD] with an `init-container` that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
+The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
 
 The Inference service will be available at http://localhost:8000, you can check that the model has been loaded with the right values:
 

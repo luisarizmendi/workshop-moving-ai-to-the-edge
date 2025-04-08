@@ -112,14 +112,14 @@ In this step you will be using OpenShift AI and OpenShift Data Foundation.
 
 OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks] for experimentation and model training.
 
-https://min.io/[MinIO] is an Open Source High Performance Object Storage where we will save the models and the files with the performance metrics.
+OpenShift Data Foundation is an Open Source High Performance Object Storage where we will save the models and the files with the performance metrics.
 
 
 [example]
 ====
 To get started, you will create a new, empty Jupyter Notebook using OpenShift AI. In order to do so you have to 
 
-1- Navegate to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
+1- Navegate to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url} 
 
 2- Log in using your OpenShift credentials: {openshift-user}  /  {openshift-password}. It's a good idea to refresh the page right after the first log in in order to let the left menu load completly with all the additional enabled features.  
 
@@ -128,16 +128,20 @@ You need to select the `WORKSHOP` authenticaticator
 image::ai-build-authenticator.png[]
 
 
-3- Create a new Data Science Project "{user}-ai"
+3- Open the Data Science Project "{user}-ai".
 
 4- Create a new S3 Storage Connection ("Connetions" tab) that will be used by your Jupyter Notebooks to save the model and performance stats. Include:
 
-** MinIO username and password ( Access key={minio-user-base}pass:[<span id="gnumberVal"></span>] / Secret key={minio-password-base}pass:[<span id="gnumberVal"></span>] )
-** MinIO API URL: {minio-api}
-** Bucket name "{user}-ai-models" 
-** Region: "none" 
+** *Name* for the S3 connection: We suggest using `s3-ai-models`
+** *Access key*: `{object_storage_models_access_key}`
+** *Secret key*: `{object_storage_models_secret_key}`
+** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}` 
+** *Region*: You can keep the Region. If it is empty but it's better to include any string (e.g. `local`).
+** *Bucket*: `{user}-ai-models`
+
 
 image::ai-build-dataconnection.png[]
+
 
 5- Create a new Workbench ("Workbenches" tab) named "Object Detection Notebooks". You will need to select:
 
@@ -169,9 +173,10 @@ Now you have your prototyping Jupyter Notebook ready. In order to start the prot
 
 Even being a xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] it could take some time to finish if you are using CPUs instead of GPUs, in the meanwhile you can take a look at the cell's output. 
 
-You now can go to MinIO console ( https://minio-ui-minio.apps.{ocp_cluster_url} ) and open your "{user}-ai-models" Bucket. You will find the model with the best performance metrics (`best.pt`) and the last produced with the last training epoch (`last.pt`) along with the performance stats for the Test, Validation and Training sets.
 
-image::ai-build-miniomodel.png[]
+To facilitate easy verification of files uploaded to the object bucket, the workshop includes a (https://github.com/luisarizmendi/s3manager)[Web UI to browse the bucket contents]. You can go to that console ( https://s3-browser-{user}-ai-models-{user}-tools.apps.${ocp_cluster_url} ) and open the `prototype/notebook` folder. You will find a folder with the "model train name" and inside you will have the model with the best performance metrics (`best.pt`) and the last produced with the last training epoch (`last.pt`) along with the performance stats for the Test, Validation and Training sets.
+
+image::ai-build-storemodel.png[]
 
 
 [NOTE]
@@ -188,7 +193,7 @@ You have the full guide for this task in the xref:ai-specialist-03-training.adoc
 
 In production environments, training machine learning models is not as simple as running a script or experimenting in a notebook. A robust pipeline is essential. In this workshop we will use https://www.kubeflow.org/docs/components/pipelines/overview/[Kubeflow Pipelines].
 
-In this step you will use the same tools than in the previous one: OpenShift AI and MinIO Object Storage.
+In this step you will use the same tools than in the previous one: OpenShift AI and OpenShift Data Foundation.
 
 Before Importing a pipeline you will need to enable the Pipeline server.
 
@@ -197,9 +202,20 @@ Before Importing a pipeline you will need to enable the Pipeline server.
 ====
 To create a Pipeline Server:
 
-1. Navigate to "Data Science Pipelines" in OpenShift AI and configure a new pipeline server.
-2. Fill in the Data Connection information but this time use the Bucket {user}-ai-pipelines and set the region to `none` (as it is not configured in MinIO).
-3. Click "Configure pipeline server".
+1- Navigate to "Data Science Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] and configure a new pipeline server.
+
+
+2- Fill in the Data Connection information:
+
+** *Access key*: `{object_storage_pipeline_access_key}`
+** *Secret key*: `{object_storage_pipeline_secret_key}`
+** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}`  
+** *Region*: Keep the Region. If it's it is better to include any string (e.g. `local`).
+** *Bucket*: `{user}-ai-pipeline`
+
+3- Click "Configure pipeline server".
+
+4- Once the configuration is ready, restart any running workbenches to apply the updates.
 ====
 
 image::ai-build-pipeline-server.png[]
@@ -246,24 +262,21 @@ It's time to run the imported Kubeflow Pipeline:
 1. Click Actions and then `Create run`
 2. Under the "Project and experiment" section, you might want to click "Create new experiment" (and name it `hardhat-detection`)
 3. Give the run a name (e.g. `v1`)
-4. Fill in the Parameters used in your run:
-    * Access Key: "{user}"
-    * Secret Key: "{password}"
-    * Bucket: "{user}-ai-models"
-    * Endpoint: {minio-api}
-    * Model Registry Name: `object-detection-model-registry`
-    * PVC sufix: `-kubeflow-pvc`
-    * Roboflow Key: <your value>
-    * Roboflow Project: <your value>
-    * Roboflow Workspace: <your value>
-    * Roboflow version: <your value>
+4. Fill in the parameters that are empty:
+    * container_registry: `https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}` 
+    * object_access_key: `{object_storage_models_access_key}`
+    * object_secret_key: `{object_storage_models_secret_key}`
+    * object_storage_bucket: `{user}-ai-models`
+    * roboflow_api_key: `<your value>`
+    * roboflow_project: `<your value>`
+    * roboflow_workspace: `<your value>`
+    * roboflow_version: `<your value>`
+    * workshop_username: `{user}`
+
+5. Adjust the "Batch Size" and the "Epochs". Since you will be running a xref:ai-specialist-01-data.adoc#_mock_training_dataset[xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] you can configure them to "1" to speed-up the pipeline execution.
+
     * Batch Size: `1`
-    * Ephoch number: `1` 
-    * Image Size: `640`
-    * Training name (e.g. `hardhat`)
-    * Learning Rate: `0.005`
-    * Train Optimizer: `SGD`
-    * Train YOLO Model: `yolo11m.pt`
+    * Ephoch number: `1`
 ====
 
 [NOTE]
@@ -279,16 +292,39 @@ If the Pipeline run POD is scheduled in a node where other workloads using GPUs 
 
 image::ai-train-memoryerror.png[]
 
-After some time, the pipeline will finish. You can at that point go to the Object Storage and check the contents that have been uplaoded to `models` directory in your "{user}-ai-models" bucket.
 
-image::ai-train-minio.png[]
 
-Additionally, you can check the newly trained model in the Model Registry (check the left menu in OpenShift AI console), where it will be available along with all the associated metadata details that were added during the registration process.
+When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution that creates the `modelcar` container image and push it into the Container Image Registry:
 
-The Model Registry serves as the central hub for model publication. From here, you can directly deploy the model to the same OpenShift cluster running OpenShift AI, utilizing one of the supported Model Serving options. However, in this workshop, we won't be using this method. Instead, model inference will be performed at the Edge using Red Hat Enterprise Linux as it's explained in the next step.
 
+image::ai-train-modelcar-pipeline.png[]
+
+
+After some time, the pipeline will finish. You can at that point go to the Object Storage and check that:
+
+
+1- The contents that have been uplaoded to https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[`models` directory in your "{user}-ai-models" bucket].
+
+image::ai-train-model-s3.png[]
+
+2- The "modelcar" container image is available in the internal https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry] (user: {user} ; password: {password})
+
+image::ai-train-model-quay.png[]
+
+
+We are also taking this opportunity to make this image public, so you won’t need to include credentials when pulling it from the registry. This change is designed to simplify the upcoming deployment steps in the workshop. However, in a production environment, it is strongly recommended to use proper credentials for security purposes.
+
+image:ai-train-quay-public.png[]
+
+[IMPORTANT]
+
+If you do not make this change, the Inference Server deployment in the next module will fail.
+
+
+3- The newly trained model in the Model Registry (check the left menu in OpenShift AI console), where it will be available along with all the associated metadata details that were added during the registration process.
 
 image::ai-train-registry.png[]
+
 
 
 == 4. Model Serving
