@@ -2,8 +2,6 @@
 * -------------------------
 * `_AI Specialist_`
 
-* xref:ai-specialist-99-fast.adoc[*Fast-Track for AI Specialist*]
-
 * xref:ai-specialist-00-intro.adoc[*0. AI Specialist Intro*]
 * xref:ai-specialist-00-intro.adoc#_background[- Background]
 * xref:ai-specialist-00-intro.adoc#_toolset[- Toolset]
@@ -38,6 +36,7 @@
 
 * xref:ai-specialist-bonus-apps.adoc[Bonus: Building the APPs]
 
+* xref:ai-specialist-99-fast.adoc[*Fast-Track for AI Specialist*]
 
 * -------------------------
 * `_Platform Specialist_`
@@ -46,21 +45,24 @@
 * xref:platform-specialist-00-intro.adoc#_toolset[- Toolset]
 * xref:platform-specialist-00-intro.adoc#_workflow_overview[- Workflow Overview]
 * xref:platform-specialist-00-intro.adoc#_section_video_recording[- Section Video Recording]
+
 * xref:platform-specialist-01-image-bake.adoc[*1. Device Image Preparation*]
-* xref:platform-specialist-01-image-bake.adoc#_image_build[- Image Build]
-* xref:platform-specialist-01-image-bake.adoc#_image_deploy[- Image Deploy]
-* xref:platform-specialist-01-image-bake.adoc#_image_rollout[- Image Rollout]
+* xref:platform-specialist-01-image-bake.adoc#_[- RHDE - Standard x86]
+* xref:platform-specialist-01-image-bake.adoc#_[- RHDE - Nvidia Jetson]
+* xref:platform-specialist-01-image-bake.adoc#_[- OCP - ACM GUI]
+* xref:platform-specialist-01-image-bake.adoc#_[- OCP - Appliance Mode]
+
+
 * xref:platform-specialist-02-device-onboarding.adoc[*2. Device Onboarding*]
-* xref:platform-specialist-02-device-onboarding.adoc#_flight_control_intro[- Flight Control Intro]
-* xref:platform-specialist-02-device-onboarding.adoc#_flight_control_deployment[- Flight Control Deployment]
-* xref:platform-specialist-02-device-onboarding.adoc#_image_manage[- Image Manage]
-* xref:platform-specialist-02-device-onboarding.adoc#_device_management[- Device Management]
-* xref:platform-specialist-02-device-onboarding.adoc#_fleet_management[- Fleet Management]
+* xref:platform-specialist-02-device-onboarding.adoc#_[- RHDE]
+* xref:platform-specialist-02-device-onboarding.adoc#_[- OCP - ACM GUI]
+* xref:platform-specialist-02-device-onboarding.adoc#_[- OCP - Appliance Mode]
+
 * xref:platform-specialist-03-day-2-ops.adoc[*3. Day-2 Operations*]
-* xref:platform-specialist-03-day-2-ops.adoc#_os_configuration[- OS Configuration]
-* xref:platform-specialist-03-day-2-ops.adoc#_application_deployment[- Application Deployment]
-* xref:platform-specialist-03-day-2-ops.adoc#_os_update[- OS Update]
-* xref:platform-specialist-03-day-2-ops.adoc#_device_monitoring[- Device Monitoring]
+* xref:platform-specialist-03-day-2-ops.adoc#_[- Red Hat Edge Manager]
+* xref:platform-specialist-03-day-2-ops.adoc#_[- Advanced Cluster Manager]
+
+
 * -------------------------
 * xref:99-summary.adoc[*Summary*]
 * xref:00-how_to_deploy_lab.adoc[*Extra: Deploying the Lab*]
