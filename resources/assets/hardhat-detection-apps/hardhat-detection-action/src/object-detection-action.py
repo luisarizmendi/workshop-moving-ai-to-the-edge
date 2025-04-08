@@ -2,7 +2,7 @@ import os
 import time
 import requests
 import uuid
-import hashlib
+import json
 
 UUID_FILE = "./device_uuid"
 
@@ -111,6 +111,31 @@ def send_alive_signal(alive_endpoint: str) -> None:
         print(f"Error sending alive signal: {e}")
 
 
+def parse_monitored_classes(classes_env_var: str) -> dict:
+    """
+    Parse the monitored classes from an environment variable.
+    Format is expected to be a JSON string or comma-separated list of class names.
+    """
+    if not classes_env_var:
+        # Default to "no_helmet" if no classes are specified
+        return {"no_helmet": {"count_threshold": 0}}
+    
+    try:
+        # First try parsing as JSON
+        classes = json.loads(classes_env_var)
+        if isinstance(classes, dict):
+            return classes
+        elif isinstance(classes, list):
+            return {cls: {"count_threshold": 0} for cls in classes}
+    except json.JSONDecodeError:
+        # If not valid JSON, try parsing as comma-separated list
+        class_names = [cls.strip() for cls in classes_env_var.split(',')]
+        return {cls: {"count_threshold": 0} for cls in class_names if cls}
+    
+    # Fallback to default
+    return {"no_helmet": {"count_threshold": 0}}
+
+
 def main():
     # Configuration from environment variables
     detections_endpoint = os.getenv("DETECTIONS_ENDPOINT", "http://localhost:5000/current_detections")
@@ -120,6 +145,12 @@ def main():
     alert_duration = float(os.getenv("ALERT_DURATION", 5))  # Seconds
     reset_checks = int(os.getenv("RESET_CHECKS", 3))  # Number of checks
     alive_interval = float(os.getenv("ALIVE_INTERVAL", 5))  # Seconds
+    
+    # Parse monitored classes from environment variable
+    monitored_classes_env = os.getenv("MONITORED_CLASSES", "no_helmet")
+    monitored_classes = parse_monitored_classes(monitored_classes_env)
+    
+    print(f"Monitoring for classes: {list(monitored_classes.keys())}")
 
     last_alert_time = 0
     alert_active = False
@@ -128,35 +159,47 @@ def main():
 
     device_uuid = get_device_uuid()
 
-    monitored_classes = {
-        "no_helmet": {"count_threshold": 0},
-        #"hat": {"count_threshold": 0},
-    }
-
     while True:
-        detections = get_detections(detections_endpoint)
+        response_data = get_detections(detections_endpoint)
+        
+        # Extract the actual detections from the nested structure
+        detections = response_data.get("detections", {})
+        
+        print(f"Current detections: {response_data}")
 
         class_detected = None
         for cls, config in monitored_classes.items():
-            if detections.get(cls, {}).get("count", 0) > config["count_threshold"]:
-                class_detected = cls
-                break
+            print(f"Checking class: {cls}, threshold: {config['count_threshold']}")
+            
+            # Check if the class exists in detections
+            if cls in detections and "count" in detections[cls]:
+                count = detections[cls]["count"]
+                print(f"Found {cls} with count {count}")
+                
+                if count > config["count_threshold"]:
+                    class_detected = cls
+                    print(f"Threshold exceeded for {cls}")
+                    break
 
         if class_detected:
+            print(f"Alert condition detected for class: {class_detected}")
             if not alert_active:
                 if last_alert_time == 0:
                     last_alert_time = time.time()
-                print(f"Detected: {class_detected}")
+                print(f"Detected: {class_detected}, starting timer")
 
             if time.time() - last_alert_time >= alert_duration:
                 if not alert_active:
+                    print(f"Alert duration reached, sending ALERT_ON")
                     send_alert(alert_endpoint, "ALERT_ON", device_uuid)
                     alert_active = True
                 reset_count = 0
         else:
             if alert_active:
                 reset_count += 1
+                print(f"No detection, reset count: {reset_count}/{reset_checks}")
                 if reset_count >= reset_checks:
+                    print(f"Reset threshold reached, sending ALERT_OFF")
                     send_alert(alert_endpoint, "ALERT_OFF", device_uuid)
                     alert_active = False
                     reset_count = 0
