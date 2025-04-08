@@ -335,6 +335,45 @@ You have the full guide for this task in the xref:ai-specialist-04-deploy.adoc[M
 
 The Model Serving Phase is where a validated machine learning model is prepared for production use. 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 OpenShift AI provides a Model Serving capability (based on (https://github.com/kserve/kserve[`KServe`] and https://github.com/kserve/modelmesh[`ModelMesh`]) to deploy the AI models inside the OpenShift cluster where OpenShift AI is installed, but in our case we need to deploy the model in Edge Devices, so that feature cannot be used, insted we have prepared a custom Inference Server that will be used in this workshop.
 
 Along with the Inference Server other microservices have been developed to provide a solution that leverages the model's predictions to raise alarms when individuals are not wearing hardhats.

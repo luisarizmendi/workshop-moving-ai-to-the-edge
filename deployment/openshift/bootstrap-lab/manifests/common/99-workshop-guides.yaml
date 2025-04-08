@@ -90,7 +90,7 @@ spec:
           helm repo update
 
           helm template showroom larizmen-charts/showroom-single-pod --namespace=${NAMESPACE}  \
-          --set deployer.domain=${CLUSTER_DOMAIN} \
+          --set deployer.domain=apps.${CLUSTER_DOMAIN} \
           --set-file content.user_data=/tmp/values-user${i}.yaml \
           --set proxy.resources.requests.memory=30Mi \
           --set proxy.resources.requests.cpu=30m \

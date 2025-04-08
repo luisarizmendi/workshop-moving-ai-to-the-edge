@@ -150,16 +150,13 @@ image::ai-deploy-serving-endpoint.png[]
 Once the POD is running you can test the access to the Inference Server by checking if it is running
 
 
-[source,shell,role=execute,subs="attributes"]
 ----
 curl https://<INFERENCE ENDPOINT>/v2
 ----
 
-
 ...and if it loaded your model:
 
 
-[source,shell,role=execute,subs="attributes"]
 ----
 curl http://<INFERENCE ENDPOINT>/v2/models/hardhat
 ----
@@ -502,7 +499,7 @@ Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your l
 
 Stick to the Edge Computing setup (inferencing at the edge/laptop), accepting slower frame detection. While not ideal, my tests have shown it remains functional, or leverage an OpenShift Cluster with GPUs (if available through this workshop). This allows you to deploy the Inference Server in the Cloud instead of your local machine for testing.
 
-While the second option provides faster inferencing, it is not a true Edge Computing architecture. [.underline]*Sending images from the edge to the Cloud introduces network delays and additional costs*, two key drawbacks that edge computing is designed to mitigate. However, for a quick test, it offers a practical way to achieve high-speed inferencing.
+While the second option provides faster inferencing, it is not a true Edge Computing architecture. *Sending images from the edge to the Cloud introduces network delays and additional costs*, two key drawbacks that edge computing is designed to mitigate. However, for a quick test, it offers a practical way to achieve high-speed inferencing.
 
 [NOTE]
 
@@ -514,16 +511,17 @@ So in summary, no you can either reuse the inference server you already deployed
 Let’s review both options.
 
 
-==== Production-like test architecture (Inference at the Edge)
+==== [.underline]Production-like test architecture (Inference at the Edge)
 
 In this case you have to deploy in your laptop:
+
 * Inference server
 * Camera stream manager
 * Actuator
 
 
 
-===== Deploy the Inference Server 
+===== [.underline]Deploy the Inference Server 
 
 
 Let's start by the Inference server. Follow the steps below to deploy the Inference Server (you have a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman/create.sh[Shell script that automates the Inference Server deployment])
@@ -558,7 +556,7 @@ curl http://localhost:8000/v2/models/hardhat
 ----
 
 
-===== Deploy the Camera stream manager
+===== [.underline]Deploy the Camera stream manager
 
 Now that you have the inference server you can proceed with the Camera stream manager deployment. This is the service that will take images from your Webcam and send them to the Inference Server. It will also publish the detections in an endpoint.
 
@@ -586,7 +584,7 @@ During the container launch, you specify the class names. It's important to note
 Before going ahead check the logs to be sure that there are no errors.
 
 
-===== Deploy the Actuator Service
+===== [.underline]Deploy the Actuator Service
 
 
 The final step is to deploy the "Actuator". This service will send keepalives to the Dashboard and also an alarm is the Camera stream manager detects `no_helmet` label in the images.
@@ -597,8 +595,9 @@ The "Actuator" service needs also to use the host network.
 
 Also you will need to include the Dashboard backend route. Please, don't forget the `/alert` and `/alive` as part of the environment variable value.
 
+[source,shell,role=execute,subs="attributes"]
 ----
- podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
+ podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 
 ====
@@ -613,26 +612,24 @@ The value of the `MONITORED_CLASSES` environment variable must match with one or
 
 Before going ahead check the logs to be sure that there are no errors.
 
-==== The Convenient yet non-Edge test architecture (Inference at the Cloud)
+==== [.underline]The Convenient yet non-Edge test architecture (Inference at the Cloud)
 
 In the previous option we explained how to deploy the architecture that you will have in production using your laptop, but what if you don't have GPUs in your laptop and you have them in your OpenShift cluster?, then this other deployment modality where you use the Inference Server runnning in OpenShift could be useful for you.
 
-Let’s examine the [.underline]*non-edge architecture* we’ll set up for testing. As you can see, the difference comparing it with the "pure" edge deployment is where the Inference Server is located.
+Let’s examine the *non-edge architecture* we’ll set up for testing. As you can see, the difference comparing it with the "pure" edge deployment is where the Inference Server is located.
 
-
-image::ai-deploy-non-edge-arch.png[]
 
 [example]
 ====
 Let's deploy this architecture:
 
-1- You should have the Inference Server already deployed, you don't need to deploy it locally, just take note of the inference URL again.
+1- You will use the Inference Server already deployed in OpenShift, you don't need to deploy it locally, just take note of the inference URL again.
 
 
 2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://<NAME>-{user}-test.apps.{ocp_cluster_url}`).
 
 ----
-sudo podman run -it --rm --net host -p 5000:5000 --privileged -e CLASS_NAMES=hardhat,no_helmet -e INFERENCE_SERVER_URL=INFERENCE_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE>/v2/models/hardhat/infer quay.io/luisarizmendi/object-detection-stream-manager:prod
+sudo podman run -it --rm --net host -p 5000:5000 --privileged -e CLASS_NAMES=hardhat,no_helmet -e INFERENCE_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE>/v2/models/hardhat/infer quay.io/luisarizmendi/object-detection-stream-manager:prod
 ----
 
 [CAUTION]
@@ -642,8 +639,9 @@ The `INFERENCE_SERVER_URL` must be a fully qualified URL, including the full pat
 
 3- Deploy the Actuator in the same way than in the previous point: 
 
+[source,shell,role=execute,subs="attributes"]
 ----
-podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alert -e ALIVE_ENDPOINT=<DASHBOARD_BACKEND_OCP_ROUTE>/alive quay.io/luisarizmendi/object-detection-action:prod
+podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 ====
 
