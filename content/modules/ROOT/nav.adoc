@@ -1,6 +1,9 @@
 * xref:00-arch-intro.adoc[Architecture]
 * -------------------------
 * `_AI Specialist_`
+
+* xref:ai-specialist-99-fast.adoc[*Fast-Track for AI Specialist*]
+
 * xref:ai-specialist-00-intro.adoc[*0. AI Specialist Intro*]
 * xref:ai-specialist-00-intro.adoc#_background[- Background]
 * xref:ai-specialist-00-intro.adoc#_toolset[- Toolset]
@@ -33,7 +36,8 @@
 * xref:ai-specialist-05-update.adoc#_retrain[- Retraining]
 * xref:ai-specialist-05-update.adoc#__final_testing[- Final Testing]
 
-* xref:ai-specialist-99-fast.adoc[*Fast-Track for AI Specialist*]
+* xref:ai-specialist-bonus-apps.adoc[Bonus: Building the APPs]
+
 
 * -------------------------
 * `_Platform Specialist_`
