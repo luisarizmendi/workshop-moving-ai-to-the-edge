@@ -29,7 +29,6 @@ podman create \
     --pod hardhat-inference-pod \
     --volume model-storage:/mnt/models:z \
     --mount type=tmpfs,destination=/dev/shm \
-    --security-opt=label=disable  \
     -e PORT=8000 \
     nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
     /bin/sh -c 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false"'
