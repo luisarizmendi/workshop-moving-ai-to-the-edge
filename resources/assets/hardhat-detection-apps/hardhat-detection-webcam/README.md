@@ -2,16 +2,16 @@
 
 ## Description
 
-This Flask application provides a streaming interface and batch processing capabilities for object detection, working in conjunction with the YOLO Object Detection Inference Server. It handles camera streaming, frame processing, and visualization of detection results.
+This Flask application provides a streaming interface for object detection, working in conjunction with an inference server. It handles camera streaming, frame processing, and visualization of detection results.
 
 ## Features
 
 - Live webcam streaming with real-time object detection annotations
-- Batch image processing support
 - Real-time detection statistics
 - Automatic camera detection and configuration
-- Multipart streaming with annotations and detection data
+- Multipart streaming with annotations
 - Color-coded visualization for different object classes
+- Non-maximum suppression for optimized detection
 
 ## Prerequisites
 
@@ -44,9 +44,9 @@ The application supports the following environment variables for configuration:
 
 | Variable               | Description                                     | Default Value                |
 |-----------------------|------------------------------------------------|------------------------------|
-| `INFERENCE_SERVER_URL`| URL of the YOLO inference server               | `http://localhost:8080`      |
+| `INFERENCE_SERVER_URL`| URL of the YOLO inference server               | `http://localhost:8888/v2/models/hardhat/infer`      |
 | `CAMERA_INDEX`        | Specific camera index to use                   | `-1` (auto-select)           |
-| `MODEL_NAME`          | Model name to use for inference                | `1`                          |
+| `CLASS_NAMES`          | Comma-separated class names              | `class0,class1`                          |
 
 ## API Endpoints
 
@@ -74,8 +74,9 @@ The application supports the following environment variables for configuration:
 
 ```bash
 # Set environment variables (optional)
-export INFERENCE_SERVER_URL=http://localhost:8080
+export INFERENCE_SERVER_URL=http://localhost:8888/v2/models/hardhat/infer
 export CAMERA_INDEX=0
+export CLASS_NAMES=hardhat,no_hardhat
 
 # Run the application
 python object-detection-stream-manager.py
@@ -91,7 +92,8 @@ podman build -t object-detection-stream-manager .
 
 # Run the container
 podman run -d -p 5000:5000 --device /dev/video0 \
-  -e INFERENCE_SERVER_URL=http://localhost:8080 \
+  -e INFERENCE_SERVER_URL=http://localhost:8888/v2/models/hardhat/infer \
+  -e CLASS_NAMES=hardhat,no_hardhat \
   --privileged object-detection-stream-manager
 ```
 
@@ -127,12 +129,13 @@ The container image requires the following system packages for camera and displa
 - libXext
 - gstreamer1-plugins-base
 
-## Considerations
+## Technical Details
 
-- The application requires connection to a running YOLO inference server
-- Camera selection is automatic if not specified via `CAMERA_INDEX`
-- The stream includes both visual annotations and JSON detection data
-- Each object class is assigned a unique color for visualization
+- Frame processing includes preprocessing, inference, and postprocessing
 - Detection results include confidence scores and object counts
 - The application maintains a queue of the most recent frame for efficient streaming
 - Detection statistics are thread-safe and updated in real-time
+- Camera configuration is adaptive based on the platform (Windows, macOS, Linux)
+- Automatic camera selection if not specified via CAMERA_INDEX
+- Non-maximum suppression is applied to filter out duplicate detections
+- Each object class is assigned a unique color for visualization
