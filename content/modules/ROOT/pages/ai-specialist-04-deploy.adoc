@@ -36,7 +36,7 @@ In this workshop we will be using an off-the-self inference server, https://gith
 
 As an AI specialist, you won’t be deploying directly to edge devices, but you can still deploy your model—along with an inference server—on your OpenShift cluster to conduct meaningful testing. In fact, you can go a step further and deploy the entire service architecture to perform end-to-end testing, allowing you to observe how your model behaves within a realistic, production-like environment.
 
-In this section, we will explore how to deploy our model and examine the inference performance. After that you will also deploy the associated microservices to do an end-to-end validation of the architecture used for the workshop use case. This architecture leverages the model's predictions to create a system that raises alarms when individuals are not wearing hardhats. 
+In this section, we will explore how to deploy our model and examine the inference performance. After that you will also deploy the associated microservices to do an end-to-end validation of the architecture used for the workshop use case. This architecture leverages the model's predictions to create a system that raises alarms when individuals are not wearing hardhats. Lastly you will promote your model to be used in production.
 
 image::ai-deploy-nav0.png[]
 
@@ -688,6 +688,8 @@ image::ai-deploy-screenshot_dashboard_detail.png[]
 
 
 == Promoting model to production
+
+image::ai-deploy-nav3.png[]
 
 Now that you are sure that the model that you generated covers what will be needed in the field, you need to "promote" it to be used in production.
 
