@@ -15,7 +15,7 @@ podman create \
     --restart no \
     quay.io/luisarizmendi/ocp-job:latest \
     /bin/bash -c "mkdir -p /mnt/models && \
-        /usr/bin/skopeo copy --override-os linux docker://quay.io/luisarizmendi/modelcar-hardhat:v1 oci-archive:/tmp/modelcar.tar && \
+        /usr/bin/skopeo copy --override-os linux docker://<INSERT IMAGE NAME AND TAG> oci-archive:/tmp/modelcar.tar && \
         mkdir -p /tmp/image && \
         tar -xf /tmp/modelcar.tar -C /tmp/image && \
         for layer in /tmp/image/blobs/sha256/*; do \
