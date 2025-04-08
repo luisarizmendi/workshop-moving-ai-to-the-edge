@@ -243,6 +243,28 @@ def video_stream():
     return Response(generate_frames(),
                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/current_detections')
+def get_current_detections():
+    with current_detections_lock:
+        # Convert defaultdict to regular dict for JSON serialization
+        detections_dict = {}
+        for class_name, details in current_detections.items():
+            # Use the actual class name from detection (already mapped in process_frame)
+            detections_dict[class_name] = {
+                "max_confidence": details["max_confidence"],
+                "min_confidence": details["min_confidence"],
+                "count": details["count"]
+            }
+        
+        # Add class names information to the response
+        response_data = {
+            "available_classes": CLASS_NAMES,
+            "detections": detections_dict
+        }
+    
+    return Response(json.dumps(response_data), 
+                   mimetype='application/json')
+
 def continuous_capture_thread():
     global cap
     while not stop_event.is_set():
