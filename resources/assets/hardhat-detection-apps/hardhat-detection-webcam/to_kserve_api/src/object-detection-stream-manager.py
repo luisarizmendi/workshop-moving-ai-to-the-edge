@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-INFERENCE_SERVER_URL = os.getenv('INFERENCE_SERVER_URL', 'http://localhost:8888/v2/models/hardhat/infer')
+INFERENCE_SERVER_URL = os.getenv('INFERENCE_SERVER_URL', 'http://localhost:8000/v2/models/hardhat/infer')
 # Get class names from environment variable (e.g., "hardhat,no_hardhat")
 CLASS_NAMES = os.getenv('CLASS_NAMES', 'class0,class1').split(',')
 cap = None

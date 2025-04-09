@@ -31,7 +31,7 @@ podman create \
     --mount type=tmpfs,destination=/dev/shm \
     --security-opt=label=disable --device nvidia.com/gpu=all  \
     -e PORT=8000 \
-    nvcr.io/nvidia/tritonserver@sha256:eea017611e2231da3a06d1cf47b73efdfe4811a313001cb12f4efe13b1418134 \
+    nvcr.io/nvidia/tritonserver:25.03-py3 \
     /bin/sh -c 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false"'
 
 
@@ -43,6 +43,6 @@ podman pod start hardhat-inference-pod-gpu
 
 echo "Deployment complete. The service is available at: http://localhost:8000"
 
-echo "To stop the deployment: podman pod stop hardhat-inference-pod-gpu && podman pod rm hardhat-inference-pod-gpu && podman volume rm model-storage-gpu"
+echo "To clean-up the deployment: podman pod stop hardhat-inference-pod-gpu && podman pod rm hardhat-inference-pod-gpu && podman volume rm model-storage-gpu"
 
 

@@ -54,7 +54,7 @@ objects:
             sizeLimit: 2Gi
       containers:
         - name: kserve-container
-          image: 'nvcr.io/nvidia/tritonserver:25.01-py3'
+          image: 'nvcr.io/nvidia/tritonserver:25.03-py3'
           command:
             - /bin/sh
           args:

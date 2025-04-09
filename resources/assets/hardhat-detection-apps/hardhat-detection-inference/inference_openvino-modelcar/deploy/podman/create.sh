@@ -44,4 +44,4 @@ podman pod start inference-pod
 
 echo "Deployment complete. The service is available at: http://localhost:8888"
 
-echo "To stop the deployment: podman pod stop inference-pod && podman pod rm inference-pod"
+echo "To clean-up the deployment: podman pod stop inference-pod && podman pod rm inference-pod"

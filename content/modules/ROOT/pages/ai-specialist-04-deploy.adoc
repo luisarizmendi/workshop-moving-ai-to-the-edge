@@ -314,7 +314,7 @@ Follow the steps below to create the https://github.com/luisarizmendi/workshop-m
 
 4- Click on the `+` icon on the top right corner of the OpenShift console.
 
-5- Paste there the content shown below to deploy the Dashboard and Click "Create".
+5- Double-check that you are in the {user}-test project and paste there the content shown below to deploy the Dashboard, then click "Create".
 
 ----
 apiVersion: batch/v1
@@ -511,7 +511,7 @@ So in summary, no you can either reuse the inference server you already deployed
 Let’s review both options.
 
 
-==== [.underline]Production-like test architecture (Inference at the Edge)
+==== [.underline]*Production-like test architecture (Inference at the Edge)*
 
 In this case you have to deploy in your laptop:
 
@@ -521,7 +521,7 @@ In this case you have to deploy in your laptop:
 
 
 
-===== [.underline]Deploy the Inference Server 
+===== [.underline]*Deploy the Inference Server*
 
 
 Let's start by the Inference server. Follow the steps below to deploy the Inference Server (you have a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman/create.sh[Shell script that automates the Inference Server deployment])
@@ -539,12 +539,16 @@ If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.c
 
 2- Download the script and change the `<INSERT IMAGE NAME AND TAG>` string with the `modelcar` container image that you generated (something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`)
 
+[NOTE]
+
+DO not include the `https://` when you include `modelcar` container image.
+
 3- Run the script
 ====
 
 [NOTE]
 
-These are large images, the pull could take time
+These are large images, the pull could take time, be sure that the inference server pod is running using `podman ps`
 
 The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
 
@@ -556,7 +560,7 @@ curl http://localhost:8000/v2/models/hardhat
 ----
 
 
-===== [.underline]Deploy the Camera stream manager
+===== [.underline]*Deploy the Camera stream manager*
 
 Now that you have the inference server you can proceed with the Camera stream manager deployment. This is the service that will take images from your Webcam and send them to the Inference Server. It will also publish the detections in an endpoint.
 
@@ -584,7 +588,7 @@ During the container launch, you specify the class names. It's important to note
 Before going ahead check the logs to be sure that there are no errors.
 
 
-===== [.underline]Deploy the Actuator Service
+===== [.underline]*Deploy the Actuator Service*
 
 
 The final step is to deploy the "Actuator". This service will send keepalives to the Dashboard and also an alarm is the Camera stream manager detects `no_helmet` label in the images.
@@ -612,7 +616,7 @@ The value of the `MONITORED_CLASSES` environment variable must match with one or
 
 Before going ahead check the logs to be sure that there are no errors.
 
-==== [.underline]The Convenient yet non-Edge test architecture (Inference at the Cloud)
+==== [.underline]*The Convenient yet non-Edge test architecture (Inference at the Cloud)*
 
 In the previous option we explained how to deploy the architecture that you will have in production using your laptop, but what if you don't have GPUs in your laptop and you have them in your OpenShift cluster?, then this other deployment modality where you use the Inference Server runnning in OpenShift could be useful for you.
 
@@ -626,7 +630,7 @@ Let's deploy this architecture:
 1- You will use the Inference Server already deployed in OpenShift, you don't need to deploy it locally, just take note of the inference URL again.
 
 
-2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://<NAME>-{user}-test.apps.{ocp_cluster_url}`).
+2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://<NAME>-{user}-test.apps.{ocp_cluster_url}/v2/models/hardhat/infer`).
 
 ----
 sudo podman run -it --rm --net host -p 5000:5000 --privileged -e CLASS_NAMES=hardhat,no_helmet -e INFERENCE_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE>/v2/models/hardhat/infer quay.io/luisarizmendi/object-detection-stream-manager:prod

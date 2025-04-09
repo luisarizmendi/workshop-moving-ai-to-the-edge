@@ -1,12 +1,12 @@
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
-  name: triton-25.01
+  name: triton-25.03
   labels:
     opendatahub.io/dashboard: "true"
   annotations:
     opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-    openshift.io/display-name: "NVIDIA Triton Server v25.01"
+    openshift.io/display-name: "NVIDIA Triton Server v25.03"
 spec:
   supportedModelFormats:
   # https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html
@@ -47,7 +47,7 @@ spec:
 
   containers:
     - name: kserve-container
-      image: nvcr.io/nvidia/tritonserver:25.01-py3
+      image: nvcr.io/nvidia/tritonserver:25.03-py3
       command: [/bin/sh]
       args:
         - -c

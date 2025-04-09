@@ -25,7 +25,7 @@
 
 * xref:ai-specialist-04-deploy.adoc[*4. Model Serving*]
 * xref:ai-specialist-04-deploy.adoc#_inference_testing[- Inference Testing]
-* xref:ai-specialist-04-deploy.adoc#_end_-_to_-_end_validation[- End-to-End Validation]
+* xref:ai-specialist-04-deploy.adoc#_end_to_end_validation[- End-to-End Validation]
 * xref:ai-specialist-04-deploy.adoc#_promoting_model_to_production[- Promoting model]
 
 * xref:ai-specialist-05-update.adoc[*5. Day-2 Operations*]

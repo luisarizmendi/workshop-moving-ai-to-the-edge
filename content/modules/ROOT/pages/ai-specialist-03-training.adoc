@@ -1288,15 +1288,9 @@ image::ai-train-model-s3.png[]
 
 image::ai-train-model-quay.png[]
 
+[NOTE]
 
-We are also taking this opportunity to make this image public, so you won’t need to include credentials when pulling it from the registry. This change is designed to simplify the upcoming deployment steps in the workshop. However, in a production environment, it is strongly recommended to use proper credentials for security purposes.
-
-image:ai-train-quay-public.png[]
-
-[IMPORTANT]
-
-If you do not make this change, the Inference Server deployment in the next module will fail.
-
+The repository is created with "public" visibility, so you won’t need to include credentials when pulling it from the registry. This is designed to simplify the upcoming deployment steps in the workshop. However, in a production environment, it is strongly recommended to use proper credentials for security purposes.
 
 3- The newly trained model in the Model Registry (check the left menu in OpenShift AI console), where it will be available along with all the associated metadata details that were added during the registration process.
 
