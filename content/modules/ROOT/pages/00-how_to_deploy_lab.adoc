@@ -29,130 +29,26 @@ image::lab-bootstrap.png[]
 
 image::lab-argo.png[]
 
-4- Wait until all Applications are in Synced state (`OutofSync` in `common` application is not a problem)
+4- Wait until all Applications are in Synced state
 
 image::lab-argo-finish.png[]
 ====
 
 With these YAMLs you deploy:
 
-* OpenShift Workshop user and groups
+* OpenShift Workshop user, groups, projects and guides
 * OpenShift AI with Model Registry
-* MinIO Object Storage
+* OpenShift Data Foundations
+* Quay Container Image Registry
+* OpenShift Pipelines
+* Advanced Cluster Manager with Red Hat Edge Manager
 * Gitea as Source Code Repository
 * NVIDIA GPU configuration
 
 
-==== Workshop Guide deployment
+==== Workshop Guides
 
-If you want to have your own Workshop Guide first you need to prepare the values for the guide variables. The default values can be found in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/content/antora.yml[`antora.yaml` file]. 
-
-Once you know the values that you want to apply to the guide, you can deploy the guide using a Kubernetes Job that runs Helm.
-
-
-[example]
-====
-In order to deploy the guide you will need to:
-
-1- Navigate to the OpenShift Web Console
-
-2- Click the `+` icon on the top right corner
-
-3- Copy and paste the following YAML file chaning the values according to your needs
-
-----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: bootstrap-showroom
-  namespace: openshift-gitops
-spec:
-  template:
-    spec:
-      serviceAccountName: openshift-gitops-argocd-application-controller
-      containers:
-      - name: bootstrap-showroom
-        image: quay.io/luisarizmendi/helm-cli:latest  
-        command: ["/bin/sh", "-c"]
-        args:
-        - |
-          export HOME=/tmp  # Fix permission issues
-
-          NAMESPACE="showroom"
-
-          echo "Creating values.yaml..."
-          cat <<EOF > /tmp/values.yaml
-          # Common
-          git-workshop-url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge
-          openshift-console: https://console-openshift-console.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
-          openshift-api: https://api.cluster-np6lk.np6lk.sandbox2077.opentlc.com:6443
-          openshift-user-base: user
-          openshift-password-base: redhat
-          gitea-server: gitea.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com
-          container-registry-gitea: 192.168.1.100
-          container-registry-gitea-user: gitea
-          container-registry-gitea-pass: gitea
-          shared-nvidia-ip: 192.168.1.2
-          shared-nvidia-user: admin
-          shared-nvidia-pass: R3dh4t1!
-          gateway-dns-dhcp-openwrt: http://192.168.1.1
-          # Platform
-          device-ip-base: 192.168.100.1
-          device-username: admin
-          device-password: secret
-          openshift-ai: https://rhods-dashboard-redhat-ods-applications.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
-          flightctl-ui: https://flightui-flightctl.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
-          flightctl-api: https://flightapi-flightctl.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com/
-          flightctl-user-basename: flightctluser
-          flightctl-password: secretflightctl
-          registry-local-url: http://192.168.100.200/workshop/
-          # AI
-          minio-ui: https://minio-ui-minio.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com
-          minio-api: https://minio-api-minio.apps.cluster-np6lk.np6lk.sandbox2077.opentlc.com
-          minio-user-base: user
-          minio-password-base: redhat
-          registry-url: https://quay.io/user/luisarizmendi/
-          EOF
-
-          echo "Ensuring the project exists..."
-          if ! /usr/bin/oc get project $NAMESPACE >/dev/null 2>&1; then
-            /usr/bin/oc new-project $NAMESPACE
-          fi
-
-          echo "Fetching cluster domain..."
-          clusterdomain_apps=$(/usr/bin/oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}')
-
-          echo "Running Helm template..."
-          helm repo add larizmen-charts https://raw.githubusercontent.com/luisarizmendi/helm-chart-repo/main/packages
-          helm repo update
-
-          helm template showroom larizmen-charts/showroom-single-pod --namespace=${NAMESPACE}  \
-          --set deployer.domain=${clusterdomain_apps} \
-          --set-file content.user_data=/tmp/values.yaml \
-          --set content.repoUrl=https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge \
-          --set general.guid=1 \
-          --set-string content.contentOnly="true" \
-          | /usr/bin/oc apply -f -
-
-          echo "Environment ready!"
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - "ALL"
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
-      restartPolicy: Never
-  backoffLimit: 1
-----
-
-4- Click "Create"
-====
-
-Once you create the object, the guide will be deployed in a new the `showroom` OpenShift project. You will find in that project a route pointing to the guide that will be available as soon as the showroom POD is running.
-
-
+Workshop Guides are deployed in each `<user>-workshop-guide` project. 
 
 
 
