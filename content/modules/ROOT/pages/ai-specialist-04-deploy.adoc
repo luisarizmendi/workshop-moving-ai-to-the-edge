@@ -147,7 +147,7 @@ When the Inference server appears as avialable in the https://rhods-dashboard-re
 image::ai-deploy-serving-endpoint.png[]
 
 
-Once the POD is running you can test the access to the Inference Server by checking if it is running
+You can now test the access to the Inference Server by checking if it is running
 
 
 ----
@@ -251,7 +251,7 @@ The inference process may take some time depending on the number of images and w
 
 image::ai-deploy-test-app-inference.png[]
 
-As you can see, hardhats were detected on the images, so we are good to promote this model as the "production" model.
+As you can see, hardhats were detected on the images, so we are good to perform an end-to-end validations of the model using the microservices used in production.
 
 [NOTE]
 
@@ -491,7 +491,7 @@ Instructions below are for Fedora/RHEL based systems and using the interactive m
 
 [CAUTION]
 
-Be sure that you have the ports `tcp/8080` and `tcp/5000` ports open un your local machine. 
+Be sure that you have the ports `tcp/8080`, `tcp/8000` and `tcp/5000` ports open un your local machine. 
 
 
 Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your laptop, you can deploy the Inference Server using it for testing. But what if you don’t have one? You have two options at this point. 
@@ -524,8 +524,7 @@ In this case you have to deploy in your laptop:
 ===== [.underline]*Deploy the Inference Server*
 
 
-Let's start by the Inference server. Follow the steps below to deploy the Inference Server (you have a https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman/create.sh[Shell script that automates the Inference Server deployment])
-
+Let's start by the Inference server. 
 
 [CAUTION]
 

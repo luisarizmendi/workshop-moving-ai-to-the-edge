@@ -1316,7 +1316,21 @@ However, probably you used the reduced ("xref:ai-specialist-01-data.adoc#_mock_t
 If the model you use isn't capable of delivering strong performance, you won't achieve reliable or accurate results during the inference phase, so if you used the ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset you must update your `modelcar` image with the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
 
 
-The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] in your environment is to pull https://quay.io/repository/luisarizmendi/modelcar-hardhat[the v1 of this pre-created modelcar image] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
+
+The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] in your environment is to pull https://quay.io/repository/luisarizmendi/modelcar-hardhat[the v1 of this pre-created modelcar container image] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
+
+
+
+
+----
+podman pull https://quay.io/repository/luisarizmendi/modelcar-hardhat:v1
+
+podman login -u {user} https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}
+
+podman push https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/<IMAGE NAME>:<IMAGE TAG>
+----
+
+
 
 [NOTE]
 

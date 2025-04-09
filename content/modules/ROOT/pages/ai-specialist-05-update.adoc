@@ -81,36 +81,10 @@ You have a https://huggingface.co/luisarizmendi/hardhat-or-hat[second verion of 
 
 == Final Testing
 
-Once you have the new model `.pt` file after retraining, you can build the Inference Server container image again using the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-inference-server/src/Containerfile[Containerfile] provided (double-check that you include the version 2 of the model).
+Once you have the new model file and associated `modelcar` container image after retraining, you can deploy again the Inference Server with the new model.
 
-[TIP]
+Besides the Inference Server, there is another microservice that you need to update: the "Actuator". This microservice monitors the last predicted class, since you added a new class hat, you need to add that into the code too. In order to do that include the label in the `MONITORED_CLASSES` variable when you launch the service.
 
-If you want you can use the https://quay.io/repository/luisarizmendi/object-detection-inference-server?tab=tags[pre-pull Inference Server container image] containing the model v2: `quay.io/luisarizmendi/object-detection-inference-server:v2-prod`
-
-
-Then re-deploy your Inference Server using the new image.
-
-Besides the Inference Server, there is another microservice that you need to update: the "Actuator". This microservice monitors the last predicted class, since you added a new class hat, you need to add that into the code too.
-
-This work should be done by the Application Developers, but since you have been working some of their job during this workshop now this is your dutty too.
-
-If you check the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-action/src/object-detection-action.py#L133[actuator source code], you will find that the required code is already commented out, so you just need to un comment it:
-
----
-...
-
-    monitored_classes = {
-        "no_helmet": {"count_threshold": 0},
-        "hat": {"count_threshold": 0},
-    }
-...
----
-
-[TIP]
-
-You also have a https://quay.io/repository/luisarizmendi/object-detection-action?tab=tags[pre-pull image for the Actuator]: `quay.io/luisarizmendi/object-detection-action:v2-prod`
-
-You also have to redeploy this microservice with the latest version to get the full solution working.
 
 
 
