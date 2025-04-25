@@ -770,18 +770,24 @@ Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your l
 If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[you have it configured in your system] and that you run `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml` before running the inference container.
 
 
+
 [example]
 ====
 
-1- Use the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman/triton_pod.sh[Inference Server deployment script] depending if you are using GPU or not
+1- Choose the right https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script] depending if you are using GPU or not
 
-2- Download the script and change the `<INSERT IMAGE NAME AND TAG>` string with the `modelcar` container image that you generated (something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`)
+2- Download the script and give it execution permission
+
+3- Run the script 
+
+----
+<your-script-name> create <MODELCAR IMAGE NAME:TAG>
+----
 
 [NOTE]
 
-DO not include the `https://` when you include `modelcar` container image.
+DO not include the `https://` when you include `modelcar` container image, it should be something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`. If you want to use a pre-created modelcar image instead the one that you created in the previous module you can use `quay.io/luisarizmendi/modelcar-hardhat:v1`
 
-3- Run the script
 ====
 
 [NOTE]

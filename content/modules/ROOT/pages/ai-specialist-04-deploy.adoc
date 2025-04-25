@@ -274,15 +274,15 @@ image::ai-deploy-object-detection-webcam.png[]
 
 The solution is based on the following microservices, you can clik on the names to get detailed information about each one:
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-stream-manager[Camera Stream Manager]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam[Camera Stream Manager]
 
 * Inference server
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-action[Actuator service]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-action[Actuator service]
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-dashboard/src/backend[Dashboard backend]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/backend[Dashboard backend]
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-dashboard/src/frontend[Dashboard frontend]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/frontend[Dashboard frontend]
 
 
 The workflow is the following:
@@ -303,7 +303,7 @@ Instructions below are using the provided pre-created container images, but you 
 
 [example]
 ====
-Follow the steps below to create the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-dashboard/src/backend[Dashboard backend] and https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/serving/apps/object-detection-dashboard/src/frontend[Dashboard frontend] applications in OpenShift:
+Follow the steps below to create the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/backend[Dashboard backend] and https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/frontend[Dashboard frontend] applications in OpenShift:
 
 
 1- Navegate to the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]
@@ -512,7 +512,7 @@ Let’s review both options.
 
 
 ==== [.underline]*Production-like test architecture (Inference at the Edge)*
-
+u
 In this case you have to deploy in your laptop:
 
 * Inference server
@@ -536,13 +536,18 @@ If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.c
 
 1- Choose the right https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script] depending if you are using GPU or not
 
-2- Download the script and change the `<INSERT IMAGE NAME AND TAG>` string with the `modelcar` container image that you generated (something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`)
+2- Download the script and give it execution permission
+
+3- Run the script 
+
+----
+<your-script-name> create <MODELCAR IMAGE NAME:TAG>
+----
 
 [NOTE]
 
-DO not include the `https://` when you include `modelcar` container image.
+DO not include the `https://` when you include `modelcar` container image, it should be something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`. If you want to use a pre-created modelcar image instead the one that you created in the previous module you can use `quay.io/luisarizmendi/modelcar-hardhat:v1`
 
-3- Run the script
 ====
 
 [NOTE]
@@ -551,7 +556,7 @@ These are large images, the pull could take time, be sure that the inference ser
 
 The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
 
-The Inference service will be available at http://localhost:8000, you can check that the model has been loaded with the right values:
+The Inference service will be available at http://localhost:8001 (gRPC) and http://localhost:8000 (REST). You can check that the model has been loaded with the right values:
 
 [source,shell,role=execute,subs="attributes"]
 ----
@@ -564,17 +569,26 @@ curl http://localhost:8000/v2/models/hardhat
 Now that you have the inference server you can proceed with the Camera stream manager deployment. This is the service that will take images from your Webcam and send them to the Inference Server. It will also publish the detections in an endpoint.
 
 
+
 [example]
 ====
 In this case you will need to run it as privileged to access the system devices (webcams) and also to use the host network (to simplify inter-container communication), so it can reach out to the inference server.
 
 [source,shell,role=execute,subs="attributes"]
 ----
-sudo podman run -it --rm --net host -p 5000:5000 --privileged -e INFERENCE_SERVER_URL=http://localhost:8000/v2/models/hardhat/infer -e CLASS_NAMES=hardhat,no_helmet  quay.io/luisarizmendi/object-detection-stream-manager:prod
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
+
+[NOTE]
+
+You can add `--gpus all` if you have a GPU in your laptop and you want to use it for pre and post image processing.
 
 You will see logs directly in the console terminal. The Inference Server may already be displaying detection results, and if a `no_helmet` detection occurs, the "Actuator" will trigger an alarm. Additionally, the Camera Stream Manager logs important details at startup, such as the selected webcam ID, providing useful insights for debugging and verification
 ====
+
+[NOTE]
+
+We are deploying the service version that uses gRPC to send data to the inference service because it introduces less overhead. If you want to review and use the REST version to compare it with the gRPC you can https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/REST/README.md[check the script README file].
 
 [NOTE]
 
@@ -632,12 +646,12 @@ Let's deploy this architecture:
 2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://<NAME>-{user}-test.apps.{ocp_cluster_url}/v2/models/hardhat/infer`).
 
 ----
-sudo podman run -it --rm --net host -p 5000:5000 --privileged -e CLASS_NAMES=hardhat,no_helmet -e INFERENCE_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE>/v2/models/hardhat/infer quay.io/luisarizmendi/object-detection-stream-manager:prod
+sudo podman run -it --rm -p 5000:5000 --privileged --net host  -e CLASS_NAMES=hardhat,no_hardhat -e TRITON_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE>:8001 -e MODEL_NAME=hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
 
 [CAUTION]
 
-The `INFERENCE_SERVER_URL` must be a fully qualified URL, including the full path to the inference endpoint. In your case, it should be something like`<URL>/v2/models/hardhat/infer`.
+The `TRITON_SERVER_URL` must be a fully qualified URL.
 
 
 3- Deploy the Actuator in the same way than in the previous point: 
