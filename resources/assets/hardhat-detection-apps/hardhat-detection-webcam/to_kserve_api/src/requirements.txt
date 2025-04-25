@@ -1,5 +1,0 @@
-Flask==3.0.2
-opencv-python==4.9.0.80
-numpy==1.26.4
-requests==2.31.0
-typing-extensions==4.9.0

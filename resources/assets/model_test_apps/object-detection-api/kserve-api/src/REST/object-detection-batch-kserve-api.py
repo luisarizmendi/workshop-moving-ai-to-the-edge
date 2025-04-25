@@ -4,9 +4,10 @@ import os
 import cv2
 import numpy as np
 from typing import List, Dict
+from math import ceil
 
 # Get inference URL from environment variable if it exists
-DEFAULT_INFERENCE_URL = os.getenv('INFERENCE_URL', '')
+DEFAULT_INFERENCE_URL = os.getenv('INFERENCE_URL', 'http://localhost:8000/v2/models/hardhat/infer')
 
 def generate_distinct_colors(n: int) -> List[tuple]:
     """Generate n visually distinct colors using HSV color space."""
@@ -43,7 +44,7 @@ def generate_distinct_colors(n: int) -> List[tuple]:
 def load_model(model_url):
     return model_url
 
-def detect_objects(model_url, image_paths, class_names, confidence_threshold, merge_threshold):
+def detect_objects(model_url, image_paths, class_names, confidence_threshold, merge_threshold, batch_size):
     if not image_paths:
         return "No images uploaded.", []
 
@@ -51,11 +52,15 @@ def detect_objects(model_url, image_paths, class_names, confidence_threshold, me
     try:
         confidence_threshold = float(confidence_threshold)
         merge_threshold = float(merge_threshold)
+        batch_size = int(batch_size)
     except ValueError:
-        return "Invalid threshold value. Please enter a number between 0 and 1.", []
+        return "Invalid threshold or batch size value. Please enter valid numbers.", []
 
     if not 0 <= confidence_threshold <= 1 or not 0 <= merge_threshold <= 1:
         return "Threshold values must be between 0 and 1.", []
+    
+    if batch_size < 1:
+        return "Batch size must be at least 1.", []
 
     # Parse class names into a list or generate default names
     if class_names.strip():
@@ -65,52 +70,89 @@ def detect_objects(model_url, image_paths, class_names, confidence_threshold, me
         class_names_list = []
 
     results_images = []
+    processed_images = []
+    original_images = []
+    
+    # Preprocess all images first
     for image_path in image_paths:
         try:
+            # Read the image
             with open(image_path, "rb") as f:
                 image_data = f.read()
+                
+            # Store original image for later annotation
+            img = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
+            original_images.append(img)
+            
+            # Preprocess image
+            preprocessed = preprocess_image(image_data)
+            processed_images.append(preprocessed[0])  # Remove batch dimension for now
+            
+        except Exception as e:
+            return f"Error preprocessing file: {os.path.basename(image_path)}. Exception: {str(e)}", []
+    
+    # Process in batches
+    num_images = len(processed_images)
+    num_batches = ceil(num_images / batch_size)
+    
+    for batch_idx in range(num_batches):
+        start_idx = batch_idx * batch_size
+        end_idx = min((batch_idx + 1) * batch_size, num_images)
+        
+        # Create batch for this iteration
+        current_batch = processed_images[start_idx:end_idx]
+        current_batch_size = len(current_batch)
+        
+        # Send batch to inference server
+        payload = {
+            "inputs": [
+                {
+                    "name": "images",
+                    "shape": [current_batch_size, 3, 640, 640],
+                    "datatype": "FP32",
+                    "data": current_batch
+                }
+            ]
+        }
 
-            payload = {
-                "inputs": [
-                    {
-                        "name": "images",
-                        "shape": [1, 3, 640, 640],
-                        "datatype": "FP32",
-                        "data": preprocess_image(image_data)
-                    }
-                ]
-            }
-
-            headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json"}
+        
+        try:
             response = requests.post(model_url, json=payload, headers=headers)
 
             if response.status_code != 200:
-                return f"Error processing file: {os.path.basename(image_path)}. Exception: {response.text}", []
+                return f"Error processing batch {batch_idx+1}/{num_batches}. Exception: {response.text}", []
 
             result = response.json()
-            output = np.array(result['outputs'][0]['data']).reshape(result['outputs'][0]['shape'])
+            outputs = np.array(result['outputs'][0]['data']).reshape(result['outputs'][0]['shape'])
             
             # If class names weren't provided, generate them from the first detection
-            if not class_names_list:
-                num_classes = output.shape[1] - 4  # Subtract 4 for bbox coordinates
+            if not class_names_list and outputs.shape[0] > 0:
+                num_classes = outputs.shape[2] - 4  # Subtract 4 for bbox coordinates
                 class_names_list = [f"class{i}" for i in range(num_classes)]
             
             # Generate colors for all classes
-            colors = generate_distinct_colors(len(class_names_list))
+            colors = generate_distinct_colors(len(class_names_list) if class_names_list else 10)
             
-            processed_image = cv2.imread(image_path)
-            detections, annotated_img = postprocess_predictions(
-                output, processed_image, class_names_list, colors, confidence_threshold, merge_threshold
-            )
+            # Process each image in the batch
+            for i in range(current_batch_size):
+                img_idx = start_idx + i
+                original_img = original_images[img_idx]
+                
+                # Get detections for this image
+                detections, annotated_img = postprocess_predictions(
+                    outputs[i:i+1], original_img, class_names_list, colors, 
+                    confidence_threshold, merge_threshold
+                )
 
-            # Convert annotated image to RGB
-            annotated_img_rgb = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
-            results_images.append(annotated_img_rgb)
-
+                # Convert annotated image to RGB
+                annotated_img_rgb = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
+                results_images.append(annotated_img_rgb)
+                
         except Exception as e:
-            return f"Error processing file: {os.path.basename(image_path)}. Exception: {str(e)}", []
+            return f"Error processing batch {batch_idx+1}/{num_batches}. Exception: {str(e)}", []
 
-    return "Processing completed.", results_images
+    return f"Processing completed. {num_images} images processed in {num_batches} batches.", results_images
 
 def preprocess_image(image_data):
     img = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
@@ -287,19 +329,21 @@ interface = gr.Interface(
         gr.Files(file_types=["image"], label="Select Images"),
         gr.Textbox(label="Class Names (comma-separated)", placeholder="Leave empty to use default class names (class0, class1, etc.)"),
         gr.Slider(minimum=0.0, maximum=1.0, value=0.25, step=0.05, label="Confidence Threshold"),
-        gr.Slider(minimum=0.0, maximum=1.0, value=0.2, step=0.05, label="Box Merge Threshold")
+        gr.Slider(minimum=0.0, maximum=1.0, value=0.2, step=0.05, label="Box Merge Threshold"),
+        gr.Slider(minimum=1, maximum=16, value=4, step=1, label="Batch Size")
     ],
     outputs=[
         gr.Textbox(label="Status"),
         gr.Gallery(label="Results")
     ],
-    title="Object Detection",
+    title="Object Detection with Batch Processing",
     description=(
-        "Upload images to perform object detection using the provided API endpoint. "
+        "Upload images to perform batch object detection using the provided API endpoint. "
         "Displays only one detection box per object. "
         "Adjust the Box Merge Threshold to control how aggressively boxes are merged - "
         "lower values (0.1-0.3) result in more aggressive merging with fewer final boxes, "
-        "while higher values (0.4-0.6) preserve more distinct detections."
+        "while higher values (0.4-0.6) preserve more distinct detections. "
+        "The Batch Size controls how many images are processed in a single API call."
     )
 )
 

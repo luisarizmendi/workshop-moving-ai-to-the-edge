@@ -1,22 +1,18 @@
-FROM registry.access.redhat.com/ubi9/python-39:latest AS base
-
+FROM registry.access.redhat.com/ubi9/python-312:latest AS base
 USER root
-
 RUN dnf install -y \
     mesa-libGL \
     libGL \
     && dnf clean all \
     && python3 -m ensurepip --upgrade
-
 COPY requirements.txt /opt/app-root/src/
-
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install --no-cache-dir -r /opt/app-root/src/requirements.txt
-
 COPY object-detection-batch-kserve-api.py /opt/app-root/src/
-
 WORKDIR /opt/app-root/src/
-
+# Set default environment variables for the Triton server
+ENV TRITON_SERVER_URL=localhost:8001
+ENV MODEL_NAME=hardhat
+ENV MODEL_VERSION=""
 EXPOSE 8800
-
 CMD ["python", "object-detection-batch-kserve-api.py"]

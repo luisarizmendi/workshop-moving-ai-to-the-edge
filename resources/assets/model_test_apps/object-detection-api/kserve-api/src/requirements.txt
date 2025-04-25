@@ -1,4 +1,0 @@
-gradio
-opencv-python
-numpy
-requests

@@ -193,7 +193,7 @@ spec:
     spec:
       containers:
       - name: batch-model-api
-        image: quay.io/luisarizmendi/object-detection-batch-kserve-api:latest
+        image: quay.io/luisarizmendi/object-detection-batch-kserve-api:grpc
         ports:
         - containerPort: 8800
         env:

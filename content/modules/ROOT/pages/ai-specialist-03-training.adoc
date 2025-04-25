@@ -586,7 +586,7 @@ input [
 {{
     name: "images"
     data_type: TYPE_FP32
-    dims: [1, 3, 640, 640]  
+    dims: [-1, 3, 640, 640]  
 }}
 ]
 output [
@@ -1187,14 +1187,14 @@ input [
   {
     name: "images"
     data_type: TYPE_FP32
-    dims: [1, 3, 640, 640]  
+    dims: [-1, 3, 640, 640]  
   }
 ]
 output [
   {
     name: "output0"
     data_type: TYPE_FP32
-    dims: [ 1, 6, 8400 ]
+    dims: [ -1, 6, -7 ]
   }
 ]
 backend: "onnxruntime"
@@ -1202,7 +1202,7 @@ backend: "onnxruntime"
 
 [IMPORTANT]
 
-The content is generated automatically by the Pipeline but be aware that the output value configured in this file is critical, as the Inference Server will fail to start if it doesn't match the model's expected output dimensions. In this example, the value is set to `[1, 6, 8400]`. This corresponds to a model with two classes (`hardhat` and `no-hardhat`). The second number (`6`) reflects the number of predicted values per anchor, which includes class scores and bounding box parameters. When you add more classes (as you'll do in the final module), you must increase this second value accordingly. For instance, if you add one additional class, the value should be updated to `[1, 7, 8400]`.
+The content is generated automatically by the Pipeline but be aware that the output value configured in this file is critical, as the Inference Server will fail to start if it doesn't match the model's expected output dimensions. In this example, the value is set to `[-1, 6, -1]`. This corresponds to a model with two classes (`hardhat` and `no-hardhat`). The second number (`6`) reflects the number of predicted values per anchor, which includes class scores and bounding box parameters. When you add more classes (as you'll do in the final module), you must increase this second value accordingly. For instance, if you add one additional class, the value should be updated to `[-1, 7, -1]`.
 
 
 

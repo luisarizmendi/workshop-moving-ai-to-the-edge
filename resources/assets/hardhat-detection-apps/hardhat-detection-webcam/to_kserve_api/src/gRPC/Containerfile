@@ -16,7 +16,7 @@ RUN dnf install -y \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt /opt/app-root/src/
 
-# Install Python dependencies
+# Install Python dependencies with no-cache-dir to reduce image size
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir -r /opt/app-root/src/requirements.txt
 

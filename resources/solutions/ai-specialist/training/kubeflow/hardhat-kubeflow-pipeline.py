@@ -123,7 +123,7 @@ def train_model(
     )
 
     # Export to ONNX format
-    export_path = model.export(format='onnx')
+    export_path = model.export(format='onnx', imgsz=640, dynamic=True)
     onnx_model = onnx.load(export_path)
     output_tensor = onnx_model.graph.output[0]
     inference_outputdims = [
@@ -241,7 +241,7 @@ input [
 {{
     name: "images"
     data_type: TYPE_FP32
-    dims: [1, 3, 640, 640]  
+    dims: [-1, 3, 640, 640]  
 }}
 ]
 output [

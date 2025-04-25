@@ -512,12 +512,13 @@ deploymentSpec:
           \        amp=CONFIG['amp'],\n    )\n\n    # Evaluate model\n    results_test\
           \ = model.val(\n        data=CONFIG['data'],\n        split='test',\n  \
           \      device=CONFIG['device'],\n        imgsz=CONFIG['imgsz']\n    )\n\n\
-          \    # Export to ONNX format\n    export_path = model.export(format='onnx')\n\
-          \    onnx_model = onnx.load(export_path)\n    output_tensor = onnx_model.graph.output[0]\n\
-          \    inference_outputdims = [\n        d.dim_value if (d.dim_value > 0)\
-          \ else -1\n        for d in output_tensor.type.tensor_type.shape.dim\n \
-          \   ]\n    print(\"Exported model output shape:\", inference_outputdims)\n\
-          \n    # Compute metrics from CSV\n    results_csv_path = os.path.join(results_train.save_dir,\
+          \    # Export to ONNX format\n    export_path = model.export(format='onnx',\
+          \ imgsz=640, dynamic=True)\n    onnx_model = onnx.load(export_path)\n  \
+          \  output_tensor = onnx_model.graph.output[0]\n    inference_outputdims\
+          \ = [\n        d.dim_value if (d.dim_value > 0) else -1\n        for d in\
+          \ output_tensor.type.tensor_type.shape.dim\n    ]\n    print(\"Exported\
+          \ model output shape:\", inference_outputdims)\n\n    # Compute metrics\
+          \ from CSV\n    results_csv_path = os.path.join(results_train.save_dir,\
           \ \"results.csv\")\n    results_df = pd.read_csv(results_csv_path)\n\n \
           \   # Extract metrics\n    metrics = {\n        \"precision\": results_df[\"\
           metrics/precision(B)\"].iloc[-1],\n        \"recall\": results_df[\"metrics/recall(B)\"\
@@ -592,7 +593,7 @@ deploymentSpec:
           \ {e}\")\n\n    try:\n        # Create the config.pbtxt file\n        config_pbtxt\
           \ = f\"\"\"\\\nname: \"hardhat\"\nplatform: \"onnxruntime_onnx\"\nmax_batch_size:\
           \ 0  \ninput [\n{{\n    name: \"images\"\n    data_type: TYPE_FP32\n   \
-          \ dims: [1, 3, 640, 640]  \n}}\n]\noutput [\n{{\n    name: \"output0\"\n\
+          \ dims: [-1, 3, 640, 640]  \n}}\n]\noutput [\n{{\n    name: \"output0\"\n\
           \    data_type: TYPE_FP32\n    dims: {outputdims}\n}}\n]\nbackend: \"onnxruntime\"\
           \n\"\"\"\n\n        with open(\"config.pbtxt\", \"w\") as f:\n         \
           \   f.write(config_pbtxt)\n\n        s3_client.upload_file(\"config.pbtxt\"\

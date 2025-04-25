@@ -1,7 +1,7 @@
 kind: Template
 apiVersion: template.openshift.io/v1
 metadata:
-  name: template-triton-25.01
+  name: template-triton-25.03
   namespace: redhat-ods-applications
   labels:
     opendatahub.io/dashboard: 'true'
@@ -14,7 +14,7 @@ objects:
   - apiVersion: serving.kserve.io/v1alpha1
     kind: ServingRuntime
     metadata:
-      name: triton-25.01
+      name: triton-25.03
       labels:
         opendatahub.io/dashboard: 'true'
       annotations:

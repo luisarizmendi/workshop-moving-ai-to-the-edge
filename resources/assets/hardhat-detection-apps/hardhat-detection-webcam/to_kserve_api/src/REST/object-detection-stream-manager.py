@@ -12,6 +12,7 @@ from collections import defaultdict
 import random
 import platform 
 import logging
+import torch  # For GPU acceleration
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -36,6 +37,11 @@ current_detections = defaultdict(lambda: {
 
 class_colors = {}
 
+# Check if CUDA is available
+cuda_available = torch.cuda.is_available()
+device = torch.device("cuda" if cuda_available else "cpu")
+logger.info(f"Using device: {device}")
+
 def get_color_for_class(class_name):
     if class_name not in class_colors:
         class_colors[class_name] = (
@@ -46,6 +52,43 @@ def get_color_for_class(class_name):
     return class_colors[class_name]
 
 def preprocess_image(image):
+    """
+    Image preprocessing with optional GPU acceleration
+    """
+    if cuda_available:
+        try:
+            # Convert OpenCV BGR to RGB
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            
+            # Convert to torch tensor and move to GPU
+            img_tensor = torch.from_numpy(image_rgb).to(device).float()
+            
+            # Rearrange dimensions from HWC to CHW
+            img_tensor = img_tensor.permute(2, 0, 1)
+            
+            # Resize using GPU
+            img_resized = torch.nn.functional.interpolate(
+                img_tensor.unsqueeze(0),
+                size=(640, 640),
+                mode='nearest'
+            ).squeeze(0)
+            
+            # Normalize
+            img_normalized = img_resized / 255.0
+            
+            # Add batch dimension
+            img_batched = img_normalized.unsqueeze(0)
+            
+            # Convert to list for JSON serialization
+            return img_batched.cpu().numpy().tolist()
+        except Exception as e:
+            logger.error(f"GPU preprocessing failed: {str(e)}. Falling back to CPU")
+            return cpu_preprocess_image(image)
+    else:
+        return cpu_preprocess_image(image)
+
+def cpu_preprocess_image(image):
+    """Fallback CPU preprocessing"""
     img_resized = cv2.resize(image, (640, 640), interpolation=cv2.INTER_NEAREST)
     img_normalized = img_resized.astype(np.float32) / 255.0
     img_transposed = img_normalized.transpose((2, 0, 1))
@@ -78,7 +121,60 @@ def call_inference_server(image):
         return None
 
 def postprocess_predictions(output, confidence_threshold=0.1):
-    output = output[0]  # Remove batch dimension: (1, 7, 8400) -> (7, 8400)
+    """
+    Post-processing of predictions with optional GPU acceleration
+    """
+    if cuda_available:
+        try:
+            # Convert to tensor and move to GPU
+            output_tensor = torch.tensor(output, device=device)
+            
+            # Remove batch dimension: (-1, 7, -1) -> (7, -1)
+            output_tensor = output_tensor[0]
+            
+            # Transpose for detection processing
+            transposed = output_tensor.transpose(0, 1)
+            
+            # Extract components
+            boxes = transposed[:, :4]  # x_center, y_center, width, height
+            confidences = transposed[:, 4:]
+            
+            # Get class IDs and confidence scores
+            class_scores, class_ids = torch.max(confidences, dim=1)
+            
+            # Filter by confidence threshold
+            mask = class_scores > confidence_threshold
+            filtered_boxes = boxes[mask]
+            filtered_class_ids = class_ids[mask]
+            filtered_confidences = class_scores[mask]
+            
+            # Convert back to CPU for processing
+            detections = []
+            for i in range(len(filtered_boxes)):
+                x_center, y_center, width, height = filtered_boxes[i].cpu().tolist()
+                class_id = int(filtered_class_ids[i].item())
+                confidence = float(filtered_confidences[i].item())
+                x = x_center - width / 2
+                y = y_center - height / 2
+                class_name = CLASS_NAMES[class_id] if class_id < len(CLASS_NAMES) else f"class{class_id}"
+                
+                detections.append({
+                    "class_id": class_id,
+                    "class_name": class_name,
+                    "confidence": confidence,
+                    "bbox": [x, y, width, height]
+                })
+            
+            return torch_non_max_suppression(detections)
+        except Exception as e:
+            logger.error(f"GPU postprocessing failed: {str(e)}. Falling back to CPU")
+            return cpu_postprocess_predictions(output, confidence_threshold)
+    else:
+        return cpu_postprocess_predictions(output, confidence_threshold)
+
+def cpu_postprocess_predictions(output, confidence_threshold=0.20):
+    """Fallback CPU postprocessing"""
+    output = output[0] 
     detections = []
     
     for detection in output.T:
@@ -100,7 +196,88 @@ def postprocess_predictions(output, confidence_threshold=0.1):
     
     return non_max_suppression(detections)
 
+def torch_non_max_suppression(detections, iou_threshold=0.5):
+    """PyTorch-based non-maximum suppression"""
+    if not detections:
+        return []
+    
+    if cuda_available and len(detections) > 1:
+        try:
+            # Sort by confidence (descending)
+            detections.sort(key=lambda x: x['confidence'], reverse=True)
+            
+            # Extract boxes and convert to tensor
+            boxes = torch.tensor([[d['bbox'][0], d['bbox'][1], 
+                                  d['bbox'][0] + d['bbox'][2], 
+                                  d['bbox'][1] + d['bbox'][3]] for d in detections], 
+                                device=device)
+            
+            scores = torch.tensor([d['confidence'] for d in detections], device=device)
+            
+            # Custom PyTorch NMS implementation
+            keep_indices = []
+            while len(scores) > 0:
+                # Pick the box with the highest score
+                max_score_idx = torch.argmax(scores)
+                keep_indices.append(max_score_idx.item())
+                
+                # If only one box left, break
+                if len(scores) == 1:
+                    break
+                
+                # Get the IoU between the highest score box and all other boxes
+                max_box = boxes[max_score_idx].unsqueeze(0)
+                other_boxes = torch.cat([boxes[:max_score_idx], boxes[max_score_idx+1:]])
+                
+                # Calculate IoU
+                xx1 = torch.max(max_box[:, 0], other_boxes[:, 0])
+                yy1 = torch.max(max_box[:, 1], other_boxes[:, 1])
+                xx2 = torch.min(max_box[:, 2], other_boxes[:, 2])
+                yy2 = torch.min(max_box[:, 3], other_boxes[:, 3])
+                
+                w = torch.clamp(xx2 - xx1, min=0)
+                h = torch.clamp(yy2 - yy1, min=0)
+                
+                intersection = w * h
+                area1 = (max_box[:, 2] - max_box[:, 0]) * (max_box[:, 3] - max_box[:, 1])
+                area2 = (other_boxes[:, 2] - other_boxes[:, 0]) * (other_boxes[:, 3] - other_boxes[:, 1])
+                union = area1 + area2 - intersection
+                
+                iou = intersection / union
+                
+                # Remove boxes with IoU > threshold
+                mask = iou <= iou_threshold
+                
+                # Create new tensors with remaining boxes
+                remaining_indices = torch.cat([torch.tensor([0], device=device), 
+                                             torch.arange(1, len(boxes), device=device)[mask]])
+                boxes = torch.index_select(boxes, 0, remaining_indices)
+                scores = torch.index_select(scores, 0, remaining_indices)
+                
+                # Update indices mapping
+                indices_map = torch.zeros(len(detections), dtype=torch.long, device=device)
+                indices_map[0] = max_score_idx
+                indices_map[1:] = torch.arange(len(detections)-1, device=device)
+                indices_map = indices_map[remaining_indices]
+                
+                # Remove the highest score box
+                boxes = boxes[1:]
+                scores = scores[1:]
+            
+            # Retrieve kept detections
+            kept_detections = [detections[i] for i in keep_indices]
+            return kept_detections
+        except Exception as e:
+            logger.error(f"PyTorch NMS failed: {str(e)}. Falling back to CPU")
+            return non_max_suppression(detections, iou_threshold)
+    else:
+        return non_max_suppression(detections, iou_threshold)
+
 def non_max_suppression(detections, iou_threshold=0.5):
+    """CPU fallback for non-maximum suppression"""
+    if not detections:
+        return []
+        
     detections.sort(key=lambda x: x['confidence'], reverse=True)
     final_detections = []
     
@@ -191,7 +368,7 @@ def process_frame(frame):
         for class_name, details in detections_this_frame.items():
             current_detections[class_name] = {
                 "max_confidence": details["max_confidence"],
-                "min_confidence": details["min_confidence"],
+                "min_confidence": details["min_confidence"] if details["min_confidence"] != float('inf') else 0.0,
                 "count": details["count"]
             }
 
@@ -305,7 +482,7 @@ if __name__ == '__main__':
                 start_time = time.time()
                 frame_count += 1
 
-        #threading.Thread(target=print_fps, daemon=True).start()
+        # threading.Thread(target=print_fps, daemon=True).start()
         
         logger.info(f"Starting Flask server with class names: {CLASS_NAMES}")
         app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
