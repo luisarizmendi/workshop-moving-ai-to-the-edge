@@ -352,7 +352,7 @@ After downloading the dataset, the pipeline moves on to the model training task.
 
 One significant enhancement in this Kubeflow step, compared to the Elyra pipelines, is the calculation of metrics during training. These metrics are stored in a variable and will later be used to populate the metadata in the Model Registry, adding an extra layer of insight and traceability to the model lifecycle.
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 # Component 2: Train Model
 @dsl.component(
@@ -500,7 +500,7 @@ Also bear in mind that other schudule configurations need to be also consistent,
 
 The trained model native PyTorch `.pt` is uploaded to the bucket specified by the input variable, stored in the `/model/pytorch` directory. It's important to consider that certain model serving solutions may require a specific directory structure and/or additional configuration files. For instance, OpenVINO serving with the `onnx-1` format expects the directory structure to be `<version>/<model_name>.onnx` (and you can add a `config.pbtxt` file), while NVIDIA Triton for `torchscript` expects the format `<version>/model.pt`.
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 # Component 3: Upload to Object Storage
 @dsl.component(
@@ -653,7 +653,7 @@ This Kubeflow pipeline task triggers an OpenShift Pipeline, an automated CI/CD w
 
 The OpenShift pipeline will perform the following actions: it fetches the required files, builds a container image, and pushes the new image to the registry.
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 # Component 4: Trigger Tekton PipelineRun
 @dsl.component(
@@ -840,7 +840,7 @@ If you are curious about the OpenShift pipeline and associated tasks definition 
 
 The OpenShift AI Model Registry is a centralized repository for metadata storing, managing, and tracking machine learning models throughout their lifecycle. It allows you to add rich metadata to each model's description, which can include performance metrics, hyperparameters, model version, and even the container image used for training. This metadata is invaluable for model versioning, auditing, and traceability, ensuring that all relevant information about the model's origin and performance is easily accessible and well-documented for future use.
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 # Component 5: Push to Model Registry
 @dsl.component(
@@ -1194,7 +1194,7 @@ output [
   {
     name: "output0"
     data_type: TYPE_FP32
-    dims: [ -1, 6, -7 ]
+    dims: [ -1, 6, -1 ]
   }
 ]
 backend: "onnxruntime"

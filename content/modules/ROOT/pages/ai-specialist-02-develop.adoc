@@ -538,7 +538,7 @@ The last code block example that we will see is the one used to store the result
 
 In order to do that you need to create an Object Storage Client and then use it with the files that you can upload. We are using OpenShift Data Foundation as Storage Object:
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 s3_client = boto3.client(
     "s3",
@@ -551,7 +551,7 @@ s3_client = boto3.client(
 
 But what are those values? Well, when you created the Workbench you configured an "Storage Connection" with details about the Object Storage. These values were injected as Environment variables that now you can use, so *before* the client setup you will need to import them as follows:
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 AWS_S3_ENDPOINT = os.getenv("AWS_S3_ENDPOINT", "").replace('https://', '').replace('http://', '')
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
@@ -561,7 +561,7 @@ AWS_S3_BUCKET = os.getenv("AWS_S3_BUCKET")
 
 Once you have the Object Storage Client configured, you just need to select the files and upload them using the `client.fput_object` method:
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 model_path_train = results_train.save_dir
 weights_path = os.path.join(model_path_train, "weights")

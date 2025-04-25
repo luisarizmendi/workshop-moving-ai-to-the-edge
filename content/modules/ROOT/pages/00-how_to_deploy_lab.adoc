@@ -9,6 +9,10 @@ The "AI Specialist" module only requires the Cloud/Core Datacenter infrastructur
 
 === OpenShift
 
+[NOTE]
+
+This workshop is prepared to be deployed in OpenShift 4.18
+
 This workshop requires an OpenShift cluster. You might already have one or, if you have access to the Red Hat Demo Platform, you can order either the "RHOAI on OCP on AWS with NVIDIA GPUs" lab, if you want or not GPUs, or the "Red Hat OpenShift Container Platform Cluster (AWS)" lab if you want an "empty" environment.
 
 ==== Lab Baseline

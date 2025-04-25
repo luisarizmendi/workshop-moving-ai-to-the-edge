@@ -109,7 +109,7 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 * Model name: `hardhat-test` (we use that name in a Job below)
 
-* Serving runtime: `NVIDIA Triton Server v25.01`
+* Serving runtime: `NVIDIA Triton Server v25.03`
 
 * Framework: `onnx - 1.20.1`
 
@@ -491,7 +491,7 @@ Instructions below are for Fedora/RHEL based systems and using the interactive m
 
 [CAUTION]
 
-Be sure that you have the ports `tcp/8080`, `tcp/8000` and `tcp/5000` ports open un your local machine. 
+Be sure that you have the ports `tcp/8080`, `tcp/8000`, `tcp/8001` and `tcp/5000` ports open un your local machine. 
 
 
 Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your laptop, you can deploy the Inference Server using it for testing. But what if you don’t have one? You have two options at this point. 

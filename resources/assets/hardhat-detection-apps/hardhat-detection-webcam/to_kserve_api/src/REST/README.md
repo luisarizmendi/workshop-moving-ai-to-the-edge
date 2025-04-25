@@ -31,24 +31,30 @@ podman build -t object-detection-stream-manager:rest -f Containerfile .
 Run the container:
 
 ```bash
-sudo podman run -it --rm -p 5000:5000 --device=privileged --net host -e INFERENCE_SERVER_URL=http://localhost:8000/v2/models/hardhat/infer -e CLASS_NAMES=hardhat,no_hardhat object-detection-stream-manager:rest
+sudo podman run -it --rm -p 5000:5000 --gpus all --device=privileged --net host -e INFERENCE_SERVER_URL=http://localhost:8000/v2/models/hardhat/infer -e CLASS_NAMES=hardhat,no_hardhat object-detection-stream-manager:rest
 ```
 
 > **Note**: Run it with sudo to simplify the access to the video device
 
 > **Note**: Add `--net host` to easily grant communication with other containers running in the same host
+
+> **Note**: Add `--gpus all` if you want to use GPU for pre and post image processing
+
 
 ### Using podman and a pre-built image in Quay.io
 
 Run the container:
 
 ```bash
-sudo podman run -it --rm -p 5000:5000 --privileged --net host -e INFERENCE_SERVER_URL=http://localhost:8000/v2/models/hardhat/infer -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:rest
+sudo podman run -it --rm -p 5000:5000 --gpus all --privileged --net host -e INFERENCE_SERVER_URL=http://localhost:8000/v2/models/hardhat/infer -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:rest
 ```
 
 > **Note**: Run it with sudo to simplify the access to the video device
 
 > **Note**: Add `--net host` to easily grant communication with other containers running in the same host
+
+> **Note**: Add `--gpus all` if you want to use GPU for pre and post image processing
+
 
 ### Manual Installation
 

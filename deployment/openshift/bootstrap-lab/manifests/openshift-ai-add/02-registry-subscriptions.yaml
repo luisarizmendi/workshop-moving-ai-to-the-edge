@@ -9,12 +9,12 @@ metadata:
   name: authorino-operator
   namespace: openshift-operators
 spec:
-  channel: tech-preview-v1
+  channel: stable
   installPlanApproval: Automatic
   name: authorino-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: authorino-operator.v1.1.1
+  startingCSV: authorino-operator.v1.2.1
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -31,7 +31,7 @@ spec:
   name: serverless-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: serverless-operator.v1.35.0
+  startingCSV: serverless-operator.v1.35.1
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -48,4 +48,4 @@ spec:
   name: servicemeshoperator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: servicemeshoperator.v2.6.4
+  startingCSV: servicemeshoperator.v2.6.7-0

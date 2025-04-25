@@ -274,7 +274,7 @@ image::platform-cloud-dashboard.png[]
 
 === Edge Applications
 
-To add a new application to a device, we will be modifying the Fleet Device Spec template. Given we are targeting Microshift as platform we will need to add Kubernetes manifests to the Fleet template (you can see why is that https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.17/html/running_applications/applications-with-microshift#how-microshift-uses-manifests[here]).
+To add a new application to a device, we will be modifying the Fleet Device Spec template. Given we are targeting Microshift as platform we will need to add Kubernetes manifests to the Fleet template (you can see why is that https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.18/html/running_applications/applications-with-microshift#how-microshift-uses-manifests[here]).
 
 So we want to apply again the logic we saw above on defining an OS config (since manifests are just configuration on the filesystem).
 

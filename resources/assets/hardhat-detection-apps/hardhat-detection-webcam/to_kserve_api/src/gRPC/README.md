@@ -31,24 +31,28 @@ podman build -t object-detection-stream-manager:grpc -f Containerfile .
 Run the container:
 
 ```bash
-podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat object-detection-stream-manager:grpc
+podman run -it --rm -p 5000:5000 --privileged --gpus all  --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat object-detection-stream-manager:grpc
 ```
 
 > **Note**: Run it with sudo to simplify the access to the video device
 
 > **Note**: Add `--net host` to easily grant communication with other containers running in the same host
+
+> **Note**: Add `--gpus all` if you want to use GPU for pre and post image processing
 
 ### Using podman and a pre-built image in Quay.io
 
 Run the container:
 
 ```bash
-podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
+podman run -it --rm -p 5000:5000 --privileged --gpus all  --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ```
 
 > **Note**: Run it with sudo to simplify the access to the video device
 
 > **Note**: Add `--net host` to easily grant communication with other containers running in the same host
+
+> **Note**: Add `--gpus all` if you want to use GPU for pre and post image processing
 
 ### Manual Installation
 

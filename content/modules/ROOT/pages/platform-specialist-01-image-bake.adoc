@@ -59,7 +59,7 @@ Let's analyze the base container image provided:
 ----
 FROM registry.gitlab.com/redhat/rhel/sst/orin-sidecar/nvidia-jetson-sidecar/rhel-9.4:36.3.1-20240516220919
 
-ARG USHIFT_VER=4.17
+ARG USHIFT_VER=4.18
 RUN dnf config-manager \
         --set-enabled rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
         --set-enabled fast-datapath-for-rhel-9-$(uname -m)-rpms

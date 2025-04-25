@@ -8,9 +8,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  channel: stable-3.13
+  channel: stable-3.14
   installPlanApproval: Automatic
   name: quay-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: quay-operator.v3.13.4
+  startingCSV: quay-operator.v3.14.0

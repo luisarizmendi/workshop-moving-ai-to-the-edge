@@ -1,5 +1,4 @@
 = Welcome to moving AI to the edge workshop
-:page-layout: home
 :!sectids:
 
 [.text-center.strong]
@@ -126,16 +125,16 @@ xref:00-arch-intro.adoc[*Architecture*]
 ** xref:platform-specialist-00-intro.adoc#_toolset[Toolset]
 ** xref:platform-specialist-00-intro.adoc#_workflow_overview[Workflow Overview]
 ** xref:platform-specialist-00-intro.adoc#_section_video_recording[Section Video Recording]
-* xref:platform-specialist-01-image.adoc[1. Device Image Preparation]
+* xref:platform-specialist-01-image-bake.adoc[1. Device Image Preparation]
 ** xref:platform-specialist-01-image-bake.adoc#_[RHDE - Standard x86]
 ** xref:platform-specialist-01-image-bake.adoc#_[RHDE - Nvidia Jetson]
 ** xref:platform-specialist-01-image-bake.adoc#_[OCP - ACM GUI]
 ** xref:platform-specialist-01-image-bake.adoc#_[OCP - Appliance Mode]
-* xref:platform-specialist-02-rollout.adoc[2. Device Rollout]
+* xref:platform-specialist-02-device-onboarding.adoc[2. Device Rollout]
 ** xref:platform-specialist-02-device-onboarding.adoc#_[RHDE]
 ** xref:platform-specialist-02-device-onboarding.adoc#_[OCP - ACM GUI]
 ** xref:platform-specialist-02-device-onboarding.adoc#_[OCP - Appliance Mode]
-* xref:platform-specialist-03-update.adoc[3. Day-2 Operations]
+* xref:platform-specialist-03-day-2-ops.adoc[3. Day-2 Operations]
 ** xref:platform-specialist-03-day-2-ops.adoc#_[Red Hat Edge Manager]
 ** xref:platform-specialist-03-day-2-ops.adoc#_[Advanced Cluster Manager]
 

@@ -152,7 +152,7 @@ You can now install Flight Control CLI since you will need that to generate the 
 
 Select the appropriate Flight Control CLI binary for your OS (linux or darwin) and CPU architecture (amd64 or arm64), download the flightctl binary to your Workstation, rename it to flightctl and make it executable, move it into a location within your shell's search path.
 
-[source,shell,role=execute,subs="attributes"]
+[source,shell,role=execute,subs="--attributes"]
 ----
 $ FC_CLI_BINARY=flightctl-linux-amd64
 $ curl -LO https://github.com/flightctl/flightctl/releases/download/latest/${FC_CLI_BINARY}
@@ -175,7 +175,7 @@ NAME	ALIAS	OWNER	SYSTEM	UPDATED	APPLICATIONS	LAST SEEN
 ====
 Should you not have any DISPLAY environment specified on your Workstation, you can also login just using CLI on terminal
 
-[source,shell,role=execute,subs="attributes"]
+[source,shell,role=execute,subs="--attributes"]
 ----
 $ flightctl login https://api.{user}.apps.{ocp_cluster_url} --insecure-skip-tls-verify --username {flightctl-user-basename} --password {flightctl-password}
 ----
@@ -233,7 +233,7 @@ With this file available we are now ready to build the new Containerfile.
 
 Transfer the generated files to either the Shared Edge Builder or your Local Edge Device on the created VM.
 
-NOTE: In case you want to add a virtualized your Local Edge Device, you can find the qcow2 image on the Shared Edge Builder (under `/var/lib/libvirt/images/`). You can transfer it to your Local Edge Device and start it like this (remember to also add insecure registry like shown xref:platform-specialist-01-image.adoc#_image_creation[here] in the kickstart file)
+NOTE: In case you want to add a virtualized your Local Edge Device, you can find the qcow2 image on the Shared Edge Builder (under `/var/lib/libvirt/images/`). You can transfer it to your Local Edge Device and start it like this (remember to also add insecure registry like shown xref:platform-specialist-01-image-bake.adoc#_image_creation[here] in the kickstart file)
 
 [source,bash]
 ----

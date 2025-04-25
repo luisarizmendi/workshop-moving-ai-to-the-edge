@@ -413,7 +413,7 @@ Now deploy the Inference Server with the model in `onnx` format provided by the 
 
 * Model name: `hardhat-test` (we use that name in a Job below)
 
-* Serving runtime: `NVIDIA Triton Server v25.01`
+* Serving runtime: `NVIDIA Triton Server v25.03`
 
 * Framework: `onnx - 1.20.1`
 
@@ -758,7 +758,7 @@ Instructions below are for Fedora/RHEL based systems and using the interactive m
 
 [CAUTION]
 
-Be sure that you have the ports `tcp/8080`, `tcp/8000` and `tcp/5000` ports open un your local machine. 
+Be sure that you have the ports `tcp/8080`, `tcp/8000`, `tcp/8001` and `tcp/5000` ports open un your local machine. 
 
 
 Inferencing with a CPU can be slow. However, if you have an NVIDIA GPU in your laptop, you can deploy the Inference Server using it for testing. Let's proceed with the deployment.
@@ -773,7 +773,7 @@ If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.c
 [example]
 ====
 
-1- Choose the right https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script] depending if you are using GPU or not
+1- Use the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman/triton_pod.sh[Inference Server deployment script] depending if you are using GPU or not
 
 2- Download the script and change the `<INSERT IMAGE NAME AND TAG>` string with the `modelcar` container image that you generated (something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`)
 
@@ -790,7 +790,7 @@ These are large images, the pull could take time, be sure that the inference ser
 
 The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
 
-The Inference service will be available at http://localhost:8000, you can check that the model has been loaded with the right values:
+The Inference service will be available at http://localhost:8001 (gRPC) and http://localhost:8000 (REST). You can check that the model has been loaded with the right values:
 
 [source,shell,role=execute,subs="attributes"]
 ----
@@ -809,11 +809,19 @@ In this case you will need to run it as privileged to access the system devices 
 
 [source,shell,role=execute,subs="attributes"]
 ----
-sudo podman run -it --rm --net host -p 5000:5000 --privileged -e INFERENCE_SERVER_URL=http://localhost:8000/v2/models/hardhat/infer -e CLASS_NAMES=hardhat,no_helmet  quay.io/luisarizmendi/object-detection-stream-manager:prod
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
+
+[NOTE]
+
+You can add `--gpus all` if you have a GPU in your laptop and you want to use it for pre and post image processing.
 
 You will see logs directly in the console terminal. The Inference Server may already be displaying detection results, and if a `no_helmet` detection occurs, the "Actuator" will trigger an alarm. Additionally, the Camera Stream Manager logs important details at startup, such as the selected webcam ID, providing useful insights for debugging and verification
 ====
+
+[NOTE]
+
+We are deploying the service version that uses gRPC to send data to the inference service because it introduces less overhead. If you want to review and use the REST version to compare it with the gRPC you can https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/REST/README.md[check the script README file].
 
 [NOTE]
 
