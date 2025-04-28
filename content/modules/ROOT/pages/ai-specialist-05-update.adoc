@@ -25,7 +25,7 @@ After deployment, AI models require continuous monitoring to maintain accuracy, 
 
 * Prometheus and Grafana: Prometheus and Grafana are integral to OpenShift AI’s monitoring stack, providing metrics collection, visualization, and alerting.
 
-* https://github.com/trustyai-explainability[TrustyAI]: TrustyAI in OpenShift AI enables monitoring of machine learning models for fairness, bias, and drift. It integrates with OpenShift’s monitoring stack to provide insights into model behavior and performance.
+* https://github.com/trustyai-explainability[TrustyAI, window=_blank]: TrustyAI in OpenShift AI enables monitoring of machine learning models for fairness, bias, and drift. It integrates with OpenShift’s monitoring stack to provide insights into model behavior and performance.
 
 
 As with OpenShift AI Serving capabilities, model deployment is limited to the same OpenShift cluster, making it unsuitable for our Edge Computing use case.
@@ -73,7 +73,7 @@ In this phase you just need to re-run the training pipeline including the last v
 
 [TIP]
 
-You have a https://huggingface.co/luisarizmendi/hardhat-or-hat[second verion of the pre-trained model] that includes the hat detections that you can directly use instead of waiting to train your own model.
+You have a https://huggingface.co/luisarizmendi/hardhat-or-hat[second verion of the pre-trained model, window=_blank] that includes the hat detections that you can directly use instead of waiting to train your own model.
 
 
 

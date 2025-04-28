@@ -19,11 +19,11 @@ Let's start with the first step.
 
 You have the full guide for this task in the xref:ai-specialist-01-data.adoc[Data Management] section
 
-For this project, https://roboflow.com/[Roboflow] will be the primary tool used for managing and preparing data.
+For this project, https://roboflow.com/[Roboflow, window=_blank] will be the primary tool used for managing and preparing data.
 
 [example]
 ====
-Your first task will be to create a https://roboflow.com/[Roboflow account] (if you don't have one already):
+Your first task will be to create a https://roboflow.com/[Roboflow account, window=_blank] (if you don't have one already):
 
 1. Go to https://roboflow.com/ and click  `Get Started` in the top-right corner.
 
@@ -45,7 +45,7 @@ You will get images in your Roboflow account by forking another Project.
 ====
 To Fork the "Hardhat or Hat MockTrain" Project:
 
-1. Navigate to the  https://universe.roboflow.com/luisarizmendi/hardhat-or-hat-mocktrain/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true[dataset's URL that you want to Fork in Roboflow Universe].
+1. Navigate to the  https://universe.roboflow.com/luisarizmendi/hardhat-or-hat-mocktrain/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true[dataset's URL that you want to Fork in Roboflow Universe, window=_blank].
 2. Click the "Fork Dataset" button on the top right corner.
 3. Confirm and wait until fork is done.
 ====
@@ -61,7 +61,7 @@ Roboflow need you to "publish" the Dataset to be trained by creating a "version"
 ====
 To create a new version of your Dataset: 
 
-1. Navigate to your Project's URL in your https://roboflow.com/[Roboflow account].
+1. Navigate to your Project's URL in your https://roboflow.com/[Roboflow account, window=_blank].
 2. Click on "Versions" in the left menu.
 3. You'll be prompted to apply additional preprocessing and aumentation actions. You won't include any so click "Continue" twice. 
 4. Click "Create".
@@ -74,7 +74,7 @@ Now is time to get the details to access this Dataset version. You don't need to
 ====
 To get the Dataset access details:
 
-1. Navigate to the Project's URL in your https://roboflow.com/[Roboflow account].
+1. Navigate to the Project's URL in your https://roboflow.com/[Roboflow account, window=_blank].
 2. Click the "Versions" on the left menu and select the version to be used (you have just one).
 3. Click on "Download Dataset" on top right corner.
 4. Select the format. We will be using a YOLOv11 based model.
@@ -110,7 +110,7 @@ This section will guide you through the essential steps of engineering, training
 
 In this step you will be using OpenShift AI and OpenShift Data Foundation. 
 
-OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks] for experimentation and model training.
+OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks, window=_blank] for experimentation and model training.
 
 OpenShift Data Foundation is an Open Source High Performance Object Storage where we will save the models and the files with the performance metrics.
 
@@ -181,7 +181,7 @@ image::ai-build-storemodel.png[]
 
 [NOTE]
 
-Remember that you performed a xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] with a reduced number of epochs and few data, so you cannot use that model to detect hardhats. During the deployment phase you will use a https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
+Remember that you performed a xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] with a reduced number of epochs and few data, so you cannot use that model to detect hardhats. During the deployment phase you will use a https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank].
 
 At this point you can navigate to "Data Science Projects" and stop your Workbench to save resources in the OpenShift cluster. 
 
@@ -191,7 +191,7 @@ At this point you can navigate to "Data Science Projects" and stop your Workbenc
 
 You have the full guide for this task in the xref:ai-specialist-03-training.adoc[Model Training] section
 
-In production environments, training machine learning models is not as simple as running a script or experimenting in a notebook. A robust pipeline is essential. In this workshop we will use https://www.kubeflow.org/docs/components/pipelines/overview/[Kubeflow Pipelines].
+In production environments, training machine learning models is not as simple as running a script or experimenting in a notebook. A robust pipeline is essential. In this workshop we will use https://www.kubeflow.org/docs/components/pipelines/overview/[Kubeflow Pipelines, window=_blank].
 
 In this step you will use the same tools than in the previous one: OpenShift AI and OpenShift Data Foundation.
 
@@ -202,7 +202,7 @@ Before Importing a pipeline you will need to enable the Pipeline server.
 ====
 To create a Pipeline Server:
 
-1- Navigate to "Data Science Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] and configure a new pipeline server.
+1- Navigate to "Data Science Pipelines > Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] and configure a new pipeline server.
 
 
 2- Fill in the Data Connection information:
@@ -229,7 +229,7 @@ Wait until the Pipeline is ready. Then you can import your pipeline.
 ====
 To proceed with the Kubeflow Pipeline import:
 
-1. Go to Data Science Pipelines
+1. Go to "Data Science Pipelines > Pipelines"
 2. Click Import Pipeline
 3. Fill in Name (`hardhat-training`)
 4. Select "Import by URL" and include the following URL:
@@ -273,7 +273,7 @@ It's time to run the imported Kubeflow Pipeline:
     * roboflow_version: `<your value>`
     * workshop_username: `{user}`
 
-5. Adjust the "Batch Size" and the "Epochs". Since you will be running a xref:ai-specialist-01-data.adoc#_mock_training_dataset[xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] you can configure them to "1" to speed-up the pipeline execution.
+5. Adjust the "Batch Size" and the "Epochs". Since you will be running a xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] you can configure them to "1" to speed-up the pipeline execution.
 
     * Batch Size: `1`
     * Ephoch number: `1`
@@ -288,13 +288,13 @@ You can view the details of each task while it's running to monitor important in
 image::ai-train-pipeline-pod-task.png[]
 
 
-If the Pipeline run POD is scheduled in a node where other workloads using GPUs are located, it could happen that your GPU run out of memory. If it happens try reducing the `batch size` or launch the run again after the other workloads finished or just import the https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline_cpu.yaml[Kubeflow Pipeline that only make use of CPU] (just for testing propouses).
+If the Pipeline run POD is scheduled in a node where other workloads using GPUs are located, it could happen that your GPU run out of memory. If it happens try reducing the `batch size` or launch the run again after the other workloads finished or just import the https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline_cpu.yaml[Kubeflow Pipeline that only make use of CPU, window=_blank] (just for testing propouses).
 
 image::ai-train-memoryerror.png[]
 
 
 
-When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution that creates the `modelcar` container image and push it into the Container Image Registry:
+When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console, window=_blank]. There you can see the OpenShift Pipeline execution that creates the `modelcar` container image and push it into the Container Image Registry:
 
 
 image::ai-train-modelcar-pipeline.png[]
@@ -303,11 +303,11 @@ image::ai-train-modelcar-pipeline.png[]
 After some time, the pipeline will finish. You can at that point go to the Object Storage and check that:
 
 
-1- The contents that have been uplaoded to https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[`models` directory in your "{user}-ai-models" bucket].
+1- The contents that have been uplaoded to https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[`models` directory in your "{user}-ai-models" bucket, window=_blank].
 
 image::ai-train-model-s3.png[]
 
-2- The "modelcar" container image is available in the internal https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry] (user: {user} ; password: {password})
+2- The "modelcar" container image is available in the internal https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank] (user: {user} ; password: {password})
 
 image::ai-train-model-quay.png[]
 
@@ -324,10 +324,10 @@ One thing to take into account now is that you used a reduced ("xref:ai-speciali
 
 [IMPORTANT]
 
-If the model you use isn't capable of delivering strong performance, you won't achieve reliable or accurate results during the inference phase, so if you used the ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset you must update your `modelcar` image with the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
+If the model you use isn't capable of delivering strong performance, you won't achieve reliable or accurate results during the inference phase, so if you used the ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset you must update your `modelcar` image with the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank].
 
 
-The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] in your environment is to pull https://quay.io/repository/luisarizmendi/modelcar-hardhat[the v1 of this pre-created modelcar container image] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
+The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank] in your environment is to pull https://quay.io/repository/luisarizmendi/modelcar-hardhat[the v1 of this pre-created modelcar container image, window=_blank] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank].
 
 
 ----
@@ -401,7 +401,7 @@ Now deploy the Inference Server with the model in `onnx` format provided by the 
 ====
 1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
 
-2- Move to "Model Registry" and select your model
+2- Move to "Models > Model Registry" and select your model
 
 3- Click on the version that you want to test
 

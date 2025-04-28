@@ -1,7 +1,7 @@
 kind: Template
 apiVersion: template.openshift.io/v1
 metadata:
-  name: template-triton-25.03
+  name: triton-rest-template
   namespace: redhat-ods-applications
   labels:
     opendatahub.io/dashboard: 'true'
@@ -14,12 +14,12 @@ objects:
   - apiVersion: serving.kserve.io/v1alpha1
     kind: ServingRuntime
     metadata:
-      name: triton-25.03
+      name: triton-25.03-rest
       labels:
         opendatahub.io/dashboard: 'true'
       annotations:
         opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-        openshift.io/display-name: NVIDIA Triton Server v25.03
+        openshift.io/display-name: NVIDIA Triton Server v25.03 (REST)
     spec:
       supportedModelFormats:
         - name: pyg
@@ -85,4 +85,95 @@ objects:
             timeoutSeconds: 10
           ports:
             - containerPort: 8000
+              protocol: TCP
+---
+kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: triton-grpc-template
+  namespace: redhat-ods-applications
+  labels:
+    opendatahub.io/dashboard: 'true'
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    opendatahub.io/apiProtocol: gRPC
+    opendatahub.io/modelServingSupport: '["single"]'
+objects:
+  - apiVersion: serving.kserve.io/v1alpha1
+    kind: ServingRuntime
+    metadata:
+      name: triton-25.03-grpc
+      labels:
+        opendatahub.io/dashboard: 'true'
+      annotations:
+        opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
+        openshift.io/display-name: NVIDIA Triton Server v25.03 (gRPC)
+    spec:
+      supportedModelFormats:
+        - name: pyg
+          version: 2.6.1
+          autoSelect: true
+        - name: onnx
+          version: 1.20.1
+          autoSelect: true
+        - name: openvino
+          version: 2024.05.0
+          autoSelect: true
+        - name: pytorch
+          version: 2.6.0
+          autoSelect: true
+        - name: tensorflow
+          version: 2.16.1
+          autoSelect: true
+        - name: tensorrt
+          version: 10.8.0.43
+          autoSelect: true
+      multiModel: false
+      protocolVersions:
+        - v2
+        - grpc-v2
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: '8002'
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+      containers:
+        - name: kserve-container
+          image: 'nvcr.io/nvidia/tritonserver:25.03-py3'
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false" '
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: '5'
+              memory: 1Gi
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - '--fail'
+                - '--silent'
+                - '--show-error'
+                - '--max-time'
+                - '9'
+                - 'http://localhost:8000/v2/health/live'
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+            - containerPort: 8001
               protocol: TCP

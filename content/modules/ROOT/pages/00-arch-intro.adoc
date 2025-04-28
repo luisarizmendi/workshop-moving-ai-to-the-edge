@@ -58,7 +58,7 @@ Running Locally:
 
 * Local Server: OnLogic Helix 500 with XXXXXXXXXX cores, XXXXXXXXXXXX GB memory, and XXXXXXXXXXX disk capacity. The local server will run the following services:
     - Container Image Registry mirror (to save bandwidth).
-    - RPM mirror https://access.redhat.com/solutions/7227[info]
+    - RPM mirror https://access.redhat.com/solutions/7227[info, window=_blank]
 
 [NOTE]
 
@@ -69,7 +69,7 @@ Running in the Cloud:
 
 * Source Code Repository: GitHub.
 
-* Container Image Registry: https://quay.io[Quay.io].
+* Container Image Registry: https://quay.io[Quay.io, window=_blank].
 
 * AI Model Development Environment: OpenShift AI.
 
@@ -77,7 +77,7 @@ Running in the Cloud:
 
 * Edge Device Image Builder: TBD
 
-* Edge Device Manager: https://github.com/flightctl/flightctl[Flight Control] running on top of OpenShift.
+* Edge Device Manager: https://github.com/flightctl/flightctl[Flight Control, window=_blank] running on top of OpenShift.
 
 [NOTE]
 
@@ -102,9 +102,9 @@ The only requirements are:
 
 * `podman` or `docker`
 
-* `oc` https://mirror.openshift.com/pub/openshift-v4/clients/ocp/[OpenShift client]
+* `oc` https://mirror.openshift.com/pub/openshift-v4/clients/ocp/[OpenShift client, window=_blank]
 
-* https://helm.sh/docs/intro/install/[Helm CLI]
+* https://helm.sh/docs/intro/install/[Helm CLI, window=_blank]
 
 == Lab Details
 

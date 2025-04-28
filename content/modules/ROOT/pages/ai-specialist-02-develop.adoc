@@ -18,7 +18,7 @@ In this section we will be using the following tools:
 
 *OpenShift AI*
 
-OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks] for experimentation and model training. Furthermore, it will enable the creation and orchestration of automated pipelines, ensuring efficient and repeatable workflows.
+OpenShift AI is an integrated platform that simplifies the development and deployment of AI workloads. We will use it to create and manage the https://jupyter.org/[Jupyter Notebooks, window=_blank] for experimentation and model training. Furthermore, it will enable the creation and orchestration of automated pipelines, ensuring efficient and repeatable workflows.
 
 In this workshop we will explore  the features of OpenShift AI and their applicability when creating models in OpenShift AI while performing inference on RHEL. OpenShift AI is designed to deploy and serve models directly on OpenShift, leveraging its built-in capabilities for scalability, monitoring, and orchestration. However, it is also possible to leverage OpenShift AI features for workflows where inference is performed on RHEL, or more generic, when inference is performed at the Edge.
 
@@ -82,7 +82,7 @@ Feature Engineering is the foundation of the model building process, where data 
 
 Selecting appropriate algorithms involves analyzing the problem type, such as classification or regression, and understanding the data's characteristics to identify the best-fit solution. This process requires balancing performance metrics like accuracy, interpretability, and computational efficiency through experimentation. Designing architectures focuses on defining the structure of the model by choosing the right combination of layers, activation functions, and hyperparameters to capture the complexity of the data. 
 
-We already explained that our project involves a classification problem, and that the pre-selected algorithm is YOLO on its version 11. YOLOv11 (You Only Look Once, version 11) is the latest evolution in the https://docs.ultralytics.com/es/models/[YOLO family] of object detection models, building on its predecessors to achieve faster and more accurate results. This model is designed to meet the growing demands of near real-time object detection applications in fields such as autonomous vehicles, video surveillance, robotics, and more.
+We already explained that our project involves a classification problem, and that the pre-selected algorithm is YOLO on its version 11. YOLOv11 (You Only Look Once, version 11) is the latest evolution in the https://docs.ultralytics.com/es/models/[YOLO family, window=_blank] of object detection models, building on its predecessors to achieve faster and more accurate results. This model is designed to meet the growing demands of near real-time object detection applications in fields such as autonomous vehicles, video surveillance, robotics, and more.
 
 
 image::YOLO.png[]
@@ -100,7 +100,7 @@ This step requires no actions in this workshop, as these aspects were reviewed a
 image::ai-build-nav2.png[]
 
 
-At this stage, it is essential to focus on choosing the right hyperparameters during training, such as the learning rate, batch size, input image size, number of epochs, optimizer, etc. These parameters significantly impact the model performance, and fine tuning them is critical for achieving optimal results. Prototyping plays a crucial role in this process, allowing you to experiment with various configurations and refine model architectures iteratively. A common and effective way to perform this experimentation is by using https://jupyter.org/[Jupyter Notebooks].
+At this stage, it is essential to focus on choosing the right hyperparameters during training, such as the learning rate, batch size, input image size, number of epochs, optimizer, etc. These parameters significantly impact the model performance, and fine tuning them is critical for achieving optimal results. Prototyping plays a crucial role in this process, allowing you to experiment with various configurations and refine model architectures iteratively. A common and effective way to perform this experimentation is by using https://jupyter.org/[Jupyter Notebooks, window=_blank].
 
 Jupyter Notebooks are an interactive computing environment that combines live code, visualizations, and narrative text in a single document. They are ideal for prototyping machine learning models because they allow you to quickly test, debug, and document your workflows in a user-friendly interface.
 
@@ -161,7 +161,7 @@ Let's start with the first code block, the dependencies.
 
 [TIP]
 
-If you'd prefer to skip the process of configuring each code block or simply want to see the completed version, the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/development/prototyping.ipynb[full Jupyter Notebook is available for you to review here]. This allows you to quickly access the final file without spending time on the setup.
+If you'd prefer to skip the process of configuring each code block or simply want to see the completed version, the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/development/prototyping.ipynb[full Jupyter Notebook is available for you to review here, window=_blank]. This allows you to quickly access the final file without spending time on the setup.
 
 
 === Dependencies
@@ -178,7 +178,7 @@ In our case, however, we will need additional packages, such as the one that all
 
 [IMPORTANT]
 
-Once you have identified all the required packages, consider creating a custom base image that includes these dependencies (check the https://access.redhat.com/articles/rhoai-supported-configs[Software included in the supported workbench images]). This optimized image will streamline not only the prototyping phase but also regular training workflows performed through Pipelines.
+Once you have identified all the required packages, consider creating a custom base image that includes these dependencies (check the https://access.redhat.com/articles/rhoai-supported-configs[Software included in the supported workbench images, window=_blank]). This optimized image will streamline not only the prototyping phase but also regular training workflows performed through Pipelines.
 
 === Python Libraries
 
@@ -266,11 +266,11 @@ Here are the main hyperparameters you can tune for your YOLO model, along with b
 
 [NOTE]
 
-The list below is a subset of all the parameters that you can configure. You can find all the https://docs.ultralytics.com/usage/cfg/#train-settings[YOLO training configuration options here], including default values and a short explanation. 
+The list below is a subset of all the parameters that you can configure. You can find all the https://docs.ultralytics.com/usage/cfg/#train-settings[YOLO training configuration options here, window=_blank], including default values and a short explanation. 
 
 *Training Settings*
 
-* *Batch size* (`batch`): The https://medium.com/geekculture/how-does-batch-size-impact-your-model-learning-2dd34d9fb1fa[batch size] is the number of training samples used in one forward and backward pass. A larger batch size leads to more stable gradients and will also reduce sustantially the training time but requires more memory. Value will be dependant on your hardware (mainly memory) that you have available in your CPU/GPU, typical values are `16`, `32` or `64`. You can try higher values if your GPU allows it. Take into account that if you are running the training on your CPU and configure a batch size that your container instance size cannot manage,then the Workbench will launch an error while training the model and will ask if you want to restart it.
+* *Batch size* (`batch`): The https://medium.com/geekculture/how-does-batch-size-impact-your-model-learning-2dd34d9fb1fa[batch size, window=_blank] is the number of training samples used in one forward and backward pass. A larger batch size leads to more stable gradients and will also reduce sustantially the training time but requires more memory. Value will be dependant on your hardware (mainly memory) that you have available in your CPU/GPU, typical values are `16`, `32` or `64`. You can try higher values if your GPU allows it. Take into account that if you are running the training on your CPU and configure a batch size that your container instance size cannot manage,then the Workbench will launch an error while training the model and will ask if you want to restart it.
 
 [NOTE]
 
@@ -282,23 +282,23 @@ If batch size is a large number you could have not enough memory in your GPU or 
 
 * *Image Size* (`imgsz`): The resolution of the images fed into the model during training. Higher resolutions improve accuracy but increase training time and memory usage. Typical values: `640` (default), `1280`. Start with `640` and increase if your system can handle larger images.
 
-* *Patience* (`patience`): https://medium.com/@shouke.wei/optimizing-performance-unveiling-the-impact-of-patience-values-on-machine-learning-models-ef1ff3cbdee5[Patience] is the number of epochs with no improvement in validation performance before the early stopping mechanism kicks in to stop training. This helps prevent overfitting by stopping training early. Typical value is `10` but try to increase the value if you hit the early stopping, to be sure that you are not preventing the training to make your model improve in later epochs.
+* *Patience* (`patience`): https://medium.com/@shouke.wei/optimizing-performance-unveiling-the-impact-of-patience-values-on-machine-learning-models-ef1ff3cbdee5[Patience, window=_blank] is the number of epochs with no improvement in validation performance before the early stopping mechanism kicks in to stop training. This helps prevent overfitting by stopping training early. Typical value is `10` but try to increase the value if you hit the early stopping, to be sure that you are not preventing the training to make your model improve in later epochs.
 
 
 
 *Optimization Parameters*
 
-* *Optimized* (`optimizer`): The algorithm used to minimize the loss function during training. Common optimizers include https://medium.com/@weidagang/demystifying-the-adam-optimizer-in-machine-learning-4401d162cb9e[Adam] and https://mohitmishra786687.medium.com/stochastic-gradient-descent-a-basic-explanation-cbddc63f08e0[SGD (Stochastic Gradient Descent)] being Adam the default. You never know which one could be better so configure either `Adam` or `SGD` and check the results in each case.
+* *Optimized* (`optimizer`): The algorithm used to minimize the loss function during training. Common optimizers include https://medium.com/@weidagang/demystifying-the-adam-optimizer-in-machine-learning-4401d162cb9e[Adam] and https://mohitmishra786687.medium.com/stochastic-gradient-descent-a-basic-explanation-cbddc63f08e0[SGD (Stochastic Gradient Descent), window=_blank] being Adam the default. You never know which one could be better so configure either `Adam` or `SGD` and check the results in each case.
 
-* *Learning rate* (`lr0` and `lrf`): The https://en.wikipedia.org/wiki/Learning_rate[learning rate] controls how quickly the model updates weights during trainicng. Adjusting the learning rate can significantly impact model performance and training time. A learning rate that is too high may cause the model to converge too quickly to a suboptimal solution or fail to converge, while a rate that is too low can slow down training and may result in underfitting. You have two values, the first one is `lr0`, the starting learning rate used at the beginning of the training process and that determines the size of the initial updates made to the model weights during gradient descent. The other value is `lrf`, the Learning Rate Final Multiplier, that is a multiplier that specifies the final learning rate as a fraction of `lr0`, the learning rate gradually decays from `lr0` to `lr0 * lrf` over the course of training. Typical values are `0.01` for both parameters. If the model takes too long to converge, consider increasing the learning rate. However, if you observe sudden fluctuations or jumps in performance, it may indicate the need to reduce the learning rate (ie. `lr0` = `0.001`) to facilitate smoother and more stable convergence.
+* *Learning rate* (`lr0` and `lrf`): The https://en.wikipedia.org/wiki/Learning_rate[learning rate, window=_blank] controls how quickly the model updates weights during trainicng. Adjusting the learning rate can significantly impact model performance and training time. A learning rate that is too high may cause the model to converge too quickly to a suboptimal solution or fail to converge, while a rate that is too low can slow down training and may result in underfitting. You have two values, the first one is `lr0`, the starting learning rate used at the beginning of the training process and that determines the size of the initial updates made to the model weights during gradient descent. The other value is `lrf`, the Learning Rate Final Multiplier, that is a multiplier that specifies the final learning rate as a fraction of `lr0`, the learning rate gradually decays from `lr0` to `lr0 * lrf` over the course of training. Typical values are `0.01` for both parameters. If the model takes too long to converge, consider increasing the learning rate. However, if you observe sudden fluctuations or jumps in performance, it may indicate the need to reduce the learning rate (ie. `lr0` = `0.001`) to facilitate smoother and more stable convergence.
 
-* *Momentum* (`momentum`): https://blog.dailydoseofds.com/p/an-intuitive-and-visual-demonstration[Momentum] is a method used in training models to make learning faster and smoother. Instead of just using the current error to update the model, it also remembers the direction it was going in before and if continues in the same directio the learning rate is increased. This helps the model move more steadily, avoid bouncing around too much, and speed up when progress is slow. Default value is `0.937`
+* *Momentum* (`momentum`): https://blog.dailydoseofds.com/p/an-intuitive-and-visual-demonstration[Momentum, window=_blank] is a method used in training models to make learning faster and smoother. Instead of just using the current error to update the model, it also remembers the direction it was going in before and if continues in the same directio the learning rate is increased. This helps the model move more steadily, avoid bouncing around too much, and speed up when progress is slow. Default value is `0.937`
 
-* *Weight Decay* (`weight_decay`): Also known as L2 regularization. https://medium.com/@sujathamudadla1213/weight-decay-in-deep-learning-8fb8b5dd825c[Weight Decay] is a technique that adds a penalty to the loss to prevent overfitting by discouraging large weights. The idea is to encourage the model to keep the weights small, which can lead to simpler, more general models that perform better on unseen data. The default value is `0.0005`.
+* *Weight Decay* (`weight_decay`): Also known as L2 regularization. https://medium.com/@sujathamudadla1213/weight-decay-in-deep-learning-8fb8b5dd825c[Weight Decay, window=_blank] is a technique that adds a penalty to the loss to prevent overfitting by discouraging large weights. The idea is to encourage the model to keep the weights small, which can lead to simpler, more general models that perform better on unseen data. The default value is `0.0005`.
 
 * *Warmups* (`warmup_epochs`, `warmup_bias_lr`, `warmup_momentum`): Warmups gradually increase the learning rate during the first few epochs to help the model stabilize before it starts learning aggressively. You have three hyperparameters: `warmup_epochs`, `warmup_bias_lr`, `warmup_momentum`. The `warmup_epochs` (default `0.8`) is the number of steps where the learning rate gradually increases, `warmup_bias_lr` (default `0.1`) controls the initial learning rate for bias parameters during warmup, and `warmup_momentum` (default `3.0`) sets the starting momentum value, all helping to stabilize the model's early training.
 
-* *Automatic Mixed Precision* (`amp`): Deep Neural Network training has traditionally relied on IEEE single-precision format, however with https://developer.nvidia.com/automatic-mixed-precision[Automatic Mixed Precision], you can train with half precision while maintaining the network accuracy achieved with single precision. It's useful for saving memory and speeding up computations but sometimes its usage cause issues with certain GPUs. Defaults to `True`.
+* *Automatic Mixed Precision* (`amp`): Deep Neural Network training has traditionally relied on IEEE single-precision format, however with https://developer.nvidia.com/automatic-mixed-precision[Automatic Mixed Precision, window=_blank], you can train with half precision while maintaining the network accuracy achieved with single precision. It's useful for saving memory and speeding up computations but sometimes its usage cause issues with certain GPUs. Defaults to `True`.
 
 
 *Additional Model Configuration*
@@ -425,7 +425,7 @@ Once the training is done you can see how a new directory has been created under
 
 [NOTE]
 
-You can find an https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v1[example of these files here].
+You can find an https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/object-detection-hardhat-or-hat/v1[example of these files here, window=_blank].
 
 Those graphs are automatically generated by the YOLO method from the `results.csv` and include:
 
@@ -468,7 +468,7 @@ results_test = model.val(data=CONFIG['data'], split='test', device=CONFIG['devic
 After the evaluation with the Test Data Set you will see how a new directory with the results, similar to what you got with the training, has been created. 
 
 
-To visually test the performance of your object detection model, you can download the `best.pt` file (check the directory `runs/detects/<model_name>/weights`). Then, utilize the following containerized application to perform the test locally: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/model_test_app/object-detection-batch-model-file/pytorch/object-detection-pytorch.py[object-detection-batch-model-file.py]. This script allows you to run a visual model performance evaluation directly on your local machine.
+To visually test the performance of your object detection model, you can download the `best.pt` file (check the directory `runs/detects/<model_name>/weights`). Then, utilize the following containerized application to perform the test locally: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/model_test_app/object-detection-batch-model-file/pytorch/object-detection-pytorch.py[object-detection-batch-model-file.py, window=_blank]. This script allows you to run a visual model performance evaluation directly on your local machine.
 
 [source,python,role=execute,subs="attributes"]
 ----
@@ -521,7 +521,7 @@ image::ai-build-test-app.png[]
 
 Model export is the process of saving or converting a trained machine learning model into a specific format that can be used for inference or deployment in different environments. This is important because it allows the trained model to be shared, deployed to production, or used in different applications without needing the original training code or environment.
 
-For example, ONNX (Open Neural Network Exchange) is a popular open-source format that is designed for the interchange of deep learning models across different frameworks (ie. https://docs.openvino.ai/2024/index.html[OpenVINO]), so in this example we are going to convert the Pytorch `.py` file into the `onnx` format. 
+For example, ONNX (Open Neural Network Exchange) is a popular open-source format that is designed for the interchange of deep learning models across different frameworks (ie. https://docs.openvino.ai/2024/index.html[OpenVINO, window=_blank]), so in this example we are going to convert the Pytorch `.py` file into the `onnx` format. 
 
 The good news is that the YOLO library provides an `export` method that makes this possible with just one line:
 
@@ -606,7 +606,7 @@ image::ai-build-storemodel.png[]
 
 Finally, I recommend cleaning up the directories created during the training and evaluation processes to save some space. To achieve this, include a final piece of code in your Notebook that removes these directories.
 
-[source,python,role=execute,subs="attributes"]
+[source,python,role=execute,subs="--attributes"]
 ----
 !rm -rf {model_path_train}
 !rm -rf {model_path_test}
@@ -619,7 +619,7 @@ image::ai-build-nav3.png[]
 
 So far, you've used a Jupyter Notebook for quick model prototyping. While this approach is excellent for experimentation, transitioning to a more structured and scalable workflow can bring numerous benefits even for prototyping, such as ensuring consistency, repeatability, and improved collaboration.
 
-OpenShift AI integrates seamlessly with https://elyra.readthedocs.io/en/latest/user_guide/pipelines.html[Elyra Pipelines], an Open Source visual pipeline editor that simplifies the creation, editing, and execution of data science workflows. Elyra allows you to design workflows through an intuitive drag-and-drop interface, standardize your prototyping process to ensure reproducibility, and automate repetitive tasks to reduce manual effort. It also enables you to scale your workflows efficiently using OpenShift AI's powerful infrastructure while making it easier to share and collaborate with your team.
+OpenShift AI integrates seamlessly with https://elyra.readthedocs.io/en/latest/user_guide/pipelines.html[Elyra Pipelines, window=_blank], an Open Source visual pipeline editor that simplifies the creation, editing, and execution of data science workflows. Elyra allows you to design workflows through an intuitive drag-and-drop interface, standardize your prototyping process to ensure reproducibility, and automate repetitive tasks to reduce manual effort. It also enables you to scale your workflows efficiently using OpenShift AI's powerful infrastructure while making it easier to share and collaborate with your team.
 
 Let's build an Elyra Pipeline to automate the model prototyping process, helping you focus on innovation rather than managing infrastructure and repetitive tasks.
 
@@ -643,7 +643,7 @@ RUN INSTALL_PKGS="ultralytics roboflow" && \
 USER 1001
 ----
 
-Then you can build your Container Image using the Containerfile and push it into a Container Image Registry (ie. https://quay.io[Quay])
+Then you can build your Container Image using the Containerfile and push it into a Container Image Registry (ie. https://quay.io[Quay, window=_blank])
 
 ----
 podman build -t <registry>/<namespace>/<image-name>:<image-tag> .
@@ -683,7 +683,11 @@ If you want to run Pipelines in OpenShift AI, you will need to add into your AI 
 ====
 To create a Pipeline Server:
 
-1- Navigate to "Data Science Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] and configure a new pipeline server.
+1- Navigate to "Data Science Pipelines > Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] and configure a new pipeline server.
+
+[NOTE]
+
+Double-check that you are in the right Project: {user}-ai
 
 
 2- Fill in the Data Connection information:
@@ -722,7 +726,7 @@ Start by copying the relevant code blocks from the prototyping notebook into the
 
 [TIP]
 
-If you prefer to save time, you can skip this step and directly https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/development/elyra[reference the solution] by using the pipeline files provided in the resources directory.
+If you prefer to save time, you can skip this step and directly https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/development/elyra[reference the solution, window=_blank] by using the pipeline files provided in the resources directory.
 
 ==== "Get Data" Notebook
 
@@ -849,7 +853,7 @@ If you are running in an **environment with GPUs**, you must:
 
 * If there are Kubernetes Taints in the GPU nodes you will also need to configure the Toleration. GPUs will be used during training, but **you should include the Toleration in all tasks**. This is necessary for Kubernetes to schedule the pod on a GPU-enabled node. Since tasks share a Persistent Volume (PV), there is a risk that GPU nodes may be in a different zone where the PV cannot be shared with non-GPU nodes. If this happens, Kubernetes will always select a node without GPUs, or you may encounter an error if scheduling is forced.
 
-* Add https://medium.com/@fatlip/cuda-shared-memory-23cd1a0d4e39[additional Shared Memory Size] in the Training Task.
+* Add https://medium.com/@fatlip/cuda-shared-memory-23cd1a0d4e39[additional Shared Memory Size, window=_blank] in the Training Task.
 
 image::ai-build-pipeline-elyra-gpu.png[]
 
@@ -899,7 +903,7 @@ Once the Pipeline is finished, you could check that the contents are saved into 
 
 == Solution and Next Steps
 
-In this section, you created an initial prototype of the model by training it with different hyperparameter values to explore its potential. If the performance metrics obtained are not satisfactory, or if you used the "xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]" dataset with a reduced set of images, you can now https://huggingface.co/luisarizmendi/hardhat-or-hat[download and utilize the version 1 of the pretrained model].
+In this section, you created an initial prototype of the model by training it with different hyperparameter values to explore its potential. If the performance metrics obtained are not satisfactory, or if you used the "xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]" dataset with a reduced set of images, you can now https://huggingface.co/luisarizmendi/hardhat-or-hat[download and utilize the version 1 of the pretrained model, window=_blank].
 
 You can now also push to the Git Source repository the files that you created:
 

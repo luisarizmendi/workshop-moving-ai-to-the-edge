@@ -15,7 +15,7 @@ Elyra Pipelines, built on Jupyter Notebooks, offer an accessible way to prototyp
 * Tight dependency on Jupyter Notebook, unsuitable for high-availability systems.
 * Limited monitoring tools, storage integrations, and governance capabilities.
 
-While Elyra is excellent for prototyping, https://www.kubeflow.org/docs/components/pipelines/overview/[Kubeflow Pipelines] stands out as a robust, production-ready solution. Built for Kubernetes, Kubeflow supports the entire machine learning lifecycle—from data preparation to deployment—with features like:
+While Elyra is excellent for prototyping, https://www.kubeflow.org/docs/components/pipelines/overview/[Kubeflow Pipelines, window=_blank] stands out as a robust, production-ready solution. Built for Kubernetes, Kubeflow supports the entire machine learning lifecycle—from data preparation to deployment—with features like:
 
 * Seamless scalability and fault tolerance.
 * Integration with CI/CD platforms, monitoring tools, and storage systems.
@@ -60,7 +60,11 @@ If this step was completed during the xref:ai-specialist-02-develop.adoc#_create
 ====
 To create a Pipeline Server:
 
-1- Navigate to "Data Science Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] and configure a new pipeline server.
+1- Navigate to "Data Science Pipelines > Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] and configure a new pipeline server.
+
+[NOTE]
+
+Double-check that you are in the right Project: {user}-ai
 
 
 2- Fill in the Data Connection information:
@@ -106,14 +110,14 @@ image::ai-train-code-terminal.png[]
 git clone http://gitea.apps.{ocp_cluster_url}/{user}/{user}-ai.git
 ----
 
-6- Set Up the Pipeline Script: Create a new file `hardhat-kubeflow-pipeline.py` in the cloned directory (right-click to create a file). Copy the example script from: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[hardhat-kubeflow-pipeline.py]. Save it and prepare for review.
+6- Set Up the Pipeline Script: Create a new file `hardhat-kubeflow-pipeline.py` in the cloned directory (right-click to create a file). Copy the example script from: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[hardhat-kubeflow-pipeline.py, window=_blank]. Save it and prepare for review.
 ====
 
 Next, we’ll review the script’s implementation to understand the pipeline’s logic and adapt it to our needs.
 
-Let's review the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script]. 
+Let's review the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script, window=_blank]. 
 
-The script defines the pipeline structure, specifying the order in which pipeline components are executed. It also includes the input variable definitions and the Kubernetes resources allocated to each task. Similar to the Elyra pipeline, the steps are distinct, meaning that if variables or files are required from one step in another, they must be explicitly 'passed' between them. Kubeflow simplifies this process by offering tools to https://www.kubeflow.org/docs/components/pipelines/user-guides/data-handling/[manage data handling between tasks] (there is also a feature to https://www.kubeflow.org/docs/components/pipelines/user-guides/data-handling/artifacts/[pass ML artifacts] that is not used in this workshop), allowing you to easily define input and output variables for seamless step-to-step communication. Additionally, Kubeflow provides straightforward mechanisms for creating and attaching Kubernetes Persistent Volumes, enabling file sharing between tasks. For instance, the dataset downloaded by the initial task can be stored on a volume and subsequently accessed by the training task without manual intervention.
+The script defines the pipeline structure, specifying the order in which pipeline components are executed. It also includes the input variable definitions and the Kubernetes resources allocated to each task. Similar to the Elyra pipeline, the steps are distinct, meaning that if variables or files are required from one step in another, they must be explicitly 'passed' between them. Kubeflow simplifies this process by offering tools to https://www.kubeflow.org/docs/components/pipelines/user-guides/data-handling/[manage data handling between tasks, window=_blank] (there is also a feature to https://www.kubeflow.org/docs/components/pipelines/user-guides/data-handling/artifacts/[pass ML artifacts, window=_blank] that is not used in this workshop), allowing you to easily define input and output variables for seamless step-to-step communication. Additionally, Kubeflow provides straightforward mechanisms for creating and attaching Kubernetes Persistent Volumes, enabling file sharing between tasks. For instance, the dataset downloaded by the initial task can be stored on a volume and subsequently accessed by the training task without manual intervention.
 
 Here is an excerpt from the script containing the pipeline definition:
 
@@ -313,11 +317,11 @@ def yolo_training_pipeline(
 As an example that you can also use OpenShift internal services as endpoints, here we fixed the OpenShift Data Foundation endpoint to `s3.openshift-storage.svc`
 
 
-Besides the Pipeline definition, the  https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script] also contains the step (components) definitions.
+Besides the Pipeline definition, the  https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script, window=_blank] also contains the step (components) definitions.
 
 [NOTE]
 
-For production pipelines it is better to configure https://kfp-kubernetes.readthedocs.io/en/kfp-kubernetes-1.4.0/source/kubernetes.html#[Kubernetes Secrets and import the sensitive information from them] instead of passing them as clear text in the pipeline inputs.
+For production pipelines it is better to configure https://kfp-kubernetes.readthedocs.io/en/kfp-kubernetes-1.4.0/source/kubernetes.html#[Kubernetes Secrets and import the sensitive information from them, window=_blank] instead of passing them as clear text in the pipeline inputs.
 
 
 
@@ -365,7 +369,7 @@ def download_dataset(
         f.write(dataset.location)
 ----
 
-An important aspect to highlight is that each step in the pipeline specifies the base container image to be used. In this case, the custom image `quay.io/luisarizmendi/pytorch-custom:latest` is utilized. This image https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/Containerfile[includes all the necessary dependencies], eliminating the need to download and install packages every time the task runs. Additionally, the task definitions include examples of how to install additional packages if needed. However, these package installations won't be executed in this setup, as all required packages are already pre-installed within the custom image, ensuring efficiency and consistency.
+An important aspect to highlight is that each step in the pipeline specifies the base container image to be used. In this case, the custom image `quay.io/luisarizmendi/pytorch-custom:latest` is utilized. This image https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/Containerfile[includes all the necessary dependencies, window=_blank], eliminating the need to download and install packages every time the task runs. Additionally, the task definitions include examples of how to install additional packages if needed. However, these package installations won't be executed in this setup, as all required packages are already pre-installed within the custom image, ensuring efficiency and consistency.
 
 Not much to highlight here, aside what is already explain. We’ll dive into the toleration settings and the reason for configuring accelerator cards in the next section (spoiler: it’s tied to Kubeflow’s capabilities and how the Kubernetes scheduler optimizes resource allocation).
 
@@ -498,7 +502,7 @@ def train_model(
 
 The training step also shares the Persistent Volume with the next step, as the trained model needs to be uploaded to Object Storage. Since each training iteration may result in a different name and file path, the training name is passed as an input variable. This allows dynamic calculation of the model paths and the performance result files.
 
-The `train` step has an additional Persistent Volumen mounted to https://stackoverflow.com/questions/43373463/how-to-increase-shm-size-of-a-kubernetes-container-shm-size-equivalent-of-doc[extend the POD's Shared Memory]. This is needed when you run the inference using GPUs. Kubeflow v2 https://github.com/kubeflow/pipelines/pull/10913[already implemented the method to use `EmptyDir`] instead but the current version of the OpenShift AI pipelines does not have this path yet, so a Persistent Volume is used instead. 
+The `train` step has an additional Persistent Volumen mounted to https://stackoverflow.com/questions/43373463/how-to-increase-shm-size-of-a-kubernetes-container-shm-size-equivalent-of-doc[extend the POD's Shared Memory, window=_blank]. This is needed when you run the inference using GPUs. Kubeflow v2 https://github.com/kubeflow/pipelines/pull/10913[already implemented the method to use `EmptyDir`, window=_blank] instead but the current version of the OpenShift AI pipelines does not have this path yet, so a Persistent Volume is used instead. 
 
 There is another important consideration when working with GPUs: the **Kubernetes scheduling**. 
 
@@ -672,7 +676,7 @@ In this workshop we will use separate container images to distribute our model.
 
 As we will see, this is one of the available options to perform the model serving with KServe, the open-source model serving framework designed for Kubernetes used in OpenShift AI. It provides a scalable and standardized way to deploy and manage machine learning (ML) models in production and it is the method used by OpenShift AI to perform the model serving (explained in the next workshop module).
 
-More specifically, the Kserve feature is named https://kserve.github.io/website/latest/modelserving/storage/oci/[`Modelcar`], and that's why you will find that name in the pipeline and other parts of this workshop. 
+More specifically, the Kserve feature is named https://kserve.github.io/website/latest/modelserving/storage/oci/[`Modelcar`, window=_blank], and that's why you will find that name in the pipeline and other parts of this workshop. 
 
 
 This Kubeflow pipeline task triggers an OpenShift Pipeline, an automated CI/CD workflow powered by Tekton, which runs containerized tasks in Kubernetes. OpenShift Pipelines is designed for CI/CD automation (build, test, deploy), while OpenShift AI Kubeflow Pipelines is tailored for ML workflows (train, experiment, deploy models). 
@@ -858,7 +862,7 @@ def create_modelcar(
     return pipeline_run_name
 ----
 
-If you are curious about the OpenShift pipeline and associated tasks definition you can find the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/deployment/openshift/bootstrap-lab/manifests/pipelines/06-modelcar-user-pipelines.yaml[OpenShift Job that generates the YAMLs during the workshop deployment here].
+If you are curious about the OpenShift pipeline and associated tasks definition you can find the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/deployment/openshift/bootstrap-lab/manifests/pipelines/06-modelcar-user-pipelines.yaml[OpenShift Job that generates the YAMLs during the workshop deployment here, window=_blank].
 
 
 === Push to Registry step
@@ -953,7 +957,7 @@ def push_to_model_registry(
 image::ai-train-nav2.png[]
 
 
-Before proceeding with the import, we need to convert the Python script into a YAML Kubeflow Pipeline definition (https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/compile-a-pipeline/#ir-yaml[Intermediate Representation]). Using the `kfp` library, we will execute the script to generate the YAML file required for importing the pipeline
+Before proceeding with the import, we need to convert the Python script into a YAML Kubeflow Pipeline definition (https://www.kubeflow.org/docs/components/pipelines/user-guides/core-functions/compile-a-pipeline/#ir-yaml[Intermediate Representation, window=_blank]). Using the `kfp` library, we will execute the script to generate the YAML file required for importing the pipeline
 
 [example]
 ====
@@ -1004,7 +1008,7 @@ Once you have the YAML file available in Gitea, you can import it directly into 
 ====
 To proceed with the Kubeflow Pipeline import:
 
-1. Go to Data Science Pipelines
+1. Go to "Data Science Pipelines > Pipelines"
 2. Click Import Pipeline
 3. Fill in Name (`hardhat-training`)
 4. Select "Import by URL" and include the Gitea URL with the `yolo_training_pipeline.yaml` raw content.
@@ -1074,7 +1078,7 @@ In contrast to Elyra Pipelines, this Kubeflow Pipeline automatically creates and
 
 [TIP]
 
-Keep in mind that if you're short on time and can't wait for a full model training process, you can opt for the so-called 'xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]' by using the reduced dataset you prepared during the Model Development section and configuring only one epoch. However, note that models trained on this dataset won't be suitable for deployment, as they won't achieve accurate object detection. Instead, you'll need to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] during the Deployment section to ensure proper functionality.
+Keep in mind that if you're short on time and can't wait for a full model training process, you can opt for the so-called 'xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]' by using the reduced dataset you prepared during the Model Development section and configuring only one epoch. However, note that models trained on this dataset won't be suitable for deployment, as they won't achieve accurate object detection. Instead, you'll need to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank] during the Deployment section to ensure proper functionality.
 
 You can view the details of each task while it's running to monitor important information. Additionally, you can check the POD name generated for the task (top right corner, in a red square in the image below), which is useful for accessing real-time logs in the OpenShift Console (since the Logs tab in the OpenShift AI Pipeline view is only available once the task has completed). You can also track the inputs and outputs associated with each task, which will be displayed once the task finishes, providing insight into the data flow and results at each stage of execution.
 
@@ -1086,7 +1090,7 @@ You can open the OpenShift Console and check how the Persistent Volume was creat
 image::ai-train-pipeline-run-gpu-logs.png[]
 
 
-If the Pipeline run POD is scheduled in a node where other workloads using GPUs are located, it could happen that your GPU run out of memory. If it happens try reducing the `batch size` or launch the run again after the other workloads finished or just import the https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline_cpu.yaml[Kubeflow Pipeline that only make use of CPU] (just for testing propouses).
+If the Pipeline run POD is scheduled in a node where other workloads using GPUs are located, it could happen that your GPU run out of memory. If it happens try reducing the `batch size` or launch the run again after the other workloads finished or just import the https://raw.githubusercontent.com/luisarizmendi/workshop-moving-ai-to-the-edge/refs/heads/main/resources/solutions/ai-specialist/training/kubeflow/yolo_training_pipeline_cpu.yaml[Kubeflow Pipeline that only make use of CPU, window=_blank] (just for testing propouses).
 
 image::ai-train-memoryerror.png[]
 
@@ -1094,7 +1098,7 @@ image::ai-train-memoryerror.png[]
 === OpenShift Pipeline Run
 
 
-When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]. There you can see the OpenShift Pipeline execution:
+When the Kubeflow Pipeline reaches the `create-modelcar` you can navigate to the "Pipelines" menu in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console, window=_blank]. There you can see the OpenShift Pipeline execution:
 
 
 image::ai-train-modelcar-pipeline.png[]
@@ -1197,11 +1201,11 @@ metadata:
       name: data
 ----
 
-In summary, this task generates a directory structure https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/training/modelcar[like the one shown here ] consists of a `Containerfile` at the root level and a `models` folder that will contain the model itself.
+In summary, this task generates a directory structure https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/solutions/ai-specialist/training/modelcar[like the one shown here, window=_blank] consists of a `Containerfile` at the root level and a `models` folder that will contain the model itself.
 
 [IMPORTANT]
 
-Depending on the inference server you plan to use (covered in the next module), your model must follow specific requirements—such as file format, directory structure, and optional configuration files. In our example we will use https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[NVIDIA Triton server] so we have our model in the `onnx` extension with the  `<model name>/<version>/model.onnx` directory structure and included the `config.pbtxt` inference server configuration file shown below.
+Depending on the inference server you plan to use (covered in the next module), your model must follow specific requirements—such as file format, directory structure, and optional configuration files. In our example we will use https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[NVIDIA Triton server, window=_blank] so we have our model in the `onnx` extension with the  `<model name>/<version>/model.onnx` directory structure and included the `config.pbtxt` inference server configuration file shown below.
 
 
 [source,text,role=execute,subs="attributes"]
@@ -1232,7 +1236,7 @@ The content is generated automatically by the Pipeline but be aware that the out
 
 
 
-3- `build-and-push`: Performs the container image build using https://hub.tekton.dev/tekton/task/kaniko[Kaniko] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
+3- `build-and-push`: Performs the container image build using https://hub.tekton.dev/tekton/task/kaniko[Kaniko, window=_blank] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank].
 
 
 [source,yaml,role=execute,subs="attributes"]
@@ -1306,7 +1310,7 @@ spec:
 After some time, the pipeline will finish. You can at that point go to the Object Storage and check that:
 
 
-1- The contents that have been uplaoded to https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[`models` directory in your "{user}-ai-models" bucket].
+1- The contents that have been uplaoded to https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[`models` directory in your "{user}-ai-models" bucket, window=_blank].
 
 image::ai-train-model-s3.png[]
 
@@ -1324,7 +1328,7 @@ image::ai-train-registry.png[]
 
 The Model Registry serves as the central hub for model publication. From here, you can directly deploy the model to the same OpenShift cluster running OpenShift AI, utilizing one of the supported Model Serving options. However, in this workshop, we won't be using this method. Instead, model inference will be performed at the Edge using Red Hat Enterprise Linux. More details on this approach will be provided in the xref:ai-specialist-04-deploy.adoc[Model Serving] section.
 
-One final note about Pipelines. In this example, you executed the pipeline manually. However, in a production environment, you will likely want to automate its execution—either by scheduling it to run at regular intervals or triggering it in response to external events (though that is a topic for another discussion). This can be achieved using the Schedule feature, which allows you to automate the execution of your pipeline at defined intervals, ensuring that model training and updates are performed regularly without manual intervention. 
+One final note about Pipelines. In this example, you executed the pipeline manually. However, in a production environment, you will likely want to automate its execution, either by scheduling it to run at regular intervals or triggering it in response to external events (though that is a topic for another discussion). This can be achieved using the Schedule feature (click on the three dots on the righ in the Pipeline server), which allows you to automate the execution of your pipeline at defined intervals, ensuring that model training and updates are performed regularly without manual intervention. 
 
 
 image::ai-train-schedule.png[]
@@ -1332,18 +1336,18 @@ image::ai-train-schedule.png[]
 
 == Solution and Next Steps
 
-In this section, a new Kubeflow Pipeline was created based on the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script]. This pipeline successfully trained the YOLO model for hardhat detection, generated the model file, and uploaded it into the OpenShift Data Foundation Object Storage. This model file will be essential for the next section, xref:ai-specialist-04-deploy.adoc[Model Serving].
+In this section, a new Kubeflow Pipeline was created based on the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[`hardhat-kubeflow-pipeline.py` script, window=_blank]. This pipeline successfully trained the YOLO model for hardhat detection, generated the model file, and uploaded it into the OpenShift Data Foundation Object Storage. This model file will be essential for the next section, xref:ai-specialist-04-deploy.adoc[Model Serving].
 
-However, probably you used the reduced ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset and a limited number of `epochs` for faster training, so the model produced won't perform adequately in the field. It is advisable to discard that model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] going forward to ensure better accuracy and robustness in deployment.
+However, probably you used the reduced ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset and a limited number of `epochs` for faster training, so the model produced won't perform adequately in the field. It is advisable to discard that model. Instead, you can upload and use the  https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank] going forward to ensure better accuracy and robustness in deployment.
 
 
 [IMPORTANT]
 
-If the model you use isn't capable of delivering strong performance, you won't achieve reliable or accurate results during the inference phase, so if you used the ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset you must update your `modelcar` image with the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model].
+If the model you use isn't capable of delivering strong performance, you won't achieve reliable or accurate results during the inference phase, so if you used the ("xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*]") dataset you must update your `modelcar` image with the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank].
 
 
 
-The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model] in your environment is to pull https://quay.io/repository/luisarizmendi/modelcar-hardhat[the v1 of this pre-created modelcar container image] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry].
+The easiest way to use the https://huggingface.co/luisarizmendi/hardhat-or-hat[provided pre-trained model, window=_blank] in your environment is to pull https://quay.io/repository/luisarizmendi/modelcar-hardhat[the v1 of this pre-created modelcar container image, window=_blank] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank].
 
 
 
@@ -1360,7 +1364,7 @@ podman push https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster
 
 [NOTE]
 
-You can also download the https://huggingface.co/luisarizmendi/hardhat-or-hat/tree/main/v1/model/onnx/1[version 1 (v1) of the model, more specifically the `onnx` version] and upload it into the the right location (`serving` directory) on the Object Storage using the https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[Object Storage browser], replacing the one that was created by the Kubeflow Pipeline, and then create the `modelcar` container image into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry]by re-runing the OpenShift Pipeline after changing the file with the mode. Go to the Pipelines menu in the OpenShift Console, select the pipeline and move into the "PipelinesRun" tab, there you can click the three dots on the right and select "Rerun".
+You can also download the https://huggingface.co/luisarizmendi/hardhat-or-hat/tree/main/v1/model/onnx/1[version 1 (v1) of the model, more specifically the `onnx` version, window=_blank] and upload it into the the right location (`serving` directory) on the Object Storage using the https://s3-browser-{user}-ai-models-{user}-tools.apps.{ocp_cluster_url}[Object Storage browser, window=_blank], replacing the one that was created by the Kubeflow Pipeline, and then create the `modelcar` container image into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank]by re-runing the OpenShift Pipeline after changing the file with the mode. Go to the Pipelines menu in the OpenShift Console, select the pipeline and move into the "PipelinesRun" tab, there you can click the three dots on the right and select "Rerun".
 
 Before jump into the next section, be sure that you stopped your Code Workbench to save some resources in the OpenShift cluster. 
 

@@ -13,15 +13,15 @@ Key aspects to take into account while AI Model releasing:
 
 OpenShift AI provides robust serving platforms to deploy models as inference endpoints:
 
-* Single-model serving (https://github.com/kserve/kserve[`KServe`]): Designed for large models requiring dedicated resources.
+* Single-model serving (https://github.com/kserve/kserve[`KServe`, window=_blank]): Designed for large models requiring dedicated resources.
 
-* Multi-model serving (https://github.com/kserve/modelmesh[`ModelMesh`]): Optimized for small and medium-sized models sharing resources.
+* Multi-model serving (https://github.com/kserve/modelmesh[`ModelMesh`, window=_blank]): Optimized for small and medium-sized models sharing resources.
 
 We can use those to deploy our models in the same OpenShift cluster where the OpenShift AI platform is running but, as mentioned, these options could not be directly available for your edge use case, remember that for our use case the MLOps workflow diagram is:
 
 image::ai-build-rhoai-features.png[]
 
-If you are using https://www.redhat.com/en/topics/edge-computing/microshift[Microshfit] or OpenShift at the Edge you can use the `Kserve` Custom Resource Definitions but if you plan to deploy your model directly on RHEL, without a Kubernetes API, you will need to use a different approach, for example running containers directly with Podman using https://www.redhat.com/en/blog/quadlet-podman[Quadlets] to configure them. 
+If you are using https://www.redhat.com/en/topics/edge-computing/microshift[Microshfit, window=_blank] or OpenShift at the Edge you can use the `Kserve` Custom Resource Definitions but if you plan to deploy your model directly on RHEL, without a Kubernetes API, you will need to use a different approach, for example running containers directly with Podman using https://www.redhat.com/en/blog/quadlet-podman[Quadlets, window=_blank] to configure them. 
 
 In any case you also have to take some decisions. We've already explored several options for deploying a model, for example, you can use the model file directly with an inference server running on your system, run the inference server inside a container, use a container image that bundles both the model and the inference server, or run separate containers for the model and the inference server (this is what we are doing in this workshop). But there are other decisions to be taken besides how to distribute the model, for example if you want to do the model serving with an off-the-self (or vendor-backed) inference server or use one custom server created add-hoc, each has it's own pros and cons.
 
@@ -31,7 +31,7 @@ However, these solutions also have downsides. They tend to consume more system r
 
 On the other hand, custom inference servers are optimized for specific use cases, making them lightweight and highly flexible. They allow you to tailor performance and resource usage precisely to your needs. But this comes at the cost of increased development and maintenance effort. They typically offer fewer features and require self-support, which may not be ideal for teams without strong in-house expertise.
 
-In this workshop we will be using an off-the-self inference server, https://github.com/triton-inference-server/server[Triton Server], more specifically the https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[one provided by NVIDIA]. Triton uses the KServe community standard inference protocols to define HTTP/REST and GRPC APIs plus several extensions so it is a good fit.
+In this workshop we will be using an off-the-self inference server, https://github.com/triton-inference-server/server[Triton Server, window=_blank], more specifically the https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[one provided by NVIDIA, window=_blank]. Triton uses the KServe community standard inference protocols to define HTTP/REST and GRPC APIs plus several extensions so it is a good fit.
 
 
 As an AI specialist, you won’t be deploying directly to edge devices, but you can still deploy your model—along with an inference server—on your OpenShift cluster to conduct meaningful testing. In fact, you can go a step further and deploy the entire service architecture to perform end-to-end testing, allowing you to observe how your model behaves within a realistic, production-like environment.
@@ -72,7 +72,7 @@ For this workshop, we’ll use single-model serving. Let’s walk through how to
 
 [example]
 ====
-1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
+1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank]
 
 2- Move to "Data Science Projects"
 
@@ -95,23 +95,27 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 [example]
 ====
-1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI]
+1- Go to https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank]
 
-2- Move to "Model Registry" and select your model
+2- Move to "Models > Model Registry" and select your model
 
 3- Click on the version that you want to test
 
-4- Copy the OCI URI
+4- Select "Deploy" in the "Actions" dropdown menu on the top right corner
 
-5- Select "Deploy" in the "Actions" dropdown menu on the top right corner
-
-6- Select the project that you just created and fill-in the form:
+5- Select the project `{user}-test` and fill-in the form:
 
 * Model name: `hardhat-test` (we use that name in a Job below)
 
-* Serving runtime: `NVIDIA Triton Server v25.03`
+* Serving runtime: `NVIDIA Triton Server v25.03 (gRPC)`
 
 * Framework: `onnx - 1.20.1`
+
+* Deployment mode: `Advanced`
+
+* Number of replicas: `1`
+
+* Model server size: `Small`
 
 * Accelerator: If you have GPUs available choose your accelerator.
 
@@ -121,13 +125,22 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 * Create a new connection:
 
-  * Connection type: `URI - v1`
+  * Connection type: `OCI compliant registry -v1`
   * Conection name: I suggest something like `<modelcar-name>-<tag>`
-  * URI: Paste here the OCI URI that you copied
+  * Access type: Push + Pull
+  * Secret details: {container-registry-dockerconfigjson}
+  * Registry host: workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}
+  * OCI storage location: Keep the auto-completed URL
 
 image::ai-build-deploy-model-registry.png[]
 
-7- Click "Deploy"
+
+[NOTE]
+
+Advanced deployment mode uses Knative Serverless. By default, KServe integrates with Red Hat OpenShift Serverless and Red Hat OpenShift Service Mesh to deploy models on the single-model serving platform. Red Hat Serverless is based on the open source Knative project and requires the Red Hat OpenShift Serverless Operator. Alternatively, you can use standard deployment mode, which uses KServe RawDeployment mode and does not require the Red Hat OpenShift Serverless Operator, Red Hat OpenShift Service Mesh, or Authorino. For more information you can https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.19/html/serving_models/serving-large-models_serving-large-models#about-kserve-deployment-modes_serving-large-models[read the OpenShift AI documentation, window=_blank]
+
+
+6- Click "Deploy"
 
 ====
 
@@ -142,7 +155,7 @@ The Pod consists of four containers and one init container. You can view the log
 image::ai-deploy-inference-logs.png[]
 
 
-When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] console, you will be able to copy the endpoint that we need to use to access to it (copy the "external" endpoint).
+When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the endpoint that we need to use to access to it (copy the "external" endpoint).
 
 image::ai-deploy-serving-endpoint.png[]
 
@@ -168,7 +181,7 @@ Now that the Inference Server is running and you have the endpoint needed to acc
 [example]
 ====
 
-1- Go to the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]
+1- Go to the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console, window=_blank]
 
 2- Click on the `+` button on the top right corner of the UI to deploy a new YAML file
 
@@ -255,7 +268,7 @@ As you can see, hardhats were detected on the images, so we are good to perform 
 
 [NOTE]
 
-If you are interested on it, you can find the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/model_test_apps/object-detection-api/kserve-api/src[test application source code here]
+If you are interested on it, you can find the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/model_test_apps/object-detection-api/kserve-api/src[test application source code here, window=_blank]
 
 
 == End-to-End Validation
@@ -274,15 +287,15 @@ image::ai-deploy-object-detection-webcam.png[]
 
 The solution is based on the following microservices, you can clik on the names to get detailed information about each one:
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam[Camera Stream Manager]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam[Camera Stream Manager, window=_blank]
 
 * Inference server
 
 * https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-action[Actuator service]
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/backend[Dashboard backend]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/backend[Dashboard backend, window=_blank]
 
-* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/frontend[Dashboard frontend]
+* https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/frontend[Dashboard frontend, window=_blank]
 
 
 The workflow is the following:
@@ -306,7 +319,7 @@ Instructions below are using the provided pre-created container images, but you 
 Follow the steps below to create the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/backend[Dashboard backend] and https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-dashboard/src/frontend[Dashboard frontend] applications in OpenShift:
 
 
-1- Navegate to the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console]
+1- Navegate to the "Administrator" view in the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console, window=_blank]
 
 2- Log in using your OpenShift credentials: {openshift-user}  /  {openshift-password}.
 
@@ -528,13 +541,13 @@ Let's start by the Inference server.
 
 [CAUTION]
 
-If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[you have it configured in your system] and that you run `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml` before running the inference container.
+If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/cdi-support.html[you have it configured in your system, window=_blank] and that you run `sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml` before running the inference container.
 
 
 [example]
 ====
 
-1- Choose the right https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script] depending if you are using GPU or not
+1- Choose the right https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script, window=_blank] depending if you are using GPU or not
 
 2- Download the script and give it execution permission
 
@@ -554,7 +567,7 @@ DO not include the `https://` when you include `modelcar` container image, it sh
 
 These are large images, the pull could take time, be sure that the inference server pod is running using `podman ps`
 
-The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
+The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD, window=_blank] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
 
 The Inference service will be available at http://localhost:8001 (gRPC) and http://localhost:8000 (REST). You can check that the model has been loaded with the right values:
 
@@ -588,11 +601,11 @@ You will see logs directly in the console terminal. The Inference Server may alr
 
 [NOTE]
 
-We are deploying the service version that uses gRPC to send data to the inference service because it introduces less overhead. If you want to review and use the REST version to compare it with the gRPC you can https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/REST/README.md[check the script README file].
+We are deploying the service version that uses gRPC to send data to the inference service because it introduces less overhead. If you want to review and use the REST version to compare it with the gRPC you can https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/REST/README.md[check the script README file, window=_blank].
 
 [NOTE]
 
-This won't work for MAC users since camera access from containers is different in that OS. If you are a MAC user you can still run this service by downloading and running directly the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/object-detection-stream-manager.py[`object-detection-stream-manager.py` python script] on your system with `python object-detection-stream-manager.py`. Remember to install the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/requirements.txt[python dependencies] with `pip install` and to grant permissions to access cameras if needed.
+This won't work for MAC users since camera access from containers is different in that OS. If you are a MAC user you can still run this service by downloading and running directly the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/object-detection-stream-manager.py[`object-detection-stream-manager.py` python script, window=_blank] on your system with `python object-detection-stream-manager.py`. Remember to install the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/requirements.txt[python dependencies, window=_blank] with `pip install` and to grant permissions to access cameras if needed.
 
 [NOTE]
 
@@ -715,7 +728,7 @@ In our case, we are distributing the model as a `modelcar`, which is essentially
 [example]
 ====
 
-1- Go to https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry]
+1- Go to https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank]
 
 2- Click on the `modelcar` container image name
 
@@ -733,7 +746,7 @@ image::ai-deploy-promote.png[]
 
 == Solution and Next Steps
 
-In this step, you have completed key application development tasks, including building container images for the required applications. The code and corresponding Container files for each application can be found in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps[`hardhat-detection-apps` directory of the `resources/assets` resources].
+In this step, you have completed key application development tasks, including building container images for the required applications. The code and corresponding Container files for each application can be found in the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps[`hardhat-detection-apps` directory of the `resources/assets` resources, window=_blank].
 
 
 At this stage, you are well-positioned to hand over the solution to the xref:platform-specialist-00-intro.adoc[Platform Specialist] for deployment on Edge Devices. However, if you prefer to skip that step or have already completed it in a previous part of the workshop, you can proceed to the final task for the AI Specialist: the xref:ai-specialist-05-update.adoc[Day-2 Operations] section.

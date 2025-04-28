@@ -11,7 +11,7 @@ The "AI Specialist" module only requires the Cloud/Core Datacenter infrastructur
 
 [CAUTION]
 
-This workshop was prepared to be deployed in OpenShift 4.18
+This workshop was prepared to be deployed in OpenShift 4.18 and OpenShift AI 4.19
 
 This workshop requires an OpenShift cluster. You might already have one or, if you have access to the Red Hat Demo Platform, you can order either the "RHOAI on OCP on AWS with NVIDIA GPUs" lab, if you want or not GPUs, or the "Red Hat OpenShift Container Platform Cluster (AWS)" lab if you want an "empty" environment.
 
@@ -28,7 +28,7 @@ The workshop requires several services and configuration (baseline) in OpenShift
 
 1- Navigate to https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] (admin user)
 
-2- Click on the `+` sign and import the bootstrap-lap YAML. https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/deployment/openshift/bootstrap-lab[Choose the right YAML file] depending on the platform where you are deploying. If using the Demo Platform, choose `bootstrap-lab-rhpds-nvidia.yaml` if you are using the "RHOAI on OCP on AWS with NVIDIA GPUs" lab as a base, or the `bootstrap-lab-empty.yaml` if using the "Red Hat OpenShift Container Platform Cluster (AWS)" lab.
+2- Click on the `+` sign and import the bootstrap-lap YAML. https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/deployment/openshift/bootstrap-lab[Choose the right YAML file, window=_blank] depending on the platform where you are deploying. If using the Demo Platform, choose `bootstrap-lab-rhpds-nvidia.yaml` if you are using the "RHOAI on OCP on AWS with NVIDIA GPUs" lab as a base, or the `bootstrap-lab-empty.yaml` if using the "Red Hat OpenShift Container Platform Cluster (AWS)" lab.
 
 image::lab-bootstrap.png[]
 
@@ -85,7 +85,7 @@ $ ansible-playbook playbook.yml -i inventory
 ----
 
 === DNS - DHCP - Router Openwrt
-I've reused a https://wiki.friendlyelec.com/wiki/index.php/NanoPi_M1_Plus[device] I had at home and installed FriendlyWRT on it.
+I've reused a https://wiki.friendlyelec.com/wiki/index.php/NanoPi_M1_Plus[device, window=_blank] I had at home and installed FriendlyWRT on it.
 
 You will find the backup configuration in the folder.
 
