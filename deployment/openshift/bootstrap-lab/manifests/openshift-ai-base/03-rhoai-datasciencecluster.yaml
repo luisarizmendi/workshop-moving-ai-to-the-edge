@@ -28,7 +28,7 @@ spec:
       managementState: Managed
     modelregistry:
       registriesNamespace: rhoai-model-registries
-      managementState: Removed
+      managementState: Managed
     trustyai:
       managementState: Managed
     ray:

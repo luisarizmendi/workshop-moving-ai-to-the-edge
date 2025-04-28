@@ -194,41 +194,6 @@ spec:
             sleep 10
           done
 
-          oc apply -f - <<EOF
-          apiVersion: batch/v1
-          kind: Job
-          metadata:
-            name: bootstrap-lab-ds-patch
-            namespace: openshift-gitops
-          spec:
-            template:
-              spec:
-                serviceAccountName: openshift-gitops-argocd-application-controller
-                containers:
-                - name: bootstrap-lab
-                  image: quay.io/openshift/origin-cli:latest  
-                  command: ["/bin/sh", "-c"]
-                  args:
-                  - |
-                    #
-                    oc patch datasciencecluster default-dsc --type='json' -p='[
-                      {
-                        "op": "replace",
-                        "path": "/spec/components/modelregistry/managementState",
-                        "value": "Removed"
-                      }
-                    ]'
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                        - "ALL"
-                    runAsNonRoot: true
-                    seccompProfile:
-                      type: RuntimeDefault
-                restartPolicy: Never
-            backoffLimit: 1
-          EOF
           echo "Environment ready!"
       restartPolicy: Never
   backoffLimit: 1
