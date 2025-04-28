@@ -1,5 +1,6 @@
 import gradio as gr
 import os
+import re
 import cv2
 import numpy as np
 from typing import List, Dict
@@ -14,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Get inference URL from environment variable if it exists
-TRITON_SERVER_URL = os.getenv('TRITON_SERVER_URL', 'localhost:8001')
+TRITON_SERVER_URL = re.sub(r'^[a-zA-Z]+://', '', os.getenv('TRITON_SERVER_URL') or '') + ('' if re.search(r':\d+', os.getenv('TRITON_SERVER_URL') or '') else ':8001')
 MODEL_NAME = os.getenv('MODEL_NAME', 'hardhat')
 MODEL_VERSION = os.getenv('MODEL_VERSION', '')  # Empty string means use latest version
 
@@ -194,6 +195,8 @@ def call_inference_server_grpc(model_url, model_name, batch_input):
 def detect_objects(model_url, model_name, image_paths, class_names, confidence_threshold, merge_threshold, batch_size):
     if not image_paths:
         return "No images uploaded.", []
+
+    model_url = re.sub(r'^[a-zA-Z]+://', '', model_url or '')  + ('' if re.search(r':\d+', model_url or '') else ':8001')
 
     # Convert thresholds to float
     try:
@@ -449,8 +452,8 @@ def calculate_iou(box1, box2):
 
 interface = gr.Interface(
     fn=detect_objects,
-    inputs=[
-        gr.Text(label="Inference Endpoint URL", value=os.getenv('TRITON_SERVER_URL', 'localhost:8001')),
+    inputs=[ 
+        gr.Text(label="Inference Endpoint URL", value=re.sub(r'^[a-zA-Z]+://', '', os.getenv('TRITON_SERVER_URL') or '') + ('' if re.search(r':\d+', os.getenv('TRITON_SERVER_URL') or '') else ':8001')),
         gr.Text(label="Model name", value=os.getenv('MODEL_NAME', 'hardhat')),
         gr.Files(file_types=["image"], label="Select Images"),
         gr.Textbox(label="Class Names (comma-separated)", placeholder="Leave empty to use default class names (class0, class1, etc.)"),
@@ -462,7 +465,7 @@ interface = gr.Interface(
         gr.Textbox(label="Status"),
         gr.Gallery(label="Results")
     ],
-    title="Object Detection with Batch Processing (gRPC)",
+    title="Object Detection with NVIDIA Triton Server (gRPC)",
     description=(
         "Upload images to perform batch object detection using the provided gRPC endpoint. "
         "Displays only one detection box per object. "

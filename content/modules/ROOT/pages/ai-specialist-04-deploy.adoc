@@ -33,6 +33,9 @@ On the other hand, custom inference servers are optimized for specific use cases
 
 In this workshop we will be using an off-the-self inference server, https://github.com/triton-inference-server/server[Triton Server, window=_blank], more specifically the https://developer.nvidia.com/blog/nvidia-triton-inference-server-boosts-deep-learning-inference/[one provided by NVIDIA, window=_blank]. Triton uses the KServe community standard inference protocols to define HTTP/REST and GRPC APIs plus several extensions so it is a good fit.
 
+[NOTE]
+
+Triton Inferece Server is a tested and verified runtime. These runtimes are not directly supported by Red Hat. You are responsible for ensuring that you are licensed to use any tested and verified runtimes that you add, and for correctly configuring and maintaining them. For more information read https://access.redhat.com/articles/7089743[Tested and verified model-serving runtimes KB article]
 
 As an AI specialist, you won’t be deploying directly to edge devices, but you can still deploy your model—along with an inference server—on your OpenShift cluster to conduct meaningful testing. In fact, you can go a step further and deploy the entire service architecture to perform end-to-end testing, allowing you to observe how your model behaves within a realistic, production-like environment.
 
@@ -111,7 +114,7 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 * Framework: `onnx - 1.20.1`
 
-* Deployment mode: `Advanced`
+* Deployment mode: `Standard`
 
 * Number of replicas: `1`
 
@@ -119,9 +122,9 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 * Accelerator: If you have GPUs available choose your accelerator.
 
-* Make deployed models available through an external route: `selected`
+* Make deployed models available through an external route: `not selected`
 
-* Require token authentication: `not selected`
+* Require token authentication: `not selected`v
 
 * Create a new connection:
 
@@ -137,7 +140,7 @@ image::ai-build-deploy-model-registry.png[]
 
 [NOTE]
 
-Advanced deployment mode uses Knative Serverless. By default, KServe integrates with Red Hat OpenShift Serverless and Red Hat OpenShift Service Mesh to deploy models on the single-model serving platform. Red Hat Serverless is based on the open source Knative project and requires the Red Hat OpenShift Serverless Operator. Alternatively, you can use standard deployment mode, which uses KServe RawDeployment mode and does not require the Red Hat OpenShift Serverless Operator, Red Hat OpenShift Service Mesh, or Authorino. For more information you can https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.19/html/serving_models/serving-large-models_serving-large-models#about-kserve-deployment-modes_serving-large-models[read the OpenShift AI documentation, window=_blank]
+Advanced deployment mode uses Knative Serverless. By default, KServe integrates with Red Hat OpenShift Serverless and Red Hat OpenShift Service Mesh to deploy models on the single-model serving platform. Red Hat Serverless is based on the open source Knative project and requires the Red Hat OpenShift Serverless Operator. Alternatively, you can use standard deployment mode, which uses KServe RawDeployment mode and does not require the Red Hat OpenShift Serverless Operator, Red Hat OpenShift Service Mesh, or Authorino.  In this workshop we will use the RAWdeployment at the edge so we will also reproduce that deployment type in our tests. For more information you can https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.19/html/serving_models/serving-large-models_serving-large-models#about-kserve-deployment-modes_serving-large-models[read the OpenShift AI documentation, window=_blank].
 
 
 6- Click "Deploy"
@@ -146,7 +149,8 @@ Advanced deployment mode uses Knative Serverless. By default, KServe integrates 
 
 [NOTE] 
 
-The Inference Server may take some time to become available upon initial deployment. Please note that you may need to refresh the page to confirm whether the server has been successfully deployed.
+The Inference Server may take some time to become available upon initial deployment but you should see it deploying. If you don't see any deployed model go to "Models > Model deployments" and be sure that you are in the right Project ({user}-test).
+
 
 If you want to see the deployment progress or check the Inference Server logs you can go to the https://console-openshift-console.apps.{ocp_cluster_url}[OpenShift Console] and check "Workloads > Pods". If you click on the Pod's name you will have access to the "Events" and "Logs".
 
@@ -155,24 +159,9 @@ The Pod consists of four containers and one init container. You can view the log
 image::ai-deploy-inference-logs.png[]
 
 
-When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the endpoint that we need to use to access to it (copy the "external" endpoint).
+When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the endpoint that we need to use to access to it. For more information about Triton available endpoints you can https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.19/html-single/serving_models/index#nvidia_triton_inference_server[read the NVIDIA Triton Inference Server endpoints documentation].
 
 image::ai-deploy-serving-endpoint.png[]
-
-
-You can now test the access to the Inference Server by checking if it is running
-
-
-----
-curl https://<INFERENCE ENDPOINT>/v2
-----
-
-...and if it loaded your model:
-
-
-----
-curl http://<INFERENCE ENDPOINT>/v2/models/hardhat
-----
 
 
 Now that the Inference Server is running and you have the endpoint needed to access it, let’s deploy a test application that uses the server to tag a set of images.
@@ -210,8 +199,10 @@ spec:
         ports:
         - containerPort: 8800
         env:
-          - name: INFERENCE_URL
-            value: 'https://<CHANGE ME TO INFERENCE ENDPOINT>/v2/models/hardhat/infer'
+          - name: TRITON_SERVER_URL
+            value: '<CHANGE ME TO INFERENCE ENDPOINT>:8001'
+          - name: MODEL_NAME
+            value: 'hardhat'
 ---
 apiVersion: v1
 kind: Service
@@ -245,7 +236,11 @@ spec:
     termination: edge
 ----
 
-4- Change the `<CHANGE ME TO INFERENCE ENDPOINT>` string with the external endpoint value that you copied from the deployed Inference Server
+4- Change the `<CHANGE ME TO INFERENCE ENDPOINT>` string with the endpoint value that you copied from the deployed Inference Server
+
+[NOTE]
+
+If you used the values proposed in the workshop the `MODEL_NAME` environment variable will be `hardhat` so you can keep the default
 
 5- Click "Create"
 
@@ -253,6 +248,7 @@ spec:
 
 7- Open the application's URL
 ====
+
 
 You’ll see a UI with the endpoint of your Inference Server pre-selected. You can now upload images of people wearing or not wearing hard hats to the application (for example, images from the "Test" set of your dataset), then click "Submit".
 
@@ -325,7 +321,7 @@ Follow the steps below to create the https://github.com/luisarizmendi/workshop-m
 
 3- Be sure that you are in the (`{user}-test`) project
 
-4- Click on the `+` icon on the top right corner of the OpenShift console.
+4- Click on the `+` icon on the top right corner of the OpenShift console to deploy a new YAML file.
 
 5- Double-check that you are in the {user}-test project and paste there the content shown below to deploy the Dashboard, then click "Create".
 
@@ -525,7 +521,7 @@ Let’s review both options.
 
 
 ==== [.underline]*Production-like test architecture (Inference at the Edge)*
-u
+
 In this case you have to deploy in your laptop:
 
 * Inference server
@@ -547,11 +543,11 @@ If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.c
 [example]
 ====
 
-1- Choose the right https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script, window=_blank] depending if you are using GPU or not
+1- Get the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/tree/main/resources/assets/hardhat-detection-apps/hardhat-detection-inference/inference_triton/deploy/podman[Inference Server deployment script, window=_blank].
 
-2- Download the script and give it execution permission
+2- Download the script and give it execution permission.
 
-3- Run the script 
+3- Run the script.
 
 ----
 <your-script-name> create <MODELCAR IMAGE NAME:TAG>
@@ -559,7 +555,7 @@ If you want to use NVIDA GPUs in your system, be sure that https://docs.nvidia.c
 
 [NOTE]
 
-DO not include the `https://` when you include `modelcar` container image, it should be something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`. If you want to use a pre-created modelcar image instead the one that you created in the previous module you can use `quay.io/luisarizmendi/modelcar-hardhat:v1`
+Do not include the `https://` when you include `modelcar` container image, it should be something like `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}/{user}/modelcar-hardhat:<TAG>`. If you want to use a pre-created modelcar image instead the one that you created in the previous module you can use `quay.io/luisarizmendi/modelcar-hardhat:v1`
 
 ====
 
@@ -591,6 +587,10 @@ In this case you will need to run it as privileged to access the system devices 
 ----
 sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
+
+[CAUTION]
+
+Remember to run it with privileges so it can access the video devices.
 
 [NOTE]
 
@@ -627,7 +627,7 @@ Also you will need to include the Dashboard backend route. Please, don't forget 
 
 [source,shell,role=execute,subs="attributes"]
 ----
- podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
+ podman run -it --rm --network=host -e MONITORED_CLASSES=no_hardhat -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 
 ====

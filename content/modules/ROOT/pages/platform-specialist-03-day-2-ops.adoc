@@ -137,7 +137,7 @@ You can follow these steps from your Workstation:
 
 . Create a new OpenShift Project (`{user}--test`)
 
-. Deploy the backend using the following manifests (you can use the `+` icon on the top right corner of the OpenShift Console to paste them)
+. Deploy the backend using the following YAML manifests (you can use the `+` icon on the top right corner of the OpenShift Console to paste them)
 +
 [source,yaml,role=execute,subs="attributes"]
 ----

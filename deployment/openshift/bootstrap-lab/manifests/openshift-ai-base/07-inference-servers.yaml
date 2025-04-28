@@ -148,7 +148,7 @@ objects:
             - /bin/sh
           args:
             - '-c'
-            - 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false" '
+            - 'exec tritonserver "--model-repository=/mnt/models" "--allow-http=true" "--allow-sagemaker=false"'
           volumeMounts:
             - name: shm
               mountPath: /dev/shm
@@ -173,7 +173,5 @@ objects:
             periodSeconds: 30
             timeoutSeconds: 10
           ports:
-            - containerPort: 8000
-              protocol: TCP
             - containerPort: 8001
               protocol: TCP
