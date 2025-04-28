@@ -16,6 +16,9 @@ spec:
     codeflare:
       managementState: Managed
     kserve:
+      nim:
+        managementState: Managed
+      rawDeploymentServiceConfig: Headless
       serving:
         ingressGateway:
           certificate:
@@ -25,7 +28,7 @@ spec:
       managementState: Managed
     modelregistry:
       registriesNamespace: rhoai-model-registries
-      managementState: Managed
+      managementState: Removed
     trustyai:
       managementState: Managed
     ray:
@@ -41,4 +44,4 @@ spec:
     datasciencepipelines:
       managementState: Managed
     trainingoperator:
-      managementState: Removed
+      managementState: Managed

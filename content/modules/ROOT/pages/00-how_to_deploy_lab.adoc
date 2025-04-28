@@ -36,7 +36,7 @@ image::lab-bootstrap.png[]
 
 image::lab-argo.png[]
 
-4- Wait until all Applications are in Synced state
+4- Wait until all Applications are in Synced state (it could take time to converge).
 
 image::lab-argo-finish.png[]
 ====
@@ -50,7 +50,7 @@ With these YAMLs you deploy:
 * OpenShift Pipelines
 * Advanced Cluster Manager with Red Hat Edge Manager
 * Gitea as Source Code Repository
-* NVIDIA GPU configuration
+* NVIDIA GPU configuration (only if "GPU" bootstrap is used)
 
 
 ==== Workshop Guides

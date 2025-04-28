@@ -45,19 +45,45 @@ We’ll use the following tools to train a YOLO model to detect hardhats:
 These tools are pre-configured at this point, allowing you to dive straight into pipeline development.
 
 
-[IMPORTANT]
-
-To proceed, you must have a Pipeline Server defined. If this step was completed during the xref:ai-specialist-02-develop.adoc#_create_an_elyra_peline[Elyra Pipelines setup], you're all set. However, if you skipped that part, you'll need to follow the steps to create the Pipeline Server now before continuing.
-
-
 
 == Pipeline Creation 
 
 image::ai-train-nav1.png[]
 
+If you want to run Pipelines in OpenShift AI, you will need to add into your AI project a Pipeline Server resource definition.
+
+[NOTE]
+
+If this step was completed during the xref:ai-specialist-02-develop.adoc#_create_an_elyra_peline[Elyra Pipelines setup], you're all set. However, if you skipped that part, you'll need to follow the steps to create the Pipeline Server now before continuing.
+
+[example]
+====
+To create a Pipeline Server:
+
+1- Navigate to "Data Science Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI] and configure a new pipeline server.
+
+
+2- Fill in the Data Connection information:
+
+** *Access key*: `{object_storage_pipeline_access_key}`
+** *Secret key*: `{object_storage_pipeline_secret_key}`
+** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}`  
+** *Region*: Keep the Region. If it's it is better to include any string (e.g. `local`).
+** *Bucket*: `{user}-ai-pipeline`
+
+3- Click "Configure pipeline server".
+
+4- Once the configuration is ready, restart any running workbenches to apply the updates.
+====
+
+image::ai-build-pipeline-server.png[]
+
+[NOTE]
+
+To verify that the Pipeline Server has been successfully loaded into your Jupyter Environment, open the Workbench and navigate to "Runtimes" (represented by a gear icon in the left menu). Here, you can confirm that the runtime configuration has been automatically loaded. If the Data Science Pipelines runtime configuration is empty try to restart your workbench once the pipeline server is active.
+
 
 The training pipeline is implemented using Python. OpenShift AI Workbenches provide a coding environment with an integrated IDE. 
-
 
 [example]
 ====
@@ -1020,7 +1046,7 @@ It's time to run the imported Kubeflow Pipeline:
     * roboflow_version: `<your value>`
     * workshop_username: `{user}`
 
-5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mock_training_dataset[xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] you can configure them to "1" to speed-up the pipeline execution.
+5. Adjust the "Batch Size" and the "Epochs". If you are running a xref:ai-specialist-01-data.adoc#_mock_training_dataset[*Mock Training*] you can configure them to "1" to speed-up the pipeline execution.
 
     * Batch Size: `<your value>`
     * Ephoch number: `<your value>`
@@ -1284,7 +1310,7 @@ After some time, the pipeline will finish. You can at that point go to the Objec
 
 image::ai-train-model-s3.png[]
 
-2- The "modelcar" container image is available in the internal https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry] (user: {user} ; password: {password})
+2- The "modelcar" container image is available in the internal https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank] (user: {user} ; password: {password})
 
 image::ai-train-model-quay.png[]
 
