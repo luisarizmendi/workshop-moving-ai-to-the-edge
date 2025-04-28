@@ -411,9 +411,9 @@ Now deploy the Inference Server with the model in `onnx` format provided by the 
 
 * Accelerator: If you have GPUs available choose your accelerator.
 
-* Make deployed models available through an external route: `not selected`
+* Make deployed models available through an external route: `selected`
 
-* Require token authentication: `not selected`v
+* Require token authentication: `not selected`
 
 * Create a new connection:
 
@@ -436,7 +436,7 @@ The Inference Server may take some time to become available upon initial deploym
 
 
 
-When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the endpoint that we need to use to access to it (copy the endpoint).
+When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the internal endpoint that we need to use to access to it (copy the endpoint).
 
 image::ai-deploy-serving-endpoint.png[]
 
@@ -478,7 +478,7 @@ spec:
         - containerPort: 8800
         env:
           - name: TRITON_SERVER_URL
-            value: '<CHANGE ME TO INFERENCE ENDPOINT>:8001'
+            value: '<CHANGE ME TO INFERENCE INTERNAL ENDPOINT>:8001'
           - name: MODEL_NAME
             value: 'hardhat'
 ---
@@ -514,7 +514,7 @@ spec:
     termination: edge
 ----
 
-4- Change the `<CHANGE ME TO INFERENCE ENDPOINT>` string with the endpoint value that you copied from the deployed Inference Server
+4- Change the `<CHANGE ME TO INFERENCE INTERNAL ENDPOINT>` string with the internal endpoint value that you copied from the deployed Inference Server
 
 [NOTE]
 

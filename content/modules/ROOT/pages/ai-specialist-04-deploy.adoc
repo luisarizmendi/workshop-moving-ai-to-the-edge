@@ -122,9 +122,9 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 * Accelerator: If you have GPUs available choose your accelerator.
 
-* Make deployed models available through an external route: `not selected`
+* Make deployed models available through an external route: `selected`
 
-* Require token authentication: `not selected`v
+* Require token authentication: `not selected`
 
 * Create a new connection:
 
@@ -159,7 +159,7 @@ The Pod consists of four containers and one init container. You can view the log
 image::ai-deploy-inference-logs.png[]
 
 
-When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the endpoint that we need to use to access to it. For more information about Triton available endpoints you can https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.19/html-single/serving_models/index#nvidia_triton_inference_server[read the NVIDIA Triton Inference Server endpoints documentation].
+When the Inference server appears as avialable in the https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] console, you will be able to copy the internal endpoint that we need to use to access to it. For more information about Triton available endpoints you can https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.19/html-single/serving_models/index#nvidia_triton_inference_server[read the NVIDIA Triton Inference Server endpoints documentation].
 
 image::ai-deploy-serving-endpoint.png[]
 
@@ -200,7 +200,7 @@ spec:
         - containerPort: 8800
         env:
           - name: TRITON_SERVER_URL
-            value: '<CHANGE ME TO INFERENCE ENDPOINT>:8001'
+            value: '<CHANGE ME TO INFERENCE INTERNAL ENDPOINT>:8001'
           - name: MODEL_NAME
             value: 'hardhat'
 ---
@@ -236,11 +236,11 @@ spec:
     termination: edge
 ----
 
-4- Change the `<CHANGE ME TO INFERENCE ENDPOINT>` string with the endpoint value that you copied from the deployed Inference Server
+4- Change the `<CHANGE ME TO INFERENCE INTERNAL ENDPOINT>` string with the internal endpoint value that you copied from the deployed Inference Server. If you used the values proposed in the workshop the `MODEL_NAME` environment variable will be `hardhat` so you can keep the default
 
 [NOTE]
 
-If you used the values proposed in the workshop the `MODEL_NAME` environment variable will be `hardhat` so you can keep the default
+We deployed the inference server with external access just in case you want to use it. If you decide to use the external endpoint instead the internal you will need to use the port `443` instead `8001`.
 
 5- Click "Create"
 
@@ -656,15 +656,11 @@ Let's deploy this architecture:
 1- You will use the Inference Server already deployed in OpenShift, you don't need to deploy it locally, just take note of the inference URL again.
 
 
-2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `INFERENCE_SERVER_URL` environment variable (it will be something similar to `http://<NAME>-{user}-test.apps.{ocp_cluster_url}/v2/models/hardhat/infer`).
+2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `TRITON_SERVER_URL` environment variable to setup the external inference endpoint. Remember to add the port `:443` at the end since the external endpoint is published in that port instead on the `8001` (it will be something similar to `<NAME>-{user}-test.apps.{ocp_cluster_url}:443`).
 
 ----
-sudo podman run -it --rm -p 5000:5000 --privileged --net host  -e CLASS_NAMES=hardhat,no_hardhat -e TRITON_SERVER_URL=<INFERENCE_SERVER_OCP_ROUTE>:8001 -e MODEL_NAME=hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=<CHANGE ME TO INFERENCE EXTERNAL ENDPOINT>:443 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
-
-[CAUTION]
-
-The `TRITON_SERVER_URL` must be a fully qualified URL.
 
 
 3- Deploy the Actuator in the same way than in the previous point: 
