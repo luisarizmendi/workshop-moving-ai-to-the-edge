@@ -5,7 +5,7 @@ metadata:
   name: registry-add-users
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "99"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   template:
@@ -17,14 +17,12 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
-          oc create -f - <<EOF
+          oc apply -f - <<EOF
           ---
           apiVersion: user.openshift.io/v1
           kind: Group
           metadata:
             name: object-detection-model-registry-users
-            annotations:
-              argocd.argoproj.io/sync-wave: "2"
           users:
             - user99
             - user01

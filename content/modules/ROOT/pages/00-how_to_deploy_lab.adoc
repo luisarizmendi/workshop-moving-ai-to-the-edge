@@ -19,7 +19,7 @@ This workshop requires an OpenShift cluster. You might already have one or, if y
 
 [IMPORTANT]
 
-The number of workers required will depend on their size, but you may need at least four workers in the Red Hat Demo Platform (up from the default of three) to support all the infrastructure services for the workshop. Before deploying anything, ensure the environment is properly scaled—otherwise, the deployment may hang and never complete.
+The number of workers required will depend on their size, but you may need at least four workers in the Red Hat Demo Platform (up from the default of three) to support all the infrastructure services for the workshop. Before deploying anything, ensure the environment is properly scaled—otherwise, the deployment may hang and never complete. If you run in an environment with GPUs you might want to create a worker pool without GPUs to run all the infrastructure services.
 
 The workshop requires several services and configuration (baseline) in OpenShift. You can prepare your environment easily by just importing some YAMLs in your environment:
 
