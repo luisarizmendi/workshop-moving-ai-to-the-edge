@@ -36,7 +36,7 @@ image::lab-bootstrap.png[]
 
 image::lab-argo.png[]
 
-4- Wait until all Applications are in Synced state (it could take time to converge).
+4- Wait until all Applications are in Synced state. It could take time (~30 min) to converge.
 
 image::lab-argo-finish.png[]
 ====
