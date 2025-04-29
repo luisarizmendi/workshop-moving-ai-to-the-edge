@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Get inference URL from environment variable if it exists
-TRITON_SERVER_URL = re.sub(r'^[a-zA-Z]+://', '', os.getenv('TRITON_SERVER_URL') or '') + ('' if re.search(r':\d+', os.getenv('TRITON_SERVER_URL') or '') else ':8001')
+TRITON_SERVER_URL = re.sub(r'^[a-zA-Z]+://', '', os.getenv('TRITON_SERVER_URL', 'localhost:8001') or '') + ('' if re.search(r':\d+', os.getenv('TRITON_SERVER_URL', 'localhost:8001') or '') else ':8001')
 MODEL_NAME = os.getenv('MODEL_NAME', 'hardhat')
 MODEL_VERSION = os.getenv('MODEL_VERSION', '')  # Empty string means use latest version
 
@@ -48,11 +48,11 @@ DEFAULT_COLORS = [
 def initialize_triton_client(model_url, model_name):
     global triton_client, model_metadata, model_config, input_name, output_names
     try:
+        logger.info(f"Connecting to Triton at: {model_url}")
         triton_client = grpc_client.InferenceServerClient(
             url=model_url,
             verbose=False
         )
-        logger.info(f"Connected to Triton server at {model_url}")
         
         # Get model metadata to determine input/output names
         model_metadata = triton_client.get_model_metadata(model_name, MODEL_VERSION)
@@ -453,7 +453,7 @@ def calculate_iou(box1, box2):
 interface = gr.Interface(
     fn=detect_objects,
     inputs=[ 
-        gr.Text(label="Inference Endpoint URL", value=re.sub(r'^[a-zA-Z]+://', '', os.getenv('TRITON_SERVER_URL') or '') + ('' if re.search(r':\d+', os.getenv('TRITON_SERVER_URL') or '') else ':8001')),
+        gr.Text(label="Inference Endpoint URL", value=re.sub(r'^[a-zA-Z]+://', '', os.getenv('TRITON_SERVER_URL', 'localhost:8001') or '') + ('' if re.search(r':\d+', os.getenv('TRITON_SERVER_URL', 'localhost:8001') or '') else ':8001')),
         gr.Text(label="Model name", value=os.getenv('MODEL_NAME', 'hardhat')),
         gr.Files(file_types=["image"], label="Select Images"),
         gr.Textbox(label="Class Names (comma-separated)", placeholder="Leave empty to use default class names (class0, class1, etc.)"),

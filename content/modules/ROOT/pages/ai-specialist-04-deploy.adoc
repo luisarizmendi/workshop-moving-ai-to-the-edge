@@ -240,7 +240,7 @@ spec:
 
 [NOTE]
 
-We deployed the inference server with external access just in case you want to use it. If you decide to use the external endpoint instead the internal you will need to use the port `443` instead `8001`.
+We deployed the inference server with external access just in case you want to test the infererence server from outside the OpenShift cluster but it has some implications that we will see below.
 
 5- Click "Create"
 
@@ -565,7 +565,7 @@ These are large images, the pull could take time, be sure that the inference ser
 
 The script creates a https://docs.podman.io/en/stable/markdown/podman-pod.1.html[Podman POD, window=_blank] with an `init-container` (it runs before the "main" container starts) that pull the `modelcar` container, extract the model files and share them with the Inference Server. That's the same approach that when you are using the `modelcar` in OpenShift.
 
-The Inference service will be available at http://localhost:8001 (gRPC) and http://localhost:8000 (REST). You can check that the model has been loaded with the right values:
+The Inference service will be available at localhost:8001 (https://grpc.io/docs/what-is-grpc/introduction/[gRPC, window=_blank]) and http://localhost:8000 (https://www.redhat.com/en/topics/api/what-is-a-rest-api[REST, window=_blank]). You can check that the model has been loaded with the right values:
 
 [source,shell,role=execute,subs="attributes"]
 ----
@@ -653,13 +653,51 @@ Let’s examine the *non-edge architecture* we’ll set up for testing. As you c
 ====
 Let's deploy this architecture:
 
-1- You will use the Inference Server already deployed in OpenShift, you don't need to deploy it locally, just take note of the inference URL again.
+1- You will use the Inference Server already deployed in OpenShift, you don't need to deploy it locally, but in our case you need to have something into account. We are using Triton Inference server without TLS so the easier way to provide a (working) access to it is configuring a `NodePort` or `LoadBalancer` Kubernetes service. At the edge you probably will be using `NodePort` but since we are testing on the Cloud let's use `LoadBalancer` to simplify things a little bit. 
 
 
-2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `TRITON_SERVER_URL` environment variable to setup the external inference endpoint. Remember to add the port `:443` at the end since the external endpoint is published in that port instead on the `8001` (it will be something similar to `<NAME>-{user}-test.apps.{ocp_cluster_url}:443`).
+
+
+
+
+
+
+
+
+You need to create a new service (you can use the `+` in the top right corner of the OpenShift Console) using a YAML like this one:
+
+[source,YAML,role=execute,subs="attributes"]
+----
+apiVersion: v1
+kind: Service
+metadata:
+  name: hardhat-test-predictor-grpc
+spec:
+  type: LoadBalancer
+  selector:
+    app: isvc.hardhat-test-predictor
+  ports:
+    - name: grpc
+      protocol: TCP
+      port: 8001
+      targetPort: 8001
+----
+
+[NOTE]
+
+If you did use the suggested name Inference Service name (`hardhat-test`) the YAML will be different 
+
+Once created you will find the Service external URI, it will be something like `a39f639f10cc940939c1a4d8a54ca4fa-309729606.us-east-2.elb.amazonaws.com` (remove the `;` that you might find at the beginning if you copy paste from the "Networking > Services > Details" page)
+
+[NOTE]
+
+Sometimes the name resolution takes some time. Try to resolve that URI from your laptop before moving on.
+
+
+2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `TRITON_SERVER_URL` environment variable to setup the external inference endpoint (`INFERENCE_SERVER_URI:8001`, using the provided example it will be something like `a39f639f10cc940939c1a4d8a54ca4fa-309729606.us-east-2.elb.amazonaws.com:8001` ). 
 
 ----
-sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=<CHANGE ME TO INFERENCE EXTERNAL ENDPOINT>:443 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=<CHANGE ME TO INFERENCE EXTERNAL ENDPOINT>:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
 
 
@@ -670,7 +708,6 @@ sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_U
 podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 ====
-
 
 
 === Testing workflow

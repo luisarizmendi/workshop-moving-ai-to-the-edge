@@ -83,7 +83,7 @@ case "$ACTION" in
     run)
         echo "Starting the pod..."
         podman pod start "$POD_NAME"
-        echo "Service available at: http://localhost:8000 (REST) and http://localhost:8001 (gRPC)"
+        echo "Service available at: localhost:8000 (REST) and localhost:8001 (gRPC)"
         ;;
     stop)
         echo "Stopping the pod..."

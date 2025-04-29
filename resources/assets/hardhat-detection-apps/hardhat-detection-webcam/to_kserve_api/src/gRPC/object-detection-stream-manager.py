@@ -60,7 +60,8 @@ def initialize_triton_client():
     try:
         triton_client = grpc_client.InferenceServerClient(
             url=TRITON_SERVER_URL,
-            verbose=False
+            verbose=False,
+            ssl=False
         )
         logger.info(f"Connected to Triton server at {TRITON_SERVER_URL}")
         
