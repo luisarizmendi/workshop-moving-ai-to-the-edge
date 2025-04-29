@@ -234,17 +234,20 @@ spec:
           metadata:
             name: workshop-group-selector
             namespace: workshop-common
-            labels:
-              app: workshop-group-selector
           spec:
+            path: /
             to:
+              name: workshop-group-selector-service
+              weight: 100
               kind: Service
-              name: workshop-group-selector
+            host: ''
+            tls:
+              insecureEdgeTerminationPolicy: Redirect
+              termination: edge
             port:
               targetPort: 8080
-            tls:
-              termination: edge
-            wildcardPolicy: None
+            alternateBackends: []
+
           EOF
 
 
