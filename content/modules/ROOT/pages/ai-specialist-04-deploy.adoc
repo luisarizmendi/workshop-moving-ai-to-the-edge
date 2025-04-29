@@ -122,7 +122,7 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 * Accelerator: If you have GPUs available choose your accelerator.
 
-* Make deployed models available through an external route: `selected`
+* Make deployed models available through an external route: `not selected`
 
 * Require token authentication: `not selected`
 
@@ -237,10 +237,6 @@ spec:
 ----
 
 4- Change the `<CHANGE ME TO INFERENCE INTERNAL ENDPOINT>` string with the internal endpoint value that you copied from the deployed Inference Server. If you used the values proposed in the workshop the `MODEL_NAME` environment variable will be `hardhat` so you can keep the default
-
-[NOTE]
-
-We deployed the inference server with external access just in case you want to test the infererence server from outside the OpenShift cluster but it has some implications that we will see below.
 
 5- Click "Create"
 
@@ -585,7 +581,7 @@ In this case you will need to run it as privileged to access the system devices 
 
 [source,shell,role=execute,subs="attributes"]
 ----
-sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=helmet,no_helmet quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
 
 [CAUTION]
@@ -627,7 +623,7 @@ Also you will need to include the Dashboard backend route. Please, don't forget 
 
 [source,shell,role=execute,subs="attributes"]
 ----
- podman run -it --rm --network=host -e MONITORED_CLASSES=no_hardhat -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
+ podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 
 ====
@@ -654,14 +650,6 @@ Let’s examine the *non-edge architecture* we’ll set up for testing. As you c
 Let's deploy this architecture:
 
 1- You will use the Inference Server already deployed in OpenShift, you don't need to deploy it locally, but in our case you need to have something into account. We are using Triton Inference server without TLS so the easier way to provide a (working) access to it is configuring a `NodePort` or `LoadBalancer` Kubernetes service. At the edge you probably will be using `NodePort` but since we are testing on the Cloud let's use `LoadBalancer` to simplify things a little bit. 
-
-
-
-
-
-
-
-
 
 
 You need to create a new service (you can use the `+` in the top right corner of the OpenShift Console) using a YAML like this one:
@@ -697,7 +685,7 @@ Sometimes the name resolution takes some time. Try to resolve that URI from your
 2- Deploy the "Camera Stream Manager". You can use the steps shown in the previous point, but with an small difference. You need to deploy the Camera Stream Manager indicating the URL endpoint for the Inference Server (by default it uses `localhost`). You can do it by using the `TRITON_SERVER_URL` environment variable to setup the external inference endpoint (`INFERENCE_SERVER_URI:8001`, using the provided example it will be something like `a39f639f10cc940939c1a4d8a54ca4fa-309729606.us-east-2.elb.amazonaws.com:8001` ). 
 
 ----
-sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=<CHANGE ME TO INFERENCE EXTERNAL ENDPOINT>:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=<CHANGE ME TO INFERENCE EXTERNAL ENDPOINT>:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=helmet,no_helmet quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
 
 
