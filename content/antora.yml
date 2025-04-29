@@ -34,7 +34,7 @@ asciidoc:
     container-registry-gitea: 192.168.2.200:5000
     container-registry-gitea-user: gitea
     container-registry-gitea-pass: gitea
-    container-registry-dockerconfigjson: CONTAINER-REGISTRY-DOCKERCONFIGJSON
+    container-registry-dockerconfigjson: CONTAINER_REGISTRY_DOCKERCONFIGJSON
     # AI
     gitea-user: USERNAME
     gitea-password: PASSWORD

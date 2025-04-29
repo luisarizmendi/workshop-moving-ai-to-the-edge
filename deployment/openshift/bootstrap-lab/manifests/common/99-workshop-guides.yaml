@@ -41,6 +41,7 @@ spec:
             PIPELINES_ACCESS_KEY=$(oc get secret user${i}-ai-pipeline -n user${i}-tools -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 --decode && echo)
             PIPELINES_SECRET_KEY=$(oc get secret user${i}-ai-pipeline -n user${i}-tools -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 --decode && echo)
 
+            CONTAINER_REGISTRY_DOCKERCONFIGJSON={"auths":{"workshop-registry-quay-app.openshift-operators.svc.cluster.local":{"auth":"$(echo -n user${i}:redhat$i | base64)"},"workshop-registry-quay-openshift-operators.apps.cluster-kng7r.kng7r.sandbox435.opentlc.com":{"auth":"$(echo -n user${i}:redhat$i | base64)"}}}
 
           echo "Creating values.yaml for user user${i}..."
           
@@ -70,7 +71,7 @@ spec:
           container-registry-gitea: 192.168.2.200:5000
           container-registry-gitea-user: gitea
           container-registry-gitea-pass: gitea
-          container-registry-dockerconfigjson: {"auths":{"workshop-registry-quay-app.openshift-operators.svc.cluster.local":{"auth":"$(echo -n user${i}:redhat$i | base64)"},"workshop-registry-quay-openshift-operators.apps.cluster-kng7r.kng7r.sandbox435.opentlc.com":{"auth":"$(echo -n user${i}:redhat$i | base64)"}}}
+          container-registry-dockerconfigjson: $CONTAINER_REGISTRY_DOCKERCONFIGJSON
 
           # AI
           gitea-user: user${i}
