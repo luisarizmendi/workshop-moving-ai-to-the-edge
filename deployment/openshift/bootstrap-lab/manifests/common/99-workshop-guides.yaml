@@ -71,7 +71,7 @@ spec:
           container-registry-gitea: 192.168.2.200:5000
           container-registry-gitea-user: gitea
           container-registry-gitea-pass: gitea
-          container-registry-dockerconfigjson: $CONTAINER_REGISTRY_DOCKERCONFIGJSON
+          container-registry-dockerconfigjson: '${CONTAINER_REGISTRY_DOCKERCONFIGJSON}'
 
           # AI
           gitea-user: user${i}
@@ -82,6 +82,10 @@ spec:
           object_storage_pipeline_secret_key: $PIPELINES_SECRET_KEY
           registry-url: https://quay.io/user/luisarizmendi/
           EOF
+          
+          echo "Values configured:"
+          cat  /tmp/values-user${i}.yaml
+          echo ""
 
           echo "Ensuring the project exists..."
           if ! /usr/bin/oc get project $NAMESPACE >/dev/null 2>&1; then

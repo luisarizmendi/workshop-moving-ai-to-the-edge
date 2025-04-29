@@ -843,11 +843,7 @@ Remember that if you want to save time you could use the "xref:ai-specialist-01-
 
 image::ai-build-pipeline-envs.png[]
 
-5- Click save (icon with a disk on the top menu).
-====
-
-
-If you are running in an **environment with GPUs**, you must:
+5- If you are running in an **environment with GPUs**, you must:
 
 * Specify the GPU number and GPU Vendor (`nvidia.com/gpu`) in the training task. 
 
@@ -856,6 +852,11 @@ If you are running in an **environment with GPUs**, you must:
 * Add https://medium.com/@fatlip/cuda-shared-memory-23cd1a0d4e39[additional Shared Memory Size, window=_blank] in the Training Task.
 
 image::ai-build-pipeline-elyra-gpu.png[]
+
+
+
+6- Click save (icon with a disk on the top menu).
+====
 
 
 [NOTE]
@@ -867,9 +868,12 @@ If you want to play a little bit more with the Elyra Pipelines, try to modify th
 
 It's time to run you Pipeline (click the "play" button on the top bar menu). 
 
-image::ai-build-pipeline-run.png[]
 
 After running the pipeline, you can see the progress in the OpenShift AI console.
+
+
+image::ai-build-pipeline-run-play.png[]
+
 
 [example]
 ====
