@@ -1,6 +1,0 @@
-{
-    "Group 01": { "guideUrl": "https://example.com/guides/1.pdf", "notes": "Intro workshop" },
-    "Group 02": { "guideUrl": "https://example.com/guides/2.pdf", "notes": "Advanced topics" },
-    "Group 50": { "guideUrl": "https://example.com/guides/50.pdf", "notes": "Closing session" },
-    "Group 99": { "guideUrl": "https://example.com/guides/99.pdf", "notes": "Special group" }
-  }
