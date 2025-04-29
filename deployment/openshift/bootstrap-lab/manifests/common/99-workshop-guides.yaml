@@ -121,9 +121,17 @@ spec:
 
           oc apply -f - <<EOF
           apiVersion: v1
+          kind: Namespace
+          metadata:
+            annotations:
+              argocd.argoproj.io/sync-wave: "0"
+            name: workshop-common
+          ---
+          apiVersion: v1
           kind: ConfigMap
           metadata:
             name: group-config
+            namespace: workshop-common
           data:
             groups.json: |
               {
@@ -184,6 +192,7 @@ spec:
           kind: Deployment
           metadata:
             name: workshop-group-selector
+            namespace: workshop-common
           spec:
             replicas: 1
             selector:
@@ -211,6 +220,7 @@ spec:
           kind: Service
           metadata:
             name: workshop-group-selector-service
+            namespace: workshop-common
           spec:
             selector:
               app: workshop-group-selector
@@ -222,7 +232,8 @@ spec:
           apiVersion: route.openshift.io/v1
           kind: Route
           metadata:
-            name: workshop-group-selector-route
+            name: workshop-group-selector
+            namespace: workshop-common
             labels:
               app: workshop-group-selector
           spec:

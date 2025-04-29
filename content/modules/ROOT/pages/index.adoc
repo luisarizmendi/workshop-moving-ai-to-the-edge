@@ -69,6 +69,14 @@ If you want to take a look the the GitHub repo that host this guide {git-worksho
 Good luck on your mission to create a safer, smarter workplace!
 
 
+
+== Workshop Guide access and group assignment
+
+Before jumping into the content, be sure that you assign to a group and that you are following the right Workshop Guide by adding your name in one of the Workshop groups:
+
+https://workshop-group-selector-workshop-common.apps.{ocp_cluster_url}
+
+
 == Workshop Video Recording
 
 
