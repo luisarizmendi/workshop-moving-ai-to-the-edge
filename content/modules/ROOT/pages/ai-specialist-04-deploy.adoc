@@ -104,7 +104,7 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 
 3- Click on the version that you want to test
 
-4- Select "Deploy" in the "Actions" dropdown menu on the top right corner
+4- Select "Deploy" on the top right corner
 
 5- Select the project `{user}-test` and fill-in the form:
 
