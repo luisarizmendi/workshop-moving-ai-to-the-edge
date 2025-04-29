@@ -817,7 +817,7 @@ In this case you will need to run it as privileged to access the system devices 
 
 [source,shell,role=execute,subs="attributes"]
 ----
-sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=hardhat,no_hardhat quay.io/luisarizmendi/object-detection-stream-manager:grpc
+sudo podman run -it --rm -p 5000:5000 --privileged --net host -e TRITON_SERVER_URL=localhost:8001 -e MODEL_NAME=hardhat -e CLASS_NAMES=helmet,no_helmet quay.io/luisarizmendi/object-detection-stream-manager:grpc
 ----
 
 [CAUTION]
@@ -855,7 +855,7 @@ Also you will need to include the Dashboard backend route. Please, don't forget 
 
 [source,shell,role=execute,subs="attributes"]
 ----
- podman run -it --rm --network=host -e MONITORED_CLASSES=no_hardhat -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
+ podman run -it --rm --network=host -e MONITORED_CLASSES=no_helmet -e ALERT_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alert -e ALIVE_ENDPOINT=http://object-detection-dashboard-backend-{user}-test.apps.{ocp_cluster_url}/alive quay.io/luisarizmendi/object-detection-action:prod
 ----
 
 ====
