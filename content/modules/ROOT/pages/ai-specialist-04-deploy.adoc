@@ -603,9 +603,13 @@ We are deploying the service version that uses gRPC to send data to the inferenc
 
 This won't work for MAC users since camera access from containers is different in that OS. If you are a MAC user you can still run this service by downloading and running directly the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/object-detection-stream-manager.py[`object-detection-stream-manager.py` python script, window=_blank] on your system with `python object-detection-stream-manager.py`. Remember to install the https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/assets/hardhat-detection-apps/hardhat-detection-webcam/to_kserve_api/src/requirements.txt[python dependencies, window=_blank] with `pip install` and to grant permissions to access cameras if needed.
 
-[NOTE]
 
-During the container launch, you specify the class names. It's important to note that the order of these names matters. In the provided pre-trained model, there are two classes: `class0` corresponds to the detection of a hardhat, while `class1` corresponds to the detection of no hardhat. As a result, the `CLASS_NAMES` variable is set to "hardhat,no_helmet". However, this configuration may vary depending on your specific model. The most reliable way to determine the correct class names and their order is by reviewing the output during deployment and testing of the inference server in OpenShift. This will show which class names are being detected by your model.
+[NOTE]
+====
+During the container launch, you specify the class names. It's important to note that the order of these names matters. In the provided pre-trained model, there are two classes: `class0` corresponds to the detection of a hardhat, while `class1` corresponds to the detection of no hardhat. 
+
+With the `CLASS_NAMES` variable you can define the names for those classes, for example you can set to "helmet,no_helmet" so the `class0` matches the `helmet` label. However, this configuration may vary depending on your specific model. The most reliable way to determine the correct class names and their order is by reviewing the output during deployment and testing of the inference server in OpenShift. This will show which class names are being detected by your model.
+====
 
 Before going ahead check the logs to be sure that there are no errors.
 
