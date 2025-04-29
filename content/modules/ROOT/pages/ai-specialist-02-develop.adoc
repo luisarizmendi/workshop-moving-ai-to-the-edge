@@ -133,7 +133,7 @@ image::ai-build-authenticator.png[]
 
 image::ai-build-dataconnection.png[]
 
-5- Create a new Workbench ("Workbenches" tab) named "Object Detection Notebooks". You will need to select:
+5- Create a new Workbench ("Workbenches" tab) named `Object Detection Notebooks`. You will need to select:
 
 ** Base image that will be used to run your Jupyter Notebooks (select `PyTorch`)
 ** Container Size (`Small` is enough)
@@ -683,7 +683,7 @@ If you want to run Pipelines in OpenShift AI, you will need to add into your AI 
 ====
 To create a Pipeline Server:
 
-1- Navigate to "Data Science Pipelines > Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] and configure a new pipeline server.
+1- Navigate to "Data Science Pipelines > Pipelines" in https://rhods-dashboard-redhat-ods-applications.apps.{ocp_cluster_url}[OpenShift AI, window=_blank] and configure a new pipeline server. Be sure that you are in the right project (`{user}-ai`).
 
 [NOTE]
 
@@ -695,7 +695,7 @@ Double-check that you are in the right Project: {user}-ai
 ** *Access key*: `{object_storage_pipeline_access_key}`
 ** *Secret key*: `{object_storage_pipeline_secret_key}`
 ** *Endpoint*: `s3-openshift-storage.apps.{ocp_cluster_url}`  
-** *Region*: Keep the Region. If it's it is better to include any string (e.g. `local`).
+** *Region*: Keep the Region. If there is any pre-selected include any string (e.g. `local`).
 ** *Bucket*: `{user}-ai-pipeline`
 
 3- Click "Configure pipeline server".

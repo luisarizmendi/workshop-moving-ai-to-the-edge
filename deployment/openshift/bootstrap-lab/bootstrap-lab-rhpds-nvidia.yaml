@@ -97,8 +97,6 @@ spec:
                 - path: deployment/openshift/bootstrap-lab/manifests/*
                 - path: deployment/openshift/bootstrap-lab/manifests/openshift-ai-base
                   exclude: true
-                - path: deployment/openshift/bootstrap-lab/manifests/pipelines
-                  exclude: true
                 - path: deployment/openshift/bootstrap-lab/manifests/gitea
                   exclude: true
                 - path: deployment/openshift/bootstrap-lab/manifests/minio
@@ -129,11 +127,13 @@ spec:
                         factor: 2
                         maxDuration: 1m
                 ignoreDifferences:
-                  - group: ""
-                    kind: Secret
-                    name: v4-0-config-user-idp-1-file-data
+                  - group: ''
+                    kind: '*'
                     jsonPointers:
-                      - /
+                      - /data
+                      - /metadata
+                    managedFieldsManagers:
+                      - authentication-operator
           EOF
           # Wait for the DataScienceCluster to be ready
           until oc get pods -n redhat-ods-applications | grep 'odh-model-controller' | grep 'Running' | grep '1/1'; do
