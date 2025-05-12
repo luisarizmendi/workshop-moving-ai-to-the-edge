@@ -759,7 +759,7 @@ In our case, we are distributing the model as a `modelcar`, which is essentially
 
 3- Click on the labels icon on the left menu
 
-4- Click on the gear icon on the right and  select "Add new tag"
+4- Look for the multiarch image that you want to "promote" and click on the gear icon on the right, then select "Add new tag"
 
 5- Assign the `prod` tag to that image
 
