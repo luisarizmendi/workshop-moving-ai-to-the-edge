@@ -1,0 +1,356 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rhel-image-user-pipelines-create
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
+
+          while true; do
+              if oc get tasks.tekton.dev -n default &> /dev/null; then
+                  echo "Tekton API (tekton.dev/v1) is ready"
+                  break
+              fi
+            sleep 10
+          done
+
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            username="user$i"
+            pipeline_namespace="${username}-tools"
+
+            while true; do
+                if oc get namespace "$pipeline_namespace" &> /dev/null; then
+                    echo "Namespace $pipeline_namespace has been created"
+                    break
+                fi
+                sleep 10
+            done    
+
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: ai-modelcar-pvc
+            namespace: $pipeline_namespace
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+          EOFUP
+
+          echo "Creating modelcar-containerfile-create Task"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: modelcar-containerfile-create
+            namespace: $pipeline_namespace
+          spec:
+            workspaces:
+              - name: data
+                description: "The workspace to store the downloaded files"
+            steps:
+              - name: generate-containerfile
+                image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+                script: |
+                  #!/usr/bin/env bash
+                  echo 'FROM registry.access.redhat.com/ubi9/ubi-micro:9.4' > \$(workspaces.data.path)/Dockerfile
+                  echo 'COPY ./models /models' >> \$(workspaces.data.path)/Dockerfile
+                  echo 'USER 1001' >> \$(workspaces.data.path)/Dockerfile
+
+              - name: create-models-dir
+                image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+                script: |
+                  #!/usr/bin/env bash
+                  mkdir -p \$(workspaces.data.path)/models
+          EOFUP
+
+          echo "Creating modelcar-download-model Task"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: modelcar-download-model
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: objectApiUrl
+                type: string
+              - name: objectBucket
+                type: string
+              - name: objectAccessKey
+                type: string
+              - name: objectSecretKey
+                type: string
+              - name: directoryPath
+                type: string
+            workspaces:
+              - name: data
+                description: "The workspace to store the downloaded files"
+            steps:
+              - computeResources: {}
+                image: 'quay.io/luisarizmendi/s3cmd:latest'
+                name: download-from-object
+                script: |
+                  #!/usr/bin/env sh
+                  set -e
+
+                  # Create s3cmd config
+                  cat > /tmp/.s3cfg << EOF
+                  [default]
+                  access_key = \$(params.objectAccessKey)
+                  secret_key = \$(params.objectSecretKey)
+                  host_base = \$(params.objectApiUrl)
+                  host_bucket = \$(params.objectApiUrl)
+                  use_https = True
+                  signature_v2 = False
+                  # Disable SSL verification
+                  check_ssl_certificate = False
+                  check_ssl_hostname = False
+                  EOF
+
+                  # Create target directory for recursive copy
+                  rm -rf \$(workspaces.data.path)/models
+                  mkdir -p \$(workspaces.data.path)/models
+
+                  echo "Copying from Object Storage in \$(params.objectBucket)/\$(params.directoryPath)/ to \$(workspaces.data.path)/models/"
+
+                  # Use s3cmd to copy the directory
+                  s3cmd -c /tmp/.s3cfg get --recursive s3://\$(params.objectBucket)/\$(params.directoryPath)/ \$(workspaces.data.path)/models/
+
+                  # Check if the download was successful
+                  if [ $? -ne 0 ]; then
+                    echo "Failed to download files from object storage"
+                    exit 1
+                  fi
+
+                  echo "----- \$(workspaces.data.path) ------"
+                  ls \$(workspaces.data.path)
+                  echo "-----------"
+
+          EOFUP
+
+
+          echo "Creating modelcar-build-and-push Task"
+          apply_with_retries  oc apply -f - <<EOFUP      
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: modelcar-build-and-push
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: IMAGE
+                description: Full image name including registry
+              - name: DOCKERFILE
+                description: Path to Dockerfile
+                default: ./Dockerfile
+              - name: CONTEXT
+                description: Build context
+                default: ./
+              - name: PLATFORMS
+                description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
+                default: linux/amd64,linux/arm64
+            workspaces:
+              - name: source
+              - name: dockerconfig
+                optional: true
+                mountPath: /root/.docker  # Podman uses /root/.docker
+            steps:
+              - name: build-and-push
+                image: quay.io/podman/stable:latest
+                securityContext:
+                  privileged: true  # Required for QEMU & binfmt_misc
+                  runAsUser: 0
+                workingDir: \$(workspaces.source.path)
+                script: |
+                  #!/bin/bash
+                  set -e
+
+                  echo "Enabling binfmt_misc for cross-arch builds..."
+                  podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+
+                  echo "Creating multiarch manifest: \$(params.IMAGE)"
+                  for arch in $(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                    tag="${arch//\//-}"
+                    echo "Building for $arch -> $tag"
+                    podman build --arch ${arch##*/} -f \$(params.DOCKERFILE) -t \$(params.IMAGE)-$tag \$(params.CONTEXT)
+                    podman push \$(params.IMAGE)-$tag
+                  done
+
+                  echo "Creating and pushing manifest list..."
+                  podman manifest create \$(params.IMAGE)
+                  for arch in $(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                    tag="${arch//\//-}"
+                    podman manifest add \$(params.IMAGE) \$(params.IMAGE)-$tag
+                  done
+                  podman manifest push --all \$(params.IMAGE) docker://\$(params.IMAGE)
+
+            results:
+              - name: IMAGE_URL
+                description: URL of the pushed multiarch image
+
+          EOFUP
+
+          echo "Creating ai-modelcar Pipeline"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Pipeline
+          metadata:
+            name: ai-modelcar
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: object-api-url
+                type: string
+                description: "Object Storage  API URL"
+              - name: object_access_key
+                type: string
+                description: "Object Storage Access-Key"
+              - name: object_secret_key
+                type: string
+                description: "Object Storage Secret-Key"
+              - name: object-bucket
+                type: string
+                description: "Object Storage bucket name"
+              - name: object-directory-path
+                type: string
+                description: "Path to the directory in the object bucket to download"
+              - name: container-registry-image-name
+                type: string
+                description: "Name of the image to push"
+              - name: container-registry-image-tag
+                type: string
+                description: "Tag for the image to push"
+              - name: container-registry
+                type: string
+                description: "Container Registry URL"
+              - name: container-registry-credentials
+                type: string
+                description: "Container Registry credentials"
+
+
+            workspaces:
+              - name: shared-workspace
+                description: "Workspace used for sharing data between tasks"
+              - name: docker-credentials
+                description: "Secret with the container registry credentials"
+
+            tasks:
+
+              - name: containerfile-create
+                taskRef:
+                  name: modelcar-containerfile-create
+                  kind: Task
+                workspaces:
+                  - name: data
+                    workspace: shared-workspace 
+
+
+              - name: get-model-file
+                runAfter:
+                  - containerfile-create
+                taskRef:
+                  name: modelcar-download-model
+                  kind: Task
+                params:
+                  - name: objectApiUrl
+                    value: \$(params.object-api-url)
+                  - name: objectBucket
+                    value: \$(params.object-bucket)
+                  - name: objectAccessKey
+                    value: \$(params.object_access_key)
+                  - name: objectSecretKey
+                    value: \$(params.object_secret_key)
+                  - name: directoryPath
+                    value: \$(params.object-directory-path)
+                workspaces:
+                  - name: data
+                    workspace: shared-workspace 
+
+
+
+              - name: build-and-push
+                runAfter:
+                  - get-model-file
+                taskRef:
+                  name: modelcar-build-and-push
+                  kind: Task
+                params:
+                  - name: IMAGE
+                    value: \$(params.container-registry)/\$(params.container-registry-image-name):\$(params.container-registry-image-tag)
+                workspaces:
+                  - name: source
+                    workspace: shared-workspace
+                  - name: dockerconfig
+                    workspace: docker-credentials                 
+  
+          EOFUP
+
+
+
+
+
+
+
+
+
+
+
+          done 
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
+
+

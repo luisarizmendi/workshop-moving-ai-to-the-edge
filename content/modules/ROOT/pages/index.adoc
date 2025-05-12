@@ -77,6 +77,12 @@ Before jumping into the content, be sure that you assign to a group and that you
 https://workshop-group-selector-workshop-common.apps.{ocp_cluster_url}
 
 
+You will find there the link to your own workshop guide (containing your group variables already built-in):
+
+image::workshop-group-assignment.png[]
+
+
+
 == Workshop Video Recording
 
 
