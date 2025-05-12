@@ -117,9 +117,9 @@ spec:
                 image: registry.access.redhat.com/ubi8/ubi-minimal:latest
                 script: |
                   #!/usr/bin/env bash
-                  echo 'FROM registry.access.redhat.com/ubi9/ubi-micro:9.4' > \$(workspaces.data.path)/Dockerfile
-                  echo 'COPY ./models /models' >> \$(workspaces.data.path)/Dockerfile
-                  echo 'USER 1001' >> \$(workspaces.data.path)/Dockerfile
+                  echo 'FROM registry.access.redhat.com/ubi9/ubi-micro:9.4' > \$(workspaces.data.path)/Containerfile
+                  echo 'COPY ./models /models' >> \$(workspaces.data.path)/Containerfile
+                  echo 'USER 1001' >> \$(workspaces.data.path)/Containerfile
 
               - name: create-models-dir
                 image: registry.access.redhat.com/ubi8/ubi-minimal:latest
@@ -207,9 +207,9 @@ spec:
             params:
               - name: IMAGE
                 description: Full image name including registry
-              - name: DOCKERFILE
-                description: Path to Dockerfile
-                default: ./Dockerfile
+              - name: CONTAINERFILE
+                description: Path to Containerfile
+                default: ./Containerfile
               - name: CONTEXT
                 description: Build context
                 default: ./
@@ -239,7 +239,7 @@ spec:
                   for arch in $(echo $PLATFORMS | tr ',' ' '); do
                     tag="${arch//\//-}"
                     echo "Building for $arch -> $tag"
-                    podman build --arch ${arch##*/} -f \$(params.DOCKERFILE) -t \$(params.IMAGE)-$tag \$(params.CONTEXT)
+                    podman build --arch ${arch##*/} -f \$(params.CONTAINERFILE) -t \$(params.IMAGE)-$tag \$(params.CONTEXT)
                     podman push \$(params.IMAGE)-$tag
                   done
 
