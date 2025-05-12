@@ -1274,7 +1274,6 @@ spec:
       script: |
         #!/bin/bash
         set -e
-        export REGISTRY_AUTH_FILE=/root/.docker/config.json
         echo "Enabling binfmt_misc for cross-arch builds..."
         podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
