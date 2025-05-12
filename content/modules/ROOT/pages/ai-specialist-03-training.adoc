@@ -1236,7 +1236,7 @@ The content is generated automatically by the Pipeline but be aware that the out
 
 
 
-3- `build-and-push`: Performs the container image build using https://hub.tekton.dev/tekton/task/kaniko[Kaniko, window=_blank] and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank].
+3- `build-and-push`: Performs the multi-arch (x86_64 and arm64) container image build using Podman and push it into the https://workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}[Quay Container Image Registry, window=_blank].
 
 
 [source,yaml,role=execute,subs="attributes"]
@@ -1244,65 +1244,86 @@ The content is generated automatically by the Pipeline but be aware that the out
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
+  creationTimestamp: '2025-05-12T11:58:39Z'
+  generation: 1
+  managedFields:
+    - apiVersion: tekton.dev/v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:spec':
+          .: {}
+          'f:params': {}
+          'f:results': {}
+          'f:steps': {}
+          'f:workspaces': {}
+      manager: Mozilla
+      operation: Update
+      time: '2025-05-12T11:58:39Z'
   name: modelcar-build-and-push
+  namespace: user99-tools
+  resourceVersion: '347909'
+  uid: 5f24b038-079a-4ac3-85f4-00e412aaf4f3
 spec:
   params:
-    - description: Name (reference) of the image to build.
+    - description: Full image name including registry
       name: IMAGE
       type: string
     - default: ./Dockerfile
-      description: Path to the Dockerfile to build.
+      description: Path to Dockerfile
       name: DOCKERFILE
       type: string
     - default: ./
-      description: The build context used by Kaniko.
+      description: Build context
       name: CONTEXT
       type: string
-    - default: []
-      name: EXTRA_ARGS
-      type: array
-    - default: 'gcr.io/kaniko-project/executor:v1.5.1@sha256:c6166717f7fe0b7da44908c986137ecfeab21f31ec3992f6e128fff8a94be8a5'
-      description: The image on which builds will run (default is v1.5.1)
-      name: BUILDER_IMAGE
+    - default: 'linux/amd64,linux/arm64'
+      description: 'Comma-separated target platforms (e.g., linux/amd64,linux/arm64)'
+      name: PLATFORMS
       type: string
   results:
-    - description: Digest of the image just built.
-      name: IMAGE_DIGEST
-      type: string
-    - description: URL of the image just built.
+    - description: URL of the pushed multiarch image
       name: IMAGE_URL
       type: string
   steps:
-    - args:
-        - $(params.EXTRA_ARGS)
-        - '--dockerfile=$(params.DOCKERFILE)'
-        - '--context=$(workspaces.source.path)/$(params.CONTEXT)'
-        - '--destination=$(params.IMAGE)'
-        - '--digest-file=$(results.IMAGE_DIGEST.path)'
-        - '--skip-tls-verify'
-      computeResources: {}
-      image: $(params.BUILDER_IMAGE)
+    - computeResources: {}
+      image: 'quay.io/podman/stable:latest'
       name: build-and-push
+      script: |
+        #!/bin/bash
+        set -e
+
+        echo "Enabling binfmt_misc for cross-arch builds..."
+        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+
+        echo "Creating multiarch manifest: $(params.IMAGE)"
+        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
+          tag="${arch//\//-}"
+          echo "Building for $arch -> $tag"
+          podman build --arch ${arch##*/} -f $(params.DOCKERFILE) -t $(params.IMAGE)-$tag $(params.CONTEXT)
+          podman push $(params.IMAGE)-$tag
+        done
+
+        echo "Creating and pushing manifest list..."
+        podman manifest create $(params.IMAGE)
+        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
+          tag="${arch//\//-}"
+          podman manifest add $(params.IMAGE) $(params.IMAGE)-$tag
+        done
+        podman manifest push --all $(params.IMAGE) docker://$(params.IMAGE)
       securityContext:
+        privileged: true
         runAsUser: 0
       workingDir: $(workspaces.source.path)
-    - computeResources: {}
-      image: 'docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9'
-      name: write-url
-      script: |
-        set -e
-        image="$(params.IMAGE)"
-        echo -n "" | tee "$(results.IMAGE_URL.path)"
   workspaces:
-    - description: Holds the context and Dockerfile
-      name: source
-    - description: Includes a docker config.json
-      mountPath: /kaniko/.docker
+    - name: source
+    - mountPath: /root/.docker
       name: dockerconfig
       optional: true
 ----
 
+[NOTE]
 
+Other build systems could be used, for example you could use the built-in OpenShift capabilities, but as today (May 2025) multi-arch build support is planned but still on roadmap, although you can still use OpenShift builds for this matter if you have both x86_64 and arm64 worker nodes without the multi-arch build support..
 
 === Pipeline execution review
 

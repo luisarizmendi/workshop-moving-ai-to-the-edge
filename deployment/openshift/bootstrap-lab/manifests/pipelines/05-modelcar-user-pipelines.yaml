@@ -227,10 +227,6 @@ spec:
                   done
                   podman manifest push --all \$(params.IMAGE) docker://\$(params.IMAGE)
 
-              - name: write-url
-                image: alpine
-                script: |
-                  echo -n "\$(params.IMAGE)" > "\$(results.IMAGE_URL.path)"
             results:
               - name: IMAGE_URL
                 description: URL of the pushed multiarch image

@@ -41,7 +41,7 @@ spec:
             PIPELINES_ACCESS_KEY=$(oc get secret user${i}-ai-pipeline -n user${i}-tools -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 --decode && echo)
             PIPELINES_SECRET_KEY=$(oc get secret user${i}-ai-pipeline -n user${i}-tools -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 --decode && echo)
 
-            CONTAINER_REGISTRY_DOCKERCONFIGJSON={"auths":{"workshop-registry-quay-app.openshift-operators.svc.cluster.local":{"auth":"$(echo -n user${i}:redhat$i | base64)"},"workshop-registry-quay-openshift-operators.apps.cluster-kng7r.kng7r.sandbox435.opentlc.com":{"auth":"$(echo -n user${i}:redhat$i | base64)"}}}
+            CONTAINER_REGISTRY_DOCKERCONFIGJSON={\"auths\":{\"workshop-registry-quay-app.openshift-operators.svc.cluster.local\":{\"auth\":\"$(echo -n user${i}:redhat$i | base64)\"},\"workshop-registry-quay-openshift-operators.apps.${CLUSTER_DOMAIN}\":{\"auth\":\"$(echo -n user${i}:redhat$i | base64)\"}}}
 
           echo "Creating values.yaml for user user${i}..."
           
