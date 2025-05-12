@@ -61,6 +61,11 @@ spec:
                 sleep 10
             done    
 
+
+
+
+
+
           apply_with_retries  oc apply -f - <<EOFUP
           ---
           apiVersion: v1
@@ -75,6 +80,25 @@ spec:
               requests:
                 storage: 5Gi
           EOFUP
+
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: bootc-image-build-pvc
+            namespace: $pipeline_namespace
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+          EOFUP
+
+
+
+
 
           echo "Creating modelcar-containerfile-create Task"
           apply_with_retries  oc apply -f - <<EOFUP
@@ -171,13 +195,13 @@ spec:
           EOFUP
 
 
-          echo "Creating modelcar-build-and-push Task"
-          apply_with_retries  oc apply -f - <<EOFUP      
+          echo "Creating podman-build-and-push Task"
+          apply_with_retries  oc apply -f - <<EOF
           ---
           apiVersion: tekton.dev/v1
           kind: Task
           metadata:
-            name: modelcar-build-and-push
+            name: podman-build-and-push
             namespace: $pipeline_namespace
           spec:
             params:
@@ -196,7 +220,7 @@ spec:
               - name: source
               - name: dockerconfig
                 optional: true
-                mountPath: /root/.docker  # Podman uses /root/.docker
+                mountPath: /root/.docker
             steps:
               - name: build-and-push
                 image: quay.io/podman/stable:latest
@@ -207,12 +231,12 @@ spec:
                 script: |
                   #!/bin/bash
                   set -e
-
+                  PLATFORMS= \$(params.PLATFORMS)
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
                   echo "Creating multiarch manifest: \$(params.IMAGE)"
-                  for arch in $(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                  for arch in $(echo $PLATFORMS | tr ',' ' '); do
                     tag="${arch//\//-}"
                     echo "Building for $arch -> $tag"
                     podman build --arch ${arch##*/} -f \$(params.DOCKERFILE) -t \$(params.IMAGE)-$tag \$(params.CONTEXT)
@@ -221,7 +245,7 @@ spec:
 
                   echo "Creating and pushing manifest list..."
                   podman manifest create \$(params.IMAGE)
-                  for arch in $(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                  for arch in $(echo $PLATFORMS  | tr ',' ' '); do
                     tag="${arch//\//-}"
                     podman manifest add \$(params.IMAGE) \$(params.IMAGE)-$tag
                   done
@@ -231,7 +255,43 @@ spec:
               - name: IMAGE_URL
                 description: URL of the pushed multiarch image
 
-          EOFUP
+          EOF
+
+
+
+
+          apply_with_retries  oc apply -f - <<EOF
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: git-clone-and-copy-subpath
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: bootc-build-files-repo-url
+                description: The git repository URL to clone
+              - name: bootc-build-files-repo-branch
+                description: The branch to checkout
+                default: main
+              - name: bootc-build-files-repo-subpath
+                description: Subdirectory path to copy from the cloned repo
+            workspaces:
+              - name: output
+                description: Target workspace where the files will be copied
+            steps:
+              - name: clone-and-copy
+                image: alpine/git:latest
+                script: |
+                  #!/bin/sh
+                  set -e
+
+                  echo "Cloning repo: \$(params.bootc-build-files-repo-url)"
+                  git clone --depth 1 --branch \$(params.bootc-build-files-repo-branch) \$(params.bootc-build-files-repo-url) /tmp/repo
+
+                  echo "Copying subpath: \$(params.bootc-build-files-repo-subpath)"
+                  cp -r /tmp/repo/\$(params.bootc-build-files-repo-subpath)/* \$(workspaces.output.path)/
+          EOF
+
 
           echo "Creating ai-modelcar Pipeline"
           apply_with_retries  oc apply -f - <<EOFUP
@@ -316,7 +376,7 @@ spec:
                 runAfter:
                   - get-model-file
                 taskRef:
-                  name: modelcar-build-and-push
+                  name: podman-build-and-push
                   kind: Task
                 params:
                   - name: IMAGE
@@ -331,6 +391,77 @@ spec:
 
 
 
+
+
+
+          echo "Creating bootc-image-build Pipeline"
+          apply_with_retries  oc apply -f - <<EOF
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Pipeline
+          metadata:
+            name: bootc-image-build
+            namespace: $pipeline_namespace
+          spec:
+            params:
+
+              - name: bootc-build-files-repo-url
+                description: "Repo url with bootc image build files"
+                type: string
+              - name: bootc-build-files-repo-branch
+                description: "Repo branch where bootc image build files are located"
+                type: string
+                default: "main"
+              - name: bootc-build-files-repo-subpath
+                description: "Repo subpath where bootc image build files are located"
+                default: "."
+                type: string
+              - name: container-registry-image-name
+                type: string
+                description: "Name of the image to push"
+              - name: container-registry-image-tag
+                type: string
+                description: "Tag for the image to push"
+              - name: container-registry
+                type: string
+                description: "Container Registry URL"
+              - name: container-registry-credentials
+                type: string
+                description: "Container Registry credentials"
+
+
+            workspaces:
+              - name: shared-workspace
+                description: "Workspace used for sharing data between tasks"
+              - name: docker-credentials
+                description: "Secret with the container registry credentials"
+
+            tasks:
+
+              - name: get-build-files
+                taskRef:
+                  name: git-clone-and-copy-subpath
+                  kind: Task
+                workspaces:
+                  - name: data
+                    workspace: shared-workspace 
+
+              - name: build-and-push-image
+                runAfter:
+                  - get-build-files
+                taskRef:
+                  name: podman-build-and-push
+                  kind: Task
+                params:
+                  - name: IMAGE
+                    value: \$(params.container-registry)/\$(params.container-registry-image-name):\$(params.container-registry-image-tag)
+                workspaces:
+                  - name: source
+                    workspace: shared-workspace
+                  - name: dockerconfig
+                    workspace: docker-credentials
+
+          EOF
 
 
 
