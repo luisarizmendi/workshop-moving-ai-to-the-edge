@@ -1,0 +1,131 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-pipelines-permissions
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
+
+          while true; do
+              if oc get tasks.tekton.dev -n default &> /dev/null; then
+                  echo "Tekton API (tekton.dev/v1) is ready"
+                  break
+              fi
+            sleep 10
+          done
+
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            username="user$i"
+            pipeline_namespace="${username}-tools"
+
+            while true; do
+                if oc get namespace "$pipeline_namespace" &> /dev/null; then
+                    echo "Namespace $pipeline_namespace has been created"
+                    break
+                fi
+                sleep 10
+            done    
+
+          echo "Creating cross-namespace-pipeline-runner"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: cross-namespace-pipeline-runner
+          rules:
+          - apiGroups: ["tekton.dev"]
+            resources: ["pipelineruns"]
+            verbs: ["create", "get", "list", "watch", "delete", "update"]
+
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: pipeline-cross-namespace-binding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cross-namespace-pipeline-runner
+          subjects:
+          - kind: ServiceAccount
+            name: pipeline-runner-dspa
+            namespace: $pipeline_namespace
+          EOFUP
+
+          echo "Creating pipeline ServiceAccount"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: pipeline
+            namespace: ${pipeline_namespace}
+          secrets:
+            - name: container-registry-credentials
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: pipeline-admin-${pipeline_namespace}
+            namespace: ${pipeline_namespace}
+          subjects:
+          - kind: ServiceAccount
+            name: pipeline
+            namespace: ${pipeline_namespace}
+          roleRef:
+            kind: ClusterRole
+            name: admin
+            apiGroup: rbac.authorization.k8s.io
+          EOFUP
+
+          done 
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
+
+

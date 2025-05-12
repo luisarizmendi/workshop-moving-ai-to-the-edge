@@ -2,10 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: user-pipelines-create
+  name: modelcar-user-pipelines-create
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   template:
     spec:
@@ -60,59 +60,6 @@ spec:
                 fi
                 sleep 10
             done    
-
-          echo "Creating cross-namespace-pipeline-runner"
-          apply_with_retries  oc apply -f - <<EOFUP
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRole
-          metadata:
-            name: cross-namespace-pipeline-runner
-          rules:
-          - apiGroups: ["tekton.dev"]
-            resources: ["pipelineruns"]
-            verbs: ["create", "get", "list", "watch", "delete", "update"]
-
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: ClusterRoleBinding
-          metadata:
-            name: pipeline-cross-namespace-binding
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: cross-namespace-pipeline-runner
-          subjects:
-          - kind: ServiceAccount
-            name: pipeline-runner-dspa
-            namespace: $pipeline_namespace
-          EOFUP
-
-          echo "Creating pipeline ServiceAccount"
-          apply_with_retries  oc apply -f - <<EOFUP
-          ---
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: pipeline
-            namespace: ${pipeline_namespace}
-          secrets:
-            - name: container-registry-credentials
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: RoleBinding
-          metadata:
-            name: pipeline-admin-${pipeline_namespace}
-            namespace: ${pipeline_namespace}
-          subjects:
-          - kind: ServiceAccount
-            name: pipeline
-            namespace: ${pipeline_namespace}
-          roleRef:
-            kind: ClusterRole
-            name: admin
-            apiGroup: rbac.authorization.k8s.io
-          EOFUP
 
           apply_with_retries  oc apply -f - <<EOFUP
           ---
@@ -230,10 +177,9 @@ spec:
           apiVersion: tekton.dev/v1
           kind: Task
           metadata:
-            name: modelcar-build-and-push
+            name: modelcar-buildkit-build-and-push
             namespace: $pipeline_namespace
           spec:
-
             params:
               - name: IMAGE
                 description: Name (reference) of the image to build.
@@ -241,22 +187,23 @@ spec:
                 description: Path to the Dockerfile to build.
                 default: ./Dockerfile
               - name: CONTEXT
-                description: The build context used by Kaniko.
+                description: Build context directory.
                 default: ./
-              - name: EXTRA_ARGS
-                type: array
-                default: []
-              - name: BUILDER_IMAGE
-                description: The image on which builds will run (default is v1.5.1)
-                default: gcr.io/kaniko-project/executor:v1.5.1@sha256:c6166717f7fe0b7da44908c986137ecfeab21f31ec3992f6e128fff8a94be8a5
+              - name: PLATFORMS
+                description: Target platforms
+                default: linux/amd64,linux/arm64
+              - name: BUILDX_IMAGE
+                default: moby/buildkit:buildx-stable-1
+              - name: DOCKER_CONFIG_PATH
+                default: /tekton/home/.docker/
 
             workspaces:
               - name: source
                 description: Holds the context and Dockerfile
               - name: dockerconfig
-                description: Includes a docker config.json
+                description: Docker config.json
                 optional: true
-                mountPath: /kaniko/.docker
+                mountPath: /tekton/home/.docker/
 
             results:
               - name: IMAGE_DIGEST
@@ -265,24 +212,47 @@ spec:
                 description: URL of the image just built.
 
             steps:
+              - name: setup-binfmt
+                image: tonistiigi/binfmt:latest
+                securityContext:
+                  privileged: true
+                args: ["--install", "all"]
+
               - name: build-and-push
-                workingDir: \$(workspaces.source.path)
-                image: \$(params.BUILDER_IMAGE)
-                args:
-                  - \$(params.EXTRA_ARGS)
-                  - --dockerfile=\$(params.DOCKERFILE)
-                  - --context=\$(workspaces.source.path)/\$(params.CONTEXT) 
-                  - --destination=\$(params.IMAGE)
-                  - --digest-file=\$(results.IMAGE_DIGEST.path)
-                  - --skip-tls-verify
+                image: $(params.BUILDX_IMAGE)
+                workingDir: $(workspaces.source.path)
                 securityContext:
                   runAsUser: 0
+                script: |
+                  #!/bin/sh
+                  set -e
+
+                  export DOCKER_CONFIG=$(params.DOCKER_CONFIG_PATH)
+
+                  # Create and bootstrap a new builder
+                  buildx create --use --name tekton-builder
+                  buildx inspect tekton-builder --bootstrap
+
+                  # Run the multi-platform build
+                  buildx build \
+                    --platform $(params.PLATFORMS) \
+                    --file $(params.DOCKERFILE) \
+                    --push \
+                    --tag $(params.IMAGE) \
+                    $(params.CONTEXT) \
+                    | tee /tmp/build-output.log
+
+                  # Extract digest from the output
+                  DIGEST=$(grep -o 'digest: sha256:[a-f0-9]\+' /tmp/build-output.log | head -n1 | cut -d' ' -f2)
+                  echo -n "$DIGEST" > $(results.IMAGE_DIGEST.path)
+              
               - name: write-url
-                image: docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9
+                image: docker.io/library/bash:5.1.4
                 script: |
                   set -e
-                  image="\$(params.IMAGE)"
-                  echo -n "${image}" | tee "\$(results.IMAGE_URL.path)"
+                  image="$(params.IMAGE)"
+                  echo -n "${image}" | tee "$(results.IMAGE_URL.path)"
+
           EOFUP
 
           echo "Creating ai-modelcar Pipeline"
@@ -380,6 +350,16 @@ spec:
                     workspace: docker-credentials                 
   
           EOFUP
+
+
+
+
+
+
+
+
+
+
 
           done 
 

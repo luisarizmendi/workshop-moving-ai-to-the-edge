@@ -36,7 +36,7 @@ image::lab-bootstrap.png[]
 
 image::lab-argo.png[]
 
-4- Wait until all Applications are in Synced state. It could take time (~30 min) to converge. If after that time you find any application not green try to re-sync it.
+4- Wait until all Applications are in Synced state. It could take time (~30 min) to converge. If after that time you find any application not green try to re-sync it again.
 
 image::lab-argo-finish.png[]
 ====
