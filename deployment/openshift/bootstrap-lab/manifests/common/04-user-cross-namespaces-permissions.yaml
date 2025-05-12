@@ -16,35 +16,6 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
-          oc apply -f - <<EOF
-          apiVersion: security.openshift.io/v1
-          kind: SecurityContextConstraints
-          metadata:
-            name: custom-buildkit-scc
-          allowPrivilegedContainer: true
-          allowHostDirVolumePlugin: false
-          allowHostNetwork: false
-          allowHostPorts: false
-          allowHostPID: false
-          allowHostIPC: false
-          allowAnyHostPorts: false
-          volumes:
-            - configMap
-            - downwardAPI
-            - emptyDir
-            - projected
-            - secret
-            - persistentVolumeClaim
-          readOnlyRootFilesystem: false
-          runAsUser:
-            type: RunAsAny
-          seLinuxContext:
-            type: RunAsAny
-          fsGroup:
-            type: RunAsAny
-          users: []
-          groups: []
-          EOF
 
           # Loop through users user01 to user50 and user99
           for i in $(seq -w 1 50) 99; do
@@ -91,20 +62,6 @@ spec:
           roleRef:
             kind: Role
             name: pipeline-executor
-            apiGroup: rbac.authorization.k8s.io
-          ---
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: RoleBinding
-          metadata:
-            name: use-custom-buildkit-scc
-            namespace: $namespace_dest
-          subjects:
-            - kind: ServiceAccount
-              name: pipeline
-              namespace: $namespace_dest
-          roleRef:
-            kind: ClusterRole
-            name: custom-buildkit-scc
             apiGroup: rbac.authorization.k8s.io
           EOF
             done

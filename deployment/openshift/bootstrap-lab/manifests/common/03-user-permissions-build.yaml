@@ -1,0 +1,85 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-permissions-pipeline-create
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "Creating custom SCC for pipelines"
+          oc apply -f - <<EOF
+          apiVersion: security.openshift.io/v1
+          kind: SecurityContextConstraints
+          metadata:
+            name: podman-multiarch
+          allowPrivilegedContainer: true
+          allowHostDirVolumePlugin: false
+          allowHostNetwork: false
+          allowHostPorts: false
+          allowHostPID: false
+          allowHostIPC: false
+          runAsUser:
+            type: RunAsAny
+          seLinuxContext:
+            type: RunAsAny
+          fsGroup:
+            type: RunAsAny
+          supplementalGroups:
+            type: RunAsAny
+          readOnlyRootFilesystem: false
+          volumes:
+            - configMap
+            - emptyDir
+            - projected
+            - secret
+            - persistentVolumeClaim
+            - downwardAPI
+            - ephemeral
+          users: []
+          groups: []
+          EOF
+
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            namespace="user${i}-tools"
+
+            while true; do
+                if oc get namespace "$namespace" &> /dev/null; then
+                    echo "Namespace '$namespace' has been created successfully!"
+                    break
+                fi
+                sleep 10
+            done
+
+            sa="system:serviceaccount:${namespace}:pipeline"
+            echo "Patching SCC to add $sa..."
+            oc patch scc custom-buildkit-scc --type=json \
+              -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
+
+          done 
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
+
+
+
+
+

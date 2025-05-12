@@ -34,7 +34,7 @@ async def index():
         group_html += (
             f"<div class='group'>"
             f"<h3>{group}</h3>"
-            f"<p><strong>Workshop:</strong> <a href='{data['url']}' target='_blank'>{data['url']}</a></p>"
+            f"<p><strong>Workshop guide:<br></strong> <a href='{data['url']}' target='_blank'>{data['url']}</a></p>"
             f"<div class='button-row'>"
             f"<form method='post' action='/assign' class='inline-form'>"
             f"<input type='hidden' name='group' value='{group}' />"
