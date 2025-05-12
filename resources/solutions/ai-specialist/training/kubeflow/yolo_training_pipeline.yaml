@@ -377,8 +377,6 @@ deploymentSpec:
           \                },\n                {\n                    \"name\": \"\
           container-registry\",\n                    \"value\": f\"{container_registry_clean}/{user_name}\"\
           \n                },\n                {\n                    \"name\": \"\
-          container-registry-credentials\",\n                    \"value\": container_registry_credentials\n\
-          \                },\n                {\n                    \"name\": \"\
           container-registry-image-tag\",\n                    \"value\": modelcar_image_tag\n\
           \                }\n            ],\n            \"pipelineRef\": {\n   \
           \             \"name\": pipeline_name\n            },\n            \"taskRunTemplate\"\

@@ -442,10 +442,6 @@ def create_modelcar(
                     "value": f"{container_registry_clean}/{user_name}"
                 },
                 {
-                    "name": "container-registry-credentials",
-                    "value": container_registry_credentials
-                },
-                {
                     "name": "container-registry-image-tag",
                     "value": modelcar_image_tag
                 }

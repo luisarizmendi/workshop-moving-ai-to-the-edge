@@ -63,7 +63,7 @@ spec:
 
             sa="system:serviceaccount:${namespace}:pipeline"
             echo "Patching SCC to add $sa..."
-            oc patch scc custom-buildkit-scc --type=json \
+            oc patch scc podman-multiarch --type=json \
               -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
 
           done 

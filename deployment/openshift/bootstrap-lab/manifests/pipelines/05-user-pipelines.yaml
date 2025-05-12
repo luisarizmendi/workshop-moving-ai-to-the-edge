@@ -183,7 +183,7 @@ spec:
                   s3cmd -c /tmp/.s3cfg get --recursive s3://\$(params.objectBucket)/\$(params.directoryPath)/ \$(workspaces.data.path)/models/
 
                   # Check if the download was successful
-                  if [ $? -ne 0 ]; then
+                  if [ \$? -ne 0 ]; then
                     echo "Failed to download files from object storage"
                     exit 1
                   fi
@@ -231,23 +231,22 @@ spec:
                 script: |
                   #!/bin/bash
                   set -e
-                  PLATFORMS= \$(params.PLATFORMS)
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
                   echo "Creating multiarch manifest: \$(params.IMAGE)"
-                  for arch in $(echo $PLATFORMS | tr ',' ' '); do
-                    tag="${arch//\//-}"
-                    echo "Building for $arch -> $tag"
-                    podman build --arch ${arch##*/} -f \$(params.CONTAINERFILE) -t \$(params.IMAGE)-$tag \$(params.CONTEXT)
-                    podman push \$(params.IMAGE)-$tag
+                  for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                    tag="\${arch//\//-}"
+                    echo "Building for \$arch -> \$tag"
+                    podman build --arch \${arch##*/} -f \$(params.CONTAINERFILE) -t \$(params.IMAGE)-\$tag \$(params.CONTEXT)
+                    podman push \$(params.IMAGE)-\$tag
                   done
 
                   echo "Creating and pushing manifest list..."
                   podman manifest create \$(params.IMAGE)
-                  for arch in $(echo $PLATFORMS  | tr ',' ' '); do
-                    tag="${arch//\//-}"
-                    podman manifest add \$(params.IMAGE) \$(params.IMAGE)-$tag
+                  for arch in \$(echo \$(params.PLATFORMS)  | tr ',' ' '); do
+                    tag="\${arch//\//-}"
+                    podman manifest add \$(params.IMAGE) \$(params.IMAGE)-\$tag
                   done
                   podman manifest push --all \$(params.IMAGE) docker://\$(params.IMAGE)
 
@@ -275,6 +274,7 @@ spec:
                 default: main
               - name: bootc-build-files-repo-subpath
                 description: Subdirectory path to copy from the cloned repo
+                default: "."
             workspaces:
               - name: output
                 description: Target workspace where the files will be copied
@@ -327,9 +327,6 @@ spec:
               - name: container-registry
                 type: string
                 description: "Container Registry URL"
-              - name: container-registry-credentials
-                type: string
-                description: "Container Registry credentials"
 
 
             workspaces:
@@ -418,16 +415,10 @@ spec:
                 type: string
               - name: container-registry-image-name
                 type: string
-                description: "Name of the image to push"
-              - name: container-registry-image-tag
-                type: string
-                description: "Tag for the image to push"
+                description: "Name of the image:tag to push"
               - name: container-registry
                 type: string
                 description: "Container Registry URL"
-              - name: container-registry-credentials
-                type: string
-                description: "Container Registry credentials"
 
 
             workspaces:
@@ -442,8 +433,15 @@ spec:
                 taskRef:
                   name: git-clone-and-copy-subpath
                   kind: Task
+                params:
+                  - name: bootc-build-files-repo-url
+                    value: \$(params.bootc-build-files-repo-url)
+                  - name: bootc-build-files-repo-branch
+                    value: \$(params.bootc-build-files-repo-branch)
+                  - name: bootc-build-files-repo-subpath
+                    value: \$(params.bootc-build-files-repo-subpath)
                 workspaces:
-                  - name: data
+                  - name: output
                     workspace: shared-workspace 
 
               - name: build-and-push-image
@@ -454,7 +452,7 @@ spec:
                   kind: Task
                 params:
                   - name: IMAGE
-                    value: \$(params.container-registry)/\$(params.container-registry-image-name):\$(params.container-registry-image-tag)
+                    value: \$(params.container-registry)/\$(params.container-registry-image-name)
                 workspaces:
                   - name: source
                     workspace: shared-workspace

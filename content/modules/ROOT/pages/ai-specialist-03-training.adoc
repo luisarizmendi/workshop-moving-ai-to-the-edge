@@ -1244,33 +1244,16 @@ The content is generated automatically by the Pipeline but be aware that the out
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  creationTimestamp: '2025-05-12T11:58:39Z'
-  generation: 1
-  managedFields:
-    - apiVersion: tekton.dev/v1
-      fieldsType: FieldsV1
-      fieldsV1:
-        'f:spec':
-          .: {}
-          'f:params': {}
-          'f:results': {}
-          'f:steps': {}
-          'f:workspaces': {}
-      manager: Mozilla
-      operation: Update
-      time: '2025-05-12T11:58:39Z'
-  name: modelcar-build-and-push
+  name: podman-build-and-push
   namespace: user99-tools
-  resourceVersion: '347909'
-  uid: 5f24b038-079a-4ac3-85f4-00e412aaf4f3
 spec:
   params:
     - description: Full image name including registry
       name: IMAGE
       type: string
-    - default: ./Dockerfile
-      description: Path to Dockerfile
-      name: DOCKERFILE
+    - default: ./Containerfile
+      description: Path to Containerfile
+      name: CONTAINERFILE
       type: string
     - default: ./
       description: Build context
@@ -1291,7 +1274,7 @@ spec:
       script: |
         #!/bin/bash
         set -e
-
+        export REGISTRY_AUTH_FILE=/root/.docker/config.json
         echo "Enabling binfmt_misc for cross-arch builds..."
         podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
@@ -1299,13 +1282,13 @@ spec:
         for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
           tag="${arch//\//-}"
           echo "Building for $arch -> $tag"
-          podman build --arch ${arch##*/} -f $(params.DOCKERFILE) -t $(params.IMAGE)-$tag $(params.CONTEXT)
+          podman build --arch ${arch##*/} -f $(params.CONTAINERFILE) -t $(params.IMAGE)-$tag $(params.CONTEXT)
           podman push $(params.IMAGE)-$tag
         done
 
         echo "Creating and pushing manifest list..."
         podman manifest create $(params.IMAGE)
-        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
+        for arch in $(echo $(params.PLATFORMS)  | tr ',' ' '); do
           tag="${arch//\//-}"
           podman manifest add $(params.IMAGE) $(params.IMAGE)-$tag
         done
