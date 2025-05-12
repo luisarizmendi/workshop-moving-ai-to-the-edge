@@ -335,7 +335,7 @@ spec:
             workspaces:
               - name: shared-workspace
                 description: "Workspace used for sharing data between tasks"
-              - name: docker-credentials
+              - name: podman-credentials
                 description: "Secret with the container registry credentials"
 
             tasks:
@@ -385,7 +385,7 @@ spec:
                   - name: source
                     workspace: shared-workspace
                   - name: dockerconfig
-                    workspace: docker-credentials                 
+                    workspace: podman-credentials                 
   
           EOFUP
 
@@ -418,16 +418,12 @@ spec:
                 type: string
               - name: container-registry-image-name
                 type: string
-                description: "Name of the image:tag to push"
-              - name: container-registry
-                type: string
-                description: "Container Registry URL"
-
+                description: "Full image name including registry and tag, for example registry.io/user/image:tag"
 
             workspaces:
               - name: shared-workspace
                 description: "Workspace used for sharing data between tasks"
-              - name: docker-credentials
+              - name: podman-credentials
                 description: "Secret with the container registry credentials"
 
             tasks:
@@ -455,12 +451,12 @@ spec:
                   kind: Task
                 params:
                   - name: IMAGE
-                    value: \$(params.container-registry)/\$(params.container-registry-image-name)
+                    value: \$(params.container-registry-image-name)
                 workspaces:
                   - name: source
                     workspace: shared-workspace
                   - name: dockerconfig
-                    workspace: docker-credentials
+                    workspace: podman-credentials
 
           EOF
 

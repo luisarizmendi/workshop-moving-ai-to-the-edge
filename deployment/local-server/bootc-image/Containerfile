@@ -1,1 +1,1 @@
-FROM quay.io/luisarizmendi/rhel-bootc:9.4
+FROM quay.io/centos-bootc/rhel-bootc-dev:9.4
