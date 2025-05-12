@@ -1276,22 +1276,26 @@ spec:
         set -e
         echo "Enabling binfmt_misc for cross-arch builds..."
         podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
-
-        echo "Creating multiarch manifest: $(params.IMAGE)"
+        export IMAGE=$(params.IMAGE)
+        IMAGE="${IMAGE#http://}"
+        IMAGE="${IMAGE#https://}"
+        IMAGE="${IMAGE//\/\//\/}"
+        echo ""
+        echo "Creating multiarch manifest: $IMAGE"
         for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
           tag="${arch//\//-}"
           echo "Building for $arch -> $tag"
-          podman build --arch ${arch##*/} -f $(params.CONTAINERFILE) -t $(params.IMAGE)-$tag $(params.CONTEXT)
-          podman push $(params.IMAGE)-$tag
+          podman build --arch ${arch##*/} -f $(params.CONTAINERFILE) -t $IMAGE-$tag $(params.CONTEXT)
+          podman push $IMAGE-$tag
         done
 
         echo "Creating and pushing manifest list..."
-        podman manifest create $(params.IMAGE)
+        podman manifest create $IMAGE
         for arch in $(echo $(params.PLATFORMS)  | tr ',' ' '); do
           tag="${arch//\//-}"
-          podman manifest add $(params.IMAGE) $(params.IMAGE)-$tag
+          podman manifest add $IMAGE $IMAGE-$tag
         done
-        podman manifest push --all $(params.IMAGE) docker://$(params.IMAGE)
+        podman manifest push --all $IMAGE docker://$IMAGE
       securityContext:
         privileged: true
         runAsUser: 0
