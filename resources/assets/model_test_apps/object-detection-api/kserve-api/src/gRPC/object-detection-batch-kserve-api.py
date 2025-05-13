@@ -24,13 +24,6 @@ cuda_available = torch.cuda.is_available()
 device = torch.device("cuda" if cuda_available else "cpu")
 logger.info(f"Using device: {device}")
 
-# Global variables for Triton client and model metadata
-triton_client = None
-model_metadata = None
-model_config = None
-input_name = None
-output_names = []
-
 # Define a fixed set of colors for different classes (BGR format)
 DEFAULT_COLORS = [
     (255, 0, 0),      # Blue
@@ -45,20 +38,35 @@ DEFAULT_COLORS = [
     (128, 128, 0)     # Dark Cyan
 ]
 
-def initialize_triton_client(model_url, model_name):
-    global triton_client, model_metadata, model_config, input_name, output_names
+def create_triton_client(model_url):
+    """
+    Create a new Triton client instance for each call
+    """
     try:
-        logger.info(f"Connecting to Triton at: {model_url}")
-        triton_client = grpc_client.InferenceServerClient(
+        logger.info(f"Creating new connection to Triton at: {model_url}")
+        client = grpc_client.InferenceServerClient(
             url=model_url,
             verbose=False
         )
-        
+        return client
+    except Exception as e:
+        logger.error(f"Failed to create Triton client: {str(e)}")
+        return None
+
+def get_model_metadata(client, model_name):
+    """
+    Get model metadata and input/output information
+    """
+    try:
+        if client is None:
+            logger.error("Cannot get metadata - client is None")
+            return None, None, None, []
+            
         # Get model metadata to determine input/output names
-        model_metadata = triton_client.get_model_metadata(model_name, MODEL_VERSION)
-        model_config = triton_client.get_model_config(model_name, MODEL_VERSION)
+        model_metadata = client.get_model_metadata(model_name, MODEL_VERSION)
+        model_config = client.get_model_config(model_name, MODEL_VERSION)
         
-        # Get input and output names from metadata
+        # Get input name from metadata
         if model_metadata.inputs:
             input_name = model_metadata.inputs[0].name
             logger.info(f"Using input name: {input_name}")
@@ -66,6 +74,7 @@ def initialize_triton_client(model_url, model_name):
             input_name = "images"  # Default fallback
             logger.warning(f"Could not determine input name from metadata, using default '{input_name}'")
         
+        # Get output names from metadata
         if model_metadata.outputs:
             output_names = [output.name for output in model_metadata.outputs]
             logger.info(f"Available output names: {output_names}")
@@ -74,11 +83,10 @@ def initialize_triton_client(model_url, model_name):
             output_names = ["output0", "detections"]
             logger.warning(f"Could not determine output names from metadata, will try: {output_names}")
         
-        return True
+        return model_metadata, model_config, input_name, output_names
     except Exception as e:
-        logger.error(f"Failed to initialize Triton client or get model metadata: {str(e)}")
-        triton_client = None
-        return False
+        logger.error(f"Failed to get model metadata: {str(e)}")
+        return None, None, None, []
 
 def preprocess_image(image_data):
     """
@@ -128,19 +136,18 @@ def cpu_preprocess_image(img):
     img_batched = np.expand_dims(img_transposed, axis=0)
     return img_batched
 
-def load_model(model_url):
-    # In this version, we'll just return the URL as before, but we'll initialize
-    # the gRPC client when needed
-    logger.info(f"Model URL provided: {model_url}")
-    return model_url
-
 def call_inference_server_grpc(model_url, model_name, batch_input):
     """Use gRPC to call the Triton Inference Server with a batch of images"""
-    global triton_client, input_name, output_names
+    # Create a new client for each batch
+    client = create_triton_client(model_url)
+    if client is None:
+        return None
     
-    if triton_client is None:
-        if not initialize_triton_client(model_url, model_name):
-            return None
+    # Get model metadata
+    _, _, input_name, output_names = get_model_metadata(client, model_name)
+    if not input_name or not output_names:
+        logger.error("Failed to get model metadata")
+        return None
     
     try:
         batch_size = batch_input.shape[0]
@@ -156,9 +163,9 @@ def call_inference_server_grpc(model_url, model_name, batch_input):
         for output_name in output_names:
             outputs.append(grpc_client.InferRequestedOutput(output_name))
         
-        # Make inference request - USE THE PASSED MODEL_NAME
-        response = triton_client.infer(
-            model_name=model_name,  # FIX: Use the passed model_name instead of the global MODEL_NAME
+        # Make inference request
+        response = client.infer(
+            model_name=model_name,
             inputs=inputs,
             outputs=outputs,
             model_version=MODEL_VERSION
@@ -178,19 +185,18 @@ def call_inference_server_grpc(model_url, model_name, batch_input):
         
     except grpc.RpcError as e:
         logger.error(f"gRPC inference server call failed: {e.details()}")
-        # Check if connection failed and try to reconnect
-        if e.code() == grpc.StatusCode.UNAVAILABLE:
-            logger.info("Server unavailable. Attempting to reconnect...")
-            triton_client = None
-            initialize_triton_client(model_url, model_name)
-        elif e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-            logger.error("Invalid argument error. Check model input/output names.")
-            # Try refreshing metadata
-            initialize_triton_client(model_url, model_name)
         return None
     except Exception as e:
         logger.error(f"General error during inference: {str(e)}")
         return None
+    finally:
+        # Clean up the client connection to ensure no caching
+        try:
+            if client:
+                client.close()
+                logger.info("Closed Triton client connection")
+        except Exception as e:
+            logger.warning(f"Error closing client connection: {str(e)}")
 
 def detect_objects(model_url, model_name, image_paths, class_names, confidence_threshold, merge_threshold, batch_size):
     if not image_paths:

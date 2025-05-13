@@ -535,7 +535,7 @@ In this section you have prepared the Dataset with labeled images using Roboflow
 
 If you want to take a look to the Section solution to double check what you did or if you need an already prepared Dataset that you can just clone in order to continue with the next section, you can use the following Roboflow Project:
 
-https://universe.roboflow.com/luisarizmendi/hardhat-or-hat
+https://universe.roboflow.com/luisarizmendi/hardhat-or-hat[https://universe.roboflow.com/luisarizmendi/hardhat-or-hat, window=_blank]
 
 [NOTE]
 

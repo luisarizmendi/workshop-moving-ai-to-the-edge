@@ -129,11 +129,12 @@ The model we’ll use is in ONNX format and is embedded in the `modelcar` contai
 * Create a new connection:
 
   * Connection type: `OCI compliant registry -v1`
-  * Conection name: I suggest something like `<modelcar-name>-<tag>`
+  * Conection name: I suggest something like `quay-hosted`
   * Access type: Push + Pull
   * Secret details: `{container-registry-dockerconfigjson}`
   * Registry host: `workshop-registry-quay-openshift-operators.apps.{ocp_cluster_url}`
-  * OCI storage location: Keep the auto-completed URL
+
+* OCI storage location: Keep the auto-completed URL
 
 image::ai-build-deploy-model-registry.png[]
 
