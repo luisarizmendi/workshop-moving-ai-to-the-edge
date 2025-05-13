@@ -5,7 +5,7 @@ metadata:
   name: configure-gitea
   namespace: gitea
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   template:
     spec:
@@ -23,7 +23,7 @@ spec:
             sleep 5
           done
           echo "Gitea is ready waiting to start user creation!"
-          sleep 60
+          sleep 120
           AUTH_HEADER="Authorization: Basic $(echo -n "$GITEA_ADMIN_USER:$GITEA_ADMIN_PASS" | base64)"
 
           # Create users
