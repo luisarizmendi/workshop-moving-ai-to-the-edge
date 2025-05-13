@@ -463,7 +463,7 @@ def create_modelcar(
                     }
                 },
                 {
-                    "name": "docker-credentials",
+                    "name": "podman-credentials",
                     "secret": {
                         "secretName": container_registry_credentials
                     }

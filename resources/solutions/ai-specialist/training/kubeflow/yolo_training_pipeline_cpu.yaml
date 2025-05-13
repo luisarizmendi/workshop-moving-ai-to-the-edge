@@ -317,7 +317,7 @@ deploymentSpec:
           \                \"name\": \"shared-workspace\",\n                    \"\
           persistentVolumeClaim\": {\n                        \"claimName\": \"ai-modelcar-pvc\"\
           \n                    }\n                },\n                {\n       \
-          \             \"name\": \"docker-credentials\",\n                    \"\
+          \             \"name\": \"podman-credentials\",\n                    \"\
           secret\": {\n                        \"secretName\": container_registry_credentials\n\
           \                    }\n                }\n            ]\n        }\n  \
           \  }\n\n    namespace_file_path = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'\n\
