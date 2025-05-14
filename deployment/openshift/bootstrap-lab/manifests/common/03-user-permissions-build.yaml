@@ -49,6 +49,20 @@ spec:
           groups: []
           EOF
 
+          while true; do
+              if oc get namespace "bootc-tools" &> /dev/null; then
+                  echo "Namespace 'bootc-tools' has been created successfully!"
+                  break
+              fi
+              sleep 10
+          done
+
+          sa="system:serviceaccount:bootc-tools:pipeline"
+          echo "Patching SCC to add $sa..."
+          oc patch scc podman-multiarch --type=json \
+            -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
+
+
           # Loop through users user01 to user50 and user99
           for i in $(seq -w 1 50) 99; do
             namespace="user${i}-tools"

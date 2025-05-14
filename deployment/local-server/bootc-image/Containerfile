@@ -1,1 +1,3 @@
-FROM quay.io/luisarizmendi/rhel-bootc:9.4
+FROM registry.redhat.io/rhel9/rhel-bootc:9.5
+
+RUN dnf -y install tmux && dnf clean all

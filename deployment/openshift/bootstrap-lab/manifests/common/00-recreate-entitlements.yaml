@@ -1,0 +1,46 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: recreate-entitlements
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: recreate-entitlements
+        image: quay.io/luisarizmendi/ocp-job:latest 
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          #!/bin/bash
+
+          echo "Waiting for a pod matching 'insights-operator-*' in namespace 'openshift-insights'..."
+
+          while true; do
+            POD_NAME=$(oc get pods -n openshift-insights --no-headers 2>/dev/null | awk '/^insights-operator-/ {print $1}' | head -n 1)
+
+            if [ -n "$POD_NAME" ]; then
+              sleep 60
+              echo "Found pod: $POD_NAME"
+              echo "Deleting pod..."
+              oc delete pod "$POD_NAME" -n openshift-insights
+              break
+            fi
+
+            sleep 5  # Wait before checking again
+          done
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Never
+  backoffLimit: 1
+

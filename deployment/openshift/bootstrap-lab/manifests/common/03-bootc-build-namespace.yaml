@@ -87,34 +87,26 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: batch/v1
-kind: CronJob
+kind: Job
 metadata:
   name: copy-entitlement-secret
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
-  schedule: "* * * * *"  
-  failedJobsHistoryLimit: 3
-  successfulJobsHistoryLimit: 1
-  jobTemplate:
+  template:
     spec:
-      backoffLimit: 1  
-      template:
-        spec:
-          serviceAccountName: secret-copier
-          restartPolicy: OnFailure
-          containers:
-          - name: copy-secret
-            image: quay.io/luisarizmendi/ocp-job:latest
-            command:
-            - /bin/sh
-            - -c
-            - |
-              set -e
-              echo "Getting secret from source namespace..."
-              oc get secret etc-pki-entitlement -n openshift-config-managed -o json | \
-              jq 'del(.metadata.namespace, .metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.managedFields, .metadata.selfLink)' | \
-              oc apply -f -
+      serviceAccountName: secret-copier
+      containers:
+      - name: copy-secret
+        image: quay.io/luisarizmendi/ocp-job:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          oc extract secret/etc-pki-entitlement -n openshift-config-managed --confirm --to=/tmp/secretdata
+          oc create secret generic etc-pki-entitlement --from-file=/tmp/secretdata
+      restartPolicy: OnFailure
 ---
 apiVersion: v1
 kind: ServiceAccount
