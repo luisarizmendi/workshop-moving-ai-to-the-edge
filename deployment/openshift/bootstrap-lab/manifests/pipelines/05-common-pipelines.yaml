@@ -1,0 +1,162 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: bootc-image-build
+  namespace: $pipeline_namespace
+spec:
+  params:
+
+    - name: bootc-build-files-repo-url
+      description: "Repo url with bootc image build files"
+      type: string
+    - name: bootc-build-files-repo-branch
+      description: "Repo branch where bootc image build files are located"
+      type: string
+      default: "main"
+    - name: bootc-build-files-repo-subpath
+      description: "Repo subpath where bootc image build files are located"
+      default: "."
+      type: string
+    - name: container-registry-image-name
+      type: string
+      description: "Full image name including registry and tag, for example registry.io/user/image:tag"
+
+  workspaces:
+    - name: shared-workspace
+      description: "Workspace used for sharing data between tasks"
+    - name: podman-credentials
+      description: "Secret with the container registry credentials"
+
+  tasks:
+
+    - name: get-build-files
+      taskRef:
+        name: git-clone-and-copy-subpath
+        kind: Task
+      params:
+        - name: bootc-build-files-repo-url
+          value: $(params.bootc-build-files-repo-url)
+        - name: bootc-build-files-repo-branch
+          value: $(params.bootc-build-files-repo-branch)
+        - name: bootc-build-files-repo-subpath
+          value: $(params.bootc-build-files-repo-subpath)
+      workspaces:
+        - name: output
+          workspace: shared-workspace 
+
+    - name: build-and-push-image
+      runAfter:
+        - get-build-files
+      taskRef:
+        name: podman-build-and-push
+        kind: Task
+      params:
+        - name: IMAGE
+          value: $(params.container-registry-image-name)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: etc-pki-entitlement
+          workspace: etc-pki-entitlement
+        - name: push-credentials
+          workspace: push-credentials
+        - name: pull-credentials
+          workspace: pull-credentials
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootc-build-and-push
+  namespace: $pipeline_namespace
+spec:
+  params:
+    - name: IMAGE
+      description: Full image name including registry
+    - name: CONTAINERFILE
+      description: Path to Containerfile
+      default: ./Containerfile
+    - name: CONTEXT
+      description: Build context
+      default: ./
+    - name: PLATFORMS
+      description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
+      default: linux/amd64,linux/arm64
+  workspaces:
+    - name: source
+    - name: push-credentials
+      optional: true
+      mountPath: /root/.docker
+    - name: pull-credentials
+      optional: true
+      mountPath: /root/.redhatdocker
+    - name: etc-pki-entitlement
+      optional: true
+      mountPath: /root/etc-pki-entitlement
+  steps:
+    - name: build-and-push
+      image: quay.io/podman/stable:latest
+      securityContext:
+        privileged: true  # Required for QEMU & binfmt_misc
+        runAsUser: 0
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+        echo "Enabling binfmt_misc for cross-arch builds..."
+        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+        export IMAGE=$(params.IMAGE)
+        IMAGE="${IMAGE#http://}"
+        IMAGE="${IMAGE#https://}"
+        IMAGE="${IMAGE//\/\//\/}"
+        echo "Creating multiarch manifest: $IMAGE"
+        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
+          tag="${arch//\//-}"
+          echo "Building for $arch -> $tag"
+          #podman build --arch ${arch##*/} -f $(params.CONTAINERFILE) --secret id=entitlement_cert,src=~/rhel-secrets/entitlement.pem  --secret id=entitlement_key,src=~/rhel-secrets/entitlement-key.pem -t $IMAGE-$tag $(params.CONTEXT)
+          podman build --arch ${arch##*/} -f $(params.CONTAINERFILE) -t $IMAGE-$tag $(params.CONTEXT)
+          podman push $IMAGE-$tag
+        done
+
+        echo "Creating and pushing manifest list..."
+        podman manifest create $IMAGE
+        for arch in $(echo $(params.PLATFORMS)  | tr ',' ' '); do
+          tag="${arch//\//-}"
+          podman manifest add $IMAGE $IMAGE-$tag
+        done
+        podman manifest push --all $IMAGE docker://$IMAGE
+
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-and-copy-subpath
+  namespace: $pipeline_namespace
+spec:
+  params:
+    - name: bootc-build-files-repo-url
+      description: The git repository URL to clone
+    - name: bootc-build-files-repo-branch
+      description: The branch to checkout
+      default: main
+    - name: bootc-build-files-repo-subpath
+      description: Subdirectory path to copy from the cloned repo
+      default: "."
+  workspaces:
+    - name: output
+      description: Target workspace where the files will be copied
+  steps:
+    - name: clone-and-copy
+      image: alpine/git:latest
+      script: |
+        #!/bin/sh
+        set -e
+
+        echo "Cloning repo: $(params.bootc-build-files-repo-url)"
+        rm -rf /tmp/repo && git clone --depth 1 --branch $(params.bootc-build-files-repo-branch) $(params.bootc-build-files-repo-url) /tmp/repo
+
+        echo "Copying subpath: $(params.bootc-build-files-repo-subpath)"
+        cp -r /tmp/repo/$(params.bootc-build-files-repo-subpath)/* $(workspaces.output.path)/
+
+
+
