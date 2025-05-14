@@ -1,6 +1,6 @@
 
 #
-# Deploy in an empty OpenShift cluster with GPUs
+# Deploy in an empty OpenShift cluster or in the "Red Hat OpenShift Container Platform Cluster (AWS)" lab
 #
 ---
 kind: Project
@@ -156,9 +156,13 @@ spec:
                 revision: main
                 directories:
                   - path: deployment/openshift/bootstrap-lab/manifests/*
-                  - path: deployment/openshift/bootstrap-lab/manifests/gitea-add
+                  - path: deployment/openshift/bootstrap-lab/manifests/nvidia-operator
                     exclude: true
                   - path: deployment/openshift/bootstrap-lab/manifests/minio
+                    exclude: true
+                  - path: deployment/openshift/bootstrap-lab/manifests/nfd
+                    exclude: true
+                  - path: deployment/openshift/bootstrap-lab/manifests/gitea-add
                     exclude: true
             template:
               metadata:
@@ -181,6 +185,8 @@ spec:
                         duration: 5s
                         factor: 2
                         maxDuration: 3m
+                  syncOptions:
+                    - RespectIgnoreDifferences=true 
                 ignoreDifferences:
                   - group: ''
                     kind: '*'
@@ -192,6 +198,14 @@ spec:
           EOF
 
           echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
       restartPolicy: Never
   backoffLimit: 1
 

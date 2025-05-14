@@ -3,7 +3,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: bootc-image-build
-  namespace: $pipeline_namespace
+  namespace: bootc-tools
 spec:
   params:
 
@@ -68,7 +68,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: bootc-build-and-push
-  namespace: $pipeline_namespace
+  namespace: bootc-tools
 spec:
   params:
     - name: IMAGE
@@ -131,7 +131,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: git-clone-and-copy-subpath
-  namespace: $pipeline_namespace
+  namespace: bootc-tools
 spec:
   params:
     - name: bootc-build-files-repo-url
