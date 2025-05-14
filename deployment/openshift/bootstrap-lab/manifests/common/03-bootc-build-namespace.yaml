@@ -177,3 +177,21 @@ spec:
           " > /tmp/secret.yaml
           oc apply -f /tmp/secret.yaml
       restartPolicy: OnFailure
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: push-secret
+  namespace: bootc-tools
+stringData:
+  config.json: |
+    {
+      "auths": {
+        "workshop-registry-quay-app.openshift-operators.svc.cluster.local": {
+          "auth": "cXVheWFkbWluOlIzZGg0dDEh"
+        },
+        "workshop-registry-quay-openshift-operators.$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')": {
+          "auth": "cXVheWFkbWluOlIzZGg0dDEh"
+        }
+      }
+    }
