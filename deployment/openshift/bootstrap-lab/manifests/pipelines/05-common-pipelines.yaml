@@ -25,8 +25,12 @@ spec:
   workspaces:
     - name: shared-workspace
       description: "Workspace used for sharing data between tasks"
-    - name: podman-credentials
-      description: "Secret with the container registry credentials"
+    - name: push-credentials
+      description: "Secret with the target container registry push credentials"
+    - name: pull-credentials
+      description: "Secret with the Red Hat container registry push credentials"
+    - name: etc-pki-entitlement
+      description: "Secret with the Red Hat entitlements"
 
   tasks:
 
