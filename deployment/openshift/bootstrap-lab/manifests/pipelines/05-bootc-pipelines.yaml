@@ -53,7 +53,7 @@ spec:
       runAfter:
         - get-build-files
       taskRef:
-        name: podman-build-and-push
+        name: bootc-build-and-push
         kind: Task
       params:
         - name: IMAGE

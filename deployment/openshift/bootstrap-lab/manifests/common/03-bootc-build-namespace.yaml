@@ -1,0 +1,187 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bootc-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-writer
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "get", "update", "list", "apply"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: secret-reader
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  namespace: openshift-config-managed
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secret-copier
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pull-secret-writer
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "get", "update", "list", "apply", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pull-secret-reader
+  namespace: openshift-config
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bind-secret-writer
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+subjects:
+- kind: ServiceAccount
+  name: secret-copier
+  namespace: bootc-tools
+roleRef:
+  kind: Role
+  name: secret-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bind-secret-reader
+  namespace: openshift-config-managed
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+subjects:
+- kind: ServiceAccount
+  name: secret-copier
+  namespace: bootc-tools
+roleRef:
+  kind: Role
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: copy-entitlement-secret
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  schedule: "* * * * *"  
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1  
+      template:
+        spec:
+          serviceAccountName: secret-copier
+          restartPolicy: OnFailure
+          containers:
+          - name: copy-secret
+            image: quay.io/luisarizmendi/ocp-job:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Getting secret from source namespace..."
+              oc get secret etc-pki-entitlement -n openshift-config-managed -o json | \
+              jq 'del(.metadata.namespace, .metadata.resourceVersion, .metadata.uid, .metadata.creationTimestamp, .metadata.managedFields, .metadata.selfLink)' | \
+              oc apply -f -
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pull-secret-copier
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bind-pull-secret-writer
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+subjects:
+- kind: ServiceAccount
+  name: pull-secret-copier
+  namespace: bootc-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+roleRef:
+  kind: Role
+  name: pull-secret-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bind-pull-secret-reader
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  namespace: openshift-config
+subjects:
+- kind: ServiceAccount
+  name: pull-secret-copier
+  namespace: bootc-tools
+roleRef:
+  kind: Role
+  name: pull-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: copy-pull-secret
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    spec:
+      serviceAccountName: pull-secret-copier
+      containers:
+      - name: copy-pull-secret
+        image: quay.io/luisarizmendi/ocp-job:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Getting secret from source namespace..."
+          PULL_SECRET=$(oc get secret/pull-secret -n openshift-config -o jsonpath='{.data.\.dockerconfigjson}')
+          echo "---
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: pull-secret
+          data:
+            pull-secret.txt: $PULL_SECRET
+          " > /tmp/secret.yaml
+          oc apply -f /tmp/secret.yaml
+      restartPolicy: OnFailure
