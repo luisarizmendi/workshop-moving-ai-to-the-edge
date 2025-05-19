@@ -33,6 +33,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: secret-copier
+  namespace: bootc-tools
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 ---
