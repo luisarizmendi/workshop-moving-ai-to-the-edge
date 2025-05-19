@@ -37,6 +37,8 @@ kind: Role
 metadata:
   name: pull-secret-writer
   namespace: openshift-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
@@ -47,6 +49,8 @@ kind: Role
 metadata:
   name: pull-secret-reader
   namespace: openshift-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
@@ -214,6 +218,8 @@ apiVersion: v1
 metadata:
   name: push-secret
   namespace: bootc-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 stringData:
   config.json: |
     {
