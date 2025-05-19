@@ -12,6 +12,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: secret-writer
+  namespace: openshift-config-managed
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 rules:
@@ -23,9 +24,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: secret-reader
+  namespace: openshift-config-managed
   annotations:
     argocd.argoproj.io/sync-wave: "3"
-  namespace: openshift-config-managed
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
@@ -35,6 +36,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: pull-secret-writer
+  namespace: openshift-config
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
