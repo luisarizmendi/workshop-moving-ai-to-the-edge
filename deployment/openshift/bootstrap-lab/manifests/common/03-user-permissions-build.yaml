@@ -90,7 +90,7 @@ spec:
           runAsNonRoot: true
           seccompProfile:
             type: RuntimeDefault
-      restartPolicy: Never
+      restartPolicy: OnFailure
   backoffLimit: 1
 
 

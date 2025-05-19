@@ -1,3 +1,5 @@
 FROM registry.redhat.io/rhel9/rhel-bootc:9.5
 
+RUN subscription-manager refresh
+
 RUN dnf -y install tmux && dnf clean all

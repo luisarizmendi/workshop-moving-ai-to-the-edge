@@ -97,6 +97,6 @@ spec:
             done
 
             echo "Environment ready!"
-      restartPolicy: Never
+      restartPolicy: OnFailure
   backoffLimit: 1
 
