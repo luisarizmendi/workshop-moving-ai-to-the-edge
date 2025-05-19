@@ -12,7 +12,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: secret-writer
-  namespace: openshift-config-managed
+  namespace: bootc-tools
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 rules:
@@ -36,7 +36,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: pull-secret-writer
-  namespace: openshift-config
+  namespace: bootc-tools
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 rules:
