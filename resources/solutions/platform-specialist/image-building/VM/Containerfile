@@ -4,9 +4,12 @@ FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 RUN rm -rf /etc/rhsm-host
 RUN subscription-manager register --username $REDHAT_USERNAME --password $REDHAT_PASSWORD
 
-## Install packages
+## Install base packages
 #RUN dnf -y update
-RUN dnf -y install tmux && dnf clean all
+RUN dnf -y install rhc tmux && dnf clean all
+
+## Install additional packages
+
 
 ## Clean-up
 RUN subscription-manager unregister && subscription-manager clean && insights-client --unregister
