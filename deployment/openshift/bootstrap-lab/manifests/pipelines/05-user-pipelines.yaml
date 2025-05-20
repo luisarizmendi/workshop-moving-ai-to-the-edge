@@ -202,7 +202,7 @@ spec:
               - name: source
               - name: dockerconfig
                 optional: true
-                mountPath: /root/.docker
+                mountPath: /root/push-secret
             steps:
               - name: build-and-push
                 image: quay.io/podman/stable:latest
@@ -224,7 +224,7 @@ spec:
                     tag="\${arch//\//-}"
                     echo "Building for \$arch -> \$tag"
                     podman build --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
-                    podman push \$IMAGE-\$tag
+                    podman push --authfile=/root/push-secret/.dockerconfigjson \$IMAGE-\$tag
                   done
 
                   echo "Creating and pushing manifest list..."
@@ -233,11 +233,7 @@ spec:
                     tag="\${arch//\//-}"
                     podman manifest add \$IMAGE \$IMAGE-\$tag
                   done
-                  podman manifest push --all \$IMAGE docker://\$IMAGE
-
-            results:
-              - name: IMAGE_URL
-                description: URL of the pushed multiarch image
+                  podman manifest push --authfile=/root/push-secret/.dockerconfigjson --all \$IMAGE docker://\$IMAGE
 
           EOF
 
@@ -597,7 +593,7 @@ spec:
                                   --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
                     fi
 
-                    podman push --authfile=/root/push-secret/push-secret.txt \$IMAGE-\$tag
+                    podman push --authfile=/root/push-secret/.dockerconfigjson \$IMAGE-\$tag
                     
                   done
                   echo "Creating and pushing manifest list..."
@@ -606,7 +602,7 @@ spec:
                     tag="\${arch//\//-}"
                     podman manifest add \$IMAGE \$IMAGE-\$tag
                   done
-                  podman manifest push --authfile=/root/push-secret/push-secret.txt --all \$IMAGE docker://\$IMAGE
+                  podman manifest push --authfile=/root/push-secret/.dockerconfigjson --all \$IMAGE docker://\$IMAGE
               
           ---
           apiVersion: tekton.dev/v1

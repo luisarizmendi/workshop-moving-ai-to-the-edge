@@ -78,7 +78,7 @@ spec:
             name: container-registry-credentials
             namespace: $namespace
           stringData:
-            config.json: |
+            .dockerconfigjson: |
               {
                 "auths": {
                   "workshop-registry-quay-app.openshift-operators.svc.cluster.local": {
