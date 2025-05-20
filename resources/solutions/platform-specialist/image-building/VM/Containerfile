@@ -3,7 +3,6 @@ FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 ## Enable subscription
 RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
     rm -rf /etc/rhsm-host && \
-    dbus-daemon --system && \
     RHUSER=$(cat /run/secrets/username) && \
     RHPASS=$(cat /run/secrets/password) && \
     echo "Registering with Red Hat..." && \
