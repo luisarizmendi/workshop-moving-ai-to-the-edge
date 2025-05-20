@@ -1,5 +1,4 @@
-FROM registry.redhat.io/rhel9/rhel-bootc:9.5
-
-RUN subscription-manager refresh && subscription-manager repos --enable="*" && dnf clean all
+#FROM registry.redhat.io/rhel9/rhel-bootc:9.5
+FROM quay.io/centos-bootc/centos-bootc:stream9
 
 RUN dnf -y install tmux && dnf clean all
