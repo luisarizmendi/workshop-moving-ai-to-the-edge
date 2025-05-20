@@ -12,10 +12,13 @@ RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
     fi 
 
 ## Install base packages
-RUN dnf -y update && dnf -y install rhc
+#RUN dnf -y update && dnf -y install rhc
+RUN dnf -y install rhc
+
 
 ## Install additional packages
 RUN dnf -y install tmux
+
 
 ## Clean-up
 RUN dnf clean all && \
