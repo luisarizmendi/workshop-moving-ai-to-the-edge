@@ -19,9 +19,9 @@ RUN dnf -y --nogpgcheck install tmux && dnf clean all
 
 ## Clean-up
 RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-    mkdir -p /var/lib/insights && \
-    insights-client --unregister && \
     subscription-manager unregister && subscription-manager clean && \
+    mkdir -p /var/lib/insights && insights-client --unregister && \
+    subscription-manager status && insights-client --status && \
     ln -s /run/secrets/rhsm /etc/rhsm-host; \
     else \
         echo "Red Hat credentials not found; skipping subscription clean-up."; \
