@@ -101,7 +101,7 @@ spec:
             done    
 
           echo "Adding podman-multiarch"
-          sa="system:serviceaccount:${namespace}:pipeline"
+          sa="system:serviceaccount:${pipeline_namespace}:pipeline"
           echo "Patching SCC to add $sa..."
           oc patch scc podman-multiarch --type=json \
             -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
