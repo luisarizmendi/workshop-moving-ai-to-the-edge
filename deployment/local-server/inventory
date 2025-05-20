@@ -1,5 +1,0 @@
-[registry_machine]
-192.168.2.200 ansible_user=luca
-
-[shared_nvidia]
-192.168.2.128 ansible_user=admin
