@@ -2,28 +2,27 @@ FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 
 ## Enable subscription
 RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-      rm -rf /etc/rhsm-host && \
-      RHUSER=$(cat /run/secrets/username) && \
-      RHPASS=$(cat /run/secrets/password) && \
-      echo "Registering with Red Hat subscription manager..." && \
-      subscription-manager register --username "$RHUSER" --password "$RHPASS"; \
+    rm -rf /etc/rhsm-host && \
+    RHUSER=$(cat /run/secrets/username) && \
+    RHPASS=$(cat /run/secrets/password) && \
+    echo "Registering with Red Hat subscription manager..." && \
+    subscription-manager register --username "$RHUSER" --password "$RHPASS"; \
     else \
-      echo "Red Hat credentials not found; skipping subscription registration."; \
-    fi 
+        echo "Red Hat credentials not found; skipping subscription registration."; \
+    fi
 
 ## Install base packages
-RUN dnf -y --nogpgcheck  install rhc rhc-worker-playbook && dnf clean all
-
+RUN dnf -y --nogpgcheck install rhc rhc-worker-playbook && dnf clean all
 
 ## Install additional packages
-RUN dnf -y --nogpgcheck  install tmux && dnf clean all
-
+RUN dnf -y --nogpgcheck install tmux && dnf clean all
 
 ## Clean-up
 RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-      subscription-manager unregister && subscription-manager clean && insights-client --unregister && \
-      ln -s /run/secrets/rhsm /etc/rhsm-host; \
+    mkdir -p /var/lib/insights && \
+    (insights-client --unregister || true) && \
+    subscription-manager unregister && subscription-manager clean && \
+    ln -s /run/secrets/rhsm /etc/rhsm-host; \
     else \
-      echo "Red Hat credentials not found; skipping subscription clean-up."; \
-    fi 
-
+        echo "Red Hat credentials not found; skipping subscription clean-up."; \
+    fi
