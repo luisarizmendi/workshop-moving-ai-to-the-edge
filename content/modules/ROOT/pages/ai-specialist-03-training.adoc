@@ -1285,7 +1285,7 @@ spec:
         for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
           tag="${arch//\//-}"
           echo "Building for $arch -> $tag"
-          podman build --arch ${arch##*/} -f $(params.CONTAINERFILE) -t $IMAGE-$tag $(params.CONTEXT)
+          podman build --platform ${arch##*/} -f $(params.CONTAINERFILE) -t $IMAGE-$tag $(params.CONTEXT)
           podman push $IMAGE-$tag
         done
 
