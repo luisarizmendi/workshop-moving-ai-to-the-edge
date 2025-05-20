@@ -453,6 +453,12 @@ spec:
                 description: "Secret with the credentials to push the image"
               - name: redhat-credentials
                 description: "Secret with the Red Hat cuer and password"
+              - name: store
+                description: "EmptyDir for creating qcow2/ISO"
+              - name: rpmmd
+                description: "EmptyDir for creating qcow2/ISO"
+              - name: varlibcontainerstorage
+                description: "EmptyDir for creating qcow2/ISO"
 
             tasks:
               - name: get-build-files
@@ -488,6 +494,12 @@ spec:
                     workspace: pull-secret
                   - name: push-secret
                     workspace: push-secret
+                  - name: store
+                    workspace: store
+                  - name: rpmmd
+                    workspace: rpmmd
+                  - name: varlibcontainerstorage
+                    workspace: varlibcontainerstorage
 
           ---
           apiVersion: tekton.dev/v1
@@ -513,12 +525,18 @@ spec:
               - name: pull-secret
                 optional: true
                 mountPath: /root/pull-secret
-              - name: pull-secret
+              - name: push-secret
                 optional: true
                 mountPath: /root/push-secret
               - name: redhat-credentials
                 optional: true
                 mountPath: /root/redhat-credentials
+              - name: store
+                mountPath: /store
+              - name: rpmmd
+                mountPath: /rpmmd
+              - name: varlibcontainerstorage
+                mountPath: /var/lib/containers/storage
             steps:
               - name: build-and-push
                 image: quay.io/centos-bootc/bootc-image-builder:latest
