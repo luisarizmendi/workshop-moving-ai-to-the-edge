@@ -561,7 +561,7 @@ spec:
                   for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
                     tag="\${arch//\//-}"
                     echo "Building for \$arch -> \$tag"
-                    podman build --authfile /root/pull-secret/pull-secret.txt \
+                    podman build --authfile /root/pull-secret/.dockerconfigjson \
                       --volume /root/etc-pki-entitlement/entitlement.pem:/etc/pki/entitlement/entitlement.pem:ro --volume /root/etc-pki-entitlement/entitlement-key.pem:/etc/pki/entitlement/entitlement-key.pem:ro \
                       --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
                     podman push --authfile=/root/push-secret/push-secret.txt \$IMAGE-\$tag         
