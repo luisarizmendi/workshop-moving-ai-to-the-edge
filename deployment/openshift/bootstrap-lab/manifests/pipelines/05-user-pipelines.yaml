@@ -560,7 +560,7 @@ spec:
 
                     if [ -d "/root/redhat-credentials" ]; then
                       echo "Building with Red Hat credentials..."
-                      podman build --authfile /root/pull-secret/.dockerconfigjson \
+                      podman --privileged build --authfile /root/pull-secret/.dockerconfigjson \
                                   --volume /root/redhat-credentials:/run/secrets:ro \
                                   --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
                     else
