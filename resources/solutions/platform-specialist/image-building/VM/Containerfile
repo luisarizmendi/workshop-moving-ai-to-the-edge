@@ -1,16 +1,29 @@
 FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 
 ## Enable subscription
-RUN rm -rf /etc/rhsm-host
-RUN subscription-manager register --username $REDHAT_USERNAME --password $REDHAT_PASSWORD
+RUN 
+RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+      rm -rf /etc/rhsm-host && \
+      RHUSER=$(cat /run/secrets/username) && \
+      RHPASS=$(cat /run/secrets/password) && \
+      echo "Registering with Red Hat subscription manager..." && \
+      subscription-manager register --username "$RHUSER" --password "$RHPASS"; \
+    else \
+      echo "Red Hat credentials not found; skipping subscription registration."; \
+    fi 
 
 ## Install base packages
-#RUN dnf -y update
-RUN dnf -y install rhc tmux && dnf clean all
+RUN dnf -y update && RUN dnf -y install rhc tmux && dnf clean all
+
 
 ## Install additional packages
 
 
 ## Clean-up
-RUN subscription-manager unregister && subscription-manager clean && insights-client --unregister
-RUN ln -s /run/secrets/rhsm /etc/rhsm-host
+RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+      subscription-manager unregister && subscription-manager clean && insights-client --unregister && \
+      ln -s /run/secrets/rhsm /etc/rhsm-host; \
+    else \
+      echo "Red Hat credentials not found; skipping subscription clean-up."; \
+    fi 
+

@@ -585,8 +585,7 @@ spec:
                     if [ -n "\${REDHAT_USERNAME:-}" ] && [ -n "\${REDHAT_PASSWORD:-}" ]; then
                       echo "Building with Red Hat credentials..."
                       podman build --authfile /root/pull-secret/.dockerconfigjson \
-                                  --env REDHAT_USERNAME="\$REDHAT_USERNAME" \
-                                  --env REDHAT_PASSWORD="\$REDHAT_PASSWORD" \
+                                  --volume /root/redhat-credentials:/run/secrets:ro \
                                   --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
                     else
                       podman build --authfile /root/pull-secret/.dockerconfigjson \
