@@ -554,6 +554,30 @@ spec:
                   IMAGE="\${IMAGE#https://}"
                   IMAGE="\${IMAGE//\/\//\/}"
 
+
+                  if [ -d "/root/redhat-credentials" ]; then
+                    echo "Extracting Red Hat credentials..."
+                    if [ -f "/root/redhat-credentials/username" ]; then
+                      REDHAT_USERNAME=\$(cat /root/redhat-credentials/username)
+                      echo "Found Red Hat username: \$REDHAT_USERNAME"
+                    else
+                      echo "Warning: username file not found in redhat-credentials"
+                    fi
+                    
+                    if [ -f "/root/redhat-credentials/password" ]; then
+                      REDHAT_PASSWORD=\$(cat /root/redhat-credentials/password)
+                      echo "Red Hat password found"
+                      
+                      # Optional: Use the credentials for subscription manager if needed
+                      # subscription-manager register --username=\$REDHAT_USERNAME --password=\$REDHAT_PASSWORD
+                    else
+                      echo "Warning: password file not found in redhat-credentials"
+                    fi
+                  else
+                    echo "Red Hat credentials workspace not available"
+                  fi
+
+
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
@@ -561,9 +585,20 @@ spec:
                   for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
                     tag="\${arch//\//-}"
                     echo "Building for \$arch -> \$tag"
-                    podman build --authfile /root/pull-secret/.dockerconfigjson \
-                      --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
-                    podman push --authfile=/root/push-secret/push-secret.txt \$IMAGE-\$tag         
+
+                    if [ -n "\${REDHAT_USERNAME:-}" ] && [ -n "\${REDHAT_PASSWORD:-}" ]; then
+                      echo "Building with Red Hat credentials..."
+                      podman build --authfile /root/pull-secret/.dockerconfigjson \
+                                  --env REDHAT_USERNAME="\$REDHAT_USERNAME" \
+                                  --env REDHAT_PASSWORD="\$REDHAT_PASSWORD" \
+                                  --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
+                    else
+                      podman build --authfile /root/pull-secret/.dockerconfigjson \
+                                  --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
+                    fi
+
+                    podman push --authfile=/root/push-secret/push-secret.txt \$IMAGE-\$tag
+                    
                   done
                   echo "Creating and pushing manifest list..."
                   podman manifest create \$IMAGE
