@@ -1,30 +1,36 @@
 FROM registry.redhat.io/rhel10/rhel-bootc:10.0
-
 ## Enable subscription
 RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-    rm -rf /etc/rhsm-host && \
-    RHUSER=$(cat /run/secrets/username) && \
-    RHPASS=$(cat /run/secrets/password) && \
-    echo "Registering with Red Hat subscription manager..." && \
-    subscription-manager register --username "$RHUSER" --password "$RHPASS"; \
-    else \
-        echo "Red Hat credentials not found; skipping subscription registration."; \
-    fi
-
+rm -rf /etc/rhsm-host && \
+RHUSER=$(cat /run/secrets/username) && \
+RHPASS=$(cat /run/secrets/password) && \
+echo "Registering with Red Hat subscription manager..." && \
+subscription-manager register --username "$RHUSER" --password "$RHPASS" | tee /tmp/register_output && \
+SYSTEM_ID=$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) && \
+echo "$SYSTEM_ID" > /etc/rhsm/system_id && \
+rm -f /tmp/register_output; \
+else \
+echo "Red Hat credentials not found; skipping subscription registration."; \
+fi
+## Install base packages
+RUN dnf -y --nogpgcheck install rhc rhc-worker-playbook && dnf clean all
 ## Install additional packages
-RUN dnf -y --nogpgcheck install tmux && dnf clean all
-
+RUN dnf -y --nogpgcheck install tmux curl jq && dnf clean all
 ## Clean-up
-
-
 RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
 RHUSER=$(cat /run/secrets/username) && \
 RHPASS=$(cat /run/secrets/password) && \
-HOSTNAME=$(hostname -f) && \
-echo "Unregistering system $HOSTNAME from Red Hat Cloud inventory..." && \
-for HOST_ID in $(curl -s -u "$RHUSER:$RHPASS" "https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=$HOSTNAME" | grep -o '"id":"[^"]*' | grep -o '[^"]*$'); do \
-  curl -s -u "$RHUSER:$RHPASS" -X DELETE "https://cloud.redhat.com/api/inventory/v1/hosts/$HOST_ID" -H "accept: */*"; \
-done && \
+if [ -f /etc/rhsm/system_id ]; then \
+  SYSTEM_ID=$(cat /etc/rhsm/system_id) && \
+  echo "Unregistering system ID: $SYSTEM_ID from Red Hat Cloud inventory..." && \
+  curl -s -u "$RHUSER:$RHPASS" -X DELETE "https://cloud.redhat.com/api/inventory/v1/hosts/$SYSTEM_ID" -H "accept: */*"; \
+else \
+  echo "System ID not found, attempting to unregister using FQDN..." && \
+  HOSTNAME=$(hostname -f) && \
+  for HOST_ID in $(curl -s -u "$RHUSER:$RHPASS" "https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=$HOSTNAME" | grep -o '"id":"[^"]*' | grep -o '[^"]*); do \
+    curl -s -u "$RHUSER:$RHPASS" -X DELETE "https://cloud.redhat.com/api/inventory/v1/hosts/$HOST_ID" -H "accept: */*"; \
+  done; \
+fi && \
 subscription-manager unregister && subscription-manager clean && \
 ln -s /run/secrets/rhsm /etc/rhsm-host; \
 else \
