@@ -13,14 +13,14 @@ RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
     fi 
 
 ## Install base packages
-RUN dnf -y update && RUN dnf -y install rhc tmux && dnf clean all
-
+RUN dnf -y update && dnf -y install rhc
 
 ## Install additional packages
-
+RUN dnf -y install tmux
 
 ## Clean-up
-RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+RUN dnf clean all && \
+    if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
       subscription-manager unregister && subscription-manager clean && insights-client --unregister && \
       ln -s /run/secrets/rhsm /etc/rhsm-host; \
     else \
