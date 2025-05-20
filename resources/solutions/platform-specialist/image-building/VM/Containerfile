@@ -12,7 +12,7 @@ RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
     fi
 
 ## Install base packages
-RUN dnf -y --nogpgcheck install rhc rhc-worker-playbook && dnf clean all
+#RUN dnf -y --nogpgcheck install rhc rhc-worker-playbook && dnf clean all
 
 ## Install additional packages
 RUN dnf -y --nogpgcheck install tmux && dnf clean all
