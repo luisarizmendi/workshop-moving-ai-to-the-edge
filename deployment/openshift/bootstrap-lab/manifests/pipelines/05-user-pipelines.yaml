@@ -465,8 +465,6 @@ spec:
                 default: "${username}-bootc-exports"
                 type: string
 
-
-
             workspaces:
               - name: shared-workspace
                 description: "Workspace used for sharing data between tasks"

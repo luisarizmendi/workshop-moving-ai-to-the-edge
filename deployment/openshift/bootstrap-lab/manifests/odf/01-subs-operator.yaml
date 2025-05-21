@@ -32,4 +32,4 @@ spec:
   name: odf-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: odf-operator.v4.18.2-rhodf
+  startingCSV: odf-operator.v3-rhodf
