@@ -391,7 +391,6 @@ spec:
             done
           }
 
-
           while true; do
               if oc get tasks.tekton.dev -n default &> /dev/null; then
                   echo "Tekton API (tekton.dev/v1) is ready"
@@ -412,9 +411,6 @@ spec:
                 fi
                 sleep 10
             done    
-
-
-
 
           apply_with_retries  oc apply -f - <<EOFUP
           ---
@@ -516,6 +512,9 @@ spec:
               - name: PLATFORMS
                 description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
                 default: linux/amd64,linux/arm64
+              - name: EXPORTS
+                description: Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2)
+                default: ""
             workspaces:
               - name: source
               - name: pull-secret
@@ -553,6 +552,7 @@ spec:
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
+                  echo "-------------------------------------------------------------------------------"
                   echo "Creating multiarch manifest: \$IMAGE"
                   for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
                     tag="\${arch//\//-}"
@@ -578,7 +578,43 @@ spec:
                     podman manifest add \$IMAGE \$IMAGE-\$tag
                   done
                   podman manifest push --authfile=/root/push-secret/.dockerconfigjson --all \$IMAGE docker://\$IMAGE
-              
+
+
+                  echo "-------------------------------------------------------------------------------"
+                  if [ -n "$(params.EXPORTS)" ]; then
+                    echo "Starting the image export."
+                    rm -rf exported && mkdir -p exported
+                    for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                      tag="\${arch//\//-}"
+                      # Convert comma-separated to space-separated
+                      IFS=',' read -ra items <<< "\$export_list"
+
+                      for item in "\${items[@]}"; do
+                        echo "Exporting \$item ..."
+
+
+                        podman run \
+                          --rm \
+                          --privileged \
+                          --pull=newer \
+                          --security-opt label=type:unconfined_t \
+                          -v ./config.toml:/config.toml:ro \
+                          -v exported:/output \
+                          -v \$(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
+                          quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$IMAGE-\$tag
+                      done
+
+                      echo "Files exported:"
+                      ls exported
+
+                  fi
+
+                  done
+
+
+
+
+
           ---
           apiVersion: tekton.dev/v1
           kind: Task
