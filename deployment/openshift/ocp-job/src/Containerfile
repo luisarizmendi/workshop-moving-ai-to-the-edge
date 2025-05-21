@@ -8,7 +8,9 @@ RUN dnf install -y git make golang jq tar gzip curl && \
     git clone https://github.com/red-hat-storage/odf-cli.git /src/odf-cli
 
 WORKDIR /src/odf-cli
-RUN make build
+RUN go get -u github.com/rook/rook@v1.17.2 && \
+    go mod tidy && \
+    make build
 
 RUN curl -fsSL -o /tmp/helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-${ARCH}.tar.gz" && \
     tar -zxvf /tmp/helm.tar.gz -C /tmp && \
@@ -20,6 +22,12 @@ RUN VERSION=$(curl -s https://api.github.com/repos/noobaa/noobaa-operator/releas
     tar -xvzf noobaa-operator-$VERSION-linux-amd64.tar.gz && \
     chmod +x noobaa-operator
 
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+        unzip -q awscliv2.zip && \
+        ./aws/install && \
+        rm -rf awscliv2.zip aws
+
+
 # Stage 2: Final image
 FROM quay.io/openshift/origin-cli:latest
 
@@ -30,7 +38,9 @@ RUN dnf install -y ansible-core jq tar gzip skopeo && dnf clean all
 COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
 COPY --from=builder /src/odf-cli/bin/odf /usr/local/bin/odf
 COPY --from=builder /src/odf-cli/noobaa-operator /usr/local/bin/noobaa
+COPY --from=builder /usr/local/aws-cli/bin/aws /usr/local/bin/aws
+COPY --from=builder /usr/local/aws-cli/bin/aws_completer /usr/local/bin/aws_completer
 
-RUN chmod +x /usr/local/bin/{odf,noobaa,helm}
+RUN chmod +x /usr/local/bin/{odf,noobaa,helm,aws}
 
 USER 1001

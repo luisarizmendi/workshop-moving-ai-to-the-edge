@@ -646,8 +646,8 @@ spec:
                           --privileged \
                           --pull=newer \
                           --security-opt label=type:unconfined_t \
-                          -v ./config.toml:/config.toml:ro \
-                          -v exported:/output \
+                          -v /workspace/source/config.toml:/config.toml:ro \
+                          -v /workspace/source/exported:/output \
                           -v \$(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
                           quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$IMAGE-\$tag
                       done
@@ -656,8 +656,6 @@ spec:
                       ls exported
                     done
                   fi
-
-                  done
 
 
           ---
@@ -669,10 +667,19 @@ spec:
           spec:
             params:
               - name: STORAGE-ENDPOINT
+                description: The object storage endpoint URL
+                type: string
               - name: STORAGE-BUCKET
+                description: The object storage bucket name
+                type: string
               - name: SUBPATH
                 description: Subdirectory path where the files are hosted
+                type: string
                 default: "."
+              - name: REGION
+                description: The object storage region
+                type: string
+                default: "local"
             workspaces:
               - name: source
                 description: Workspace where the files are contained
@@ -681,9 +688,38 @@ spec:
             steps:
               - name: upload files
                 image: quay.io/luisarizmendi/ocp-job:latest
+                env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: $(workspaces.object-storage-credentials.secret.secretName)
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: $(workspaces.object-storage-credentials.secret.secretName)
+                      key: AWS_SECRET_ACCESS_KEY
                 script: |
                   #!/bin/sh
-
+                  set -e
+                  export AWS_REGION="$(params.REGION)"
+                  export AWS_ENDPOINT_URL="$(params.STORAGE-ENDPOINT)"
+                  export BUCKET="$(params.STORAGE-BUCKET)"
+                  export SUBPATH="$(params.SUBPATH)"
+                  
+                  cd $(workspaces.source.path)/${SUBPATH}
+                  
+                  echo "Files to be uploaded from $(pwd):"
+                  find . -type f | sort
+                                   
+                  echo "Uploading files to s3://${BUCKET}/${SUBPATH}"
+                  aws s3 sync . s3://${BUCKET}/${SUBPATH} \
+                    --endpoint-url=${AWS_ENDPOINT_URL} \
+                    --no-progress
+                  
+                  echo "Upload completed successfully"
+                  echo "Objects in bucket:"
+                  aws s3 ls s3://${BUCKET}/${SUBPATH} --recursive --endpoint-url=${AWS_ENDPOINT_URL}
 
           ---
           apiVersion: tekton.dev/v1
