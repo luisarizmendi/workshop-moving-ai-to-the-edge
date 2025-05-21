@@ -1,11 +1,25 @@
 FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 
+## Enable subscription if RHEL
+RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+    echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username $(cat /run/secrets/username) --password $(cat /run/secrets/password) | tee /tmp/register_output && echo $(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo $(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ; \
+    else \
+    echo "Red Hat credentials not found; skipping subscription registration."; \
+    fi
+
 ## Install core packages
 RUN dnf -y --nogpgcheck install curl jq && dnf clean all
 
 ## Install additional packages
 #RUN dnf -y --nogpgcheck install tmux  && dnf clean all
 
+
+## Clean-up subscription if RHEL
+RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+    echo "Unregistering from Red Hat Cloud inventory..." && for uuid in $(curl -s -u "$(cat /run/secrets/username):$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*$') ; do curl -u "$(cat /run/secrets/username):$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/$uuid -H  "accept: */*" ;done && subscription-manager unregister && subscription-manager clean && ln -s /run/secrets/rhsm /etc/rhsm-host; \
+    else \
+    echo "Red Hat credentials not found; skipping subscription clean-up."; \
+    fi
 
 
 
