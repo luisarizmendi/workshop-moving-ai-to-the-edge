@@ -41,6 +41,10 @@ image::lab-argo.png[]
 image::lab-argo-finish.png[]
 ====
 
+[NOTE]
+
+If you find that the deployment does not converge, first take a look at the "Installed Operators" and see if any is in failed state, then remove it and let GitOps retry the deployment automatically.
+
 With these YAMLs you deploy:
 
 * OpenShift Workshop user, groups, projects and guides

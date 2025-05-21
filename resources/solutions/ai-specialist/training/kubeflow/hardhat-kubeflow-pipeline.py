@@ -434,7 +434,7 @@ def create_modelcar(
                     "value": f"{object_storage_path}/serving"
                 },
                 {
-                    "name": "container-registry-image-name",
+                    "name": "modelcar-image-name",
                     "value": modelcar_image_name
                 },
                 {
@@ -442,7 +442,7 @@ def create_modelcar(
                     "value": f"{container_registry_clean}/{user_name}"
                 },
                 {
-                    "name": "container-registry-image-tag",
+                    "name": "modelcar-image-tag",
                     "value": modelcar_image_tag
                 }
             ],

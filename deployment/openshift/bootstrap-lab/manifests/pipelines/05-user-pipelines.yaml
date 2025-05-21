@@ -264,10 +264,10 @@ spec:
               - name: object-directory-path
                 type: string
                 description: "Path to the directory in the object bucket to download"
-              - name: bootc-image-name
+              - name: modelcar-image-name
                 type: string
                 description: "Name of the image to push"
-              - name: container-registry-image-tag
+              - name: modelcar-image-tag
                 type: string
                 description: "Tag for the image to push"
               - name: container-registry
@@ -323,7 +323,7 @@ spec:
                   kind: Task
                 params:
                   - name: IMAGE
-                    value: \$(params.container-registry)/\$(params.bootc-image-name):\$(params.container-registry-image-tag)
+                    value: \$(params.container-registry)/\$(params.modelcar-image-name):\$(params.modelcar-image-tag)
                 workspaces:
                   - name: source
                     workspace: shared-workspace
@@ -449,7 +449,7 @@ spec:
                 type: string
                 description: "Full image name including registry and tag, for example 'my.registry.io/user/image:tag'"
               - name: bootc-build-export-formats
-                description: "Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2)"
+                description: "Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2). If empty there will be no exports"
                 default: ""
                 type: string
               - name: bootc-build-platforms
@@ -473,13 +473,15 @@ spec:
               - name: quay-local-push-secret
                 description: "Secret with the credentials to push the image"
               - name: redhat-credentials
-                description: "Secret with the Red Hat cuer and password"
+                description: "Secret with the Red Hat user and password"
+              - name: object-storage-credentials
+                description: Secret with the object storage credentials
               - name: store
-                description: "EmptyDir for creating qcow2/ISO"
+                description: "EmptyDir for image builder used for the osbuild store"
               - name: rpmmd
-                description: "EmptyDir for creating qcow2/ISO"
+                description: "EmptyDir for image builder used for the DNF cache"
               - name: varlibcontainerstorage
-                description: "EmptyDir for creating qcow2/ISO"
+                description: "EmptyDir for image builder used for containerstorage"
 
             tasks:
               - name: get-build-files
@@ -613,6 +615,18 @@ spec:
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
+                  #The easiest way is to subscribe the host (that is this container)
+                  if [ -f /root/redhat-credentials/username ] && [ -f /root/redhat-credentials/password ]; then
+                    echo "Registering with Red Hat subscription manager..."  
+                    rm -rf /etc/rhsm-host
+                    subscription-manager register --username \$(cat /root/redhat-credentials/username) --password \$(cat /root/redhat-credentials/password) | tee /tmp/register_output
+                    echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id
+                    echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output
+                  else
+                    echo "Red Hat credentials not found; skipping subscription registration."
+                  fi
+
+
                   echo "-------------------------------------------------------------------------------"
                   echo "Creating multiarch manifest: \$IMAGE"
                   for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
@@ -657,9 +671,9 @@ spec:
 
                       for item in "\${items[@]}"; do
                         echo "Exporting \$item ..."
-
-                        podman run \
-                          --platform=\${arch##*/}
+                        
+                        podman run  \
+                          --platform=\${arch} \
                           --rm \
                           --privileged \
                           --pull=newer \
@@ -674,6 +688,20 @@ spec:
                     echo "Files exported:"
                     ls -R exported/
                   fi
+
+                  # Remove subscription with the API
+                  if [ -f /root/redhat-credentials/username ] && [ -f /root/redhat-credentials/password ]; then
+                    echo "Unregistering from Red Hat Cloud inventory..."
+                    for uuid in \$(curl -s -u "\$(cat /root/redhat-credentials/username):\$(cat /root/redhat-credentials/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*\$'); do 
+                      curl -u "\$(cat /root/redhat-credentials/username):\$(cat /root/redhat-credentials/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" 
+                    done
+                    subscription-manager unregister
+                    subscription-manager clean
+                    ln -s /root/redhat-credentials/rhsm /etc/rhsm-host; \
+                  else
+                    echo "Red Hat credentials not found; skipping subscription clean-up."
+                  fi
+
 
 
           ---
@@ -733,11 +761,12 @@ spec:
                   echo "Uploading files to s3://\${BUCKET}/\${SUBPATH}"
                   aws s3 sync . s3://\${BUCKET}/\${SUBPATH} \
                     --endpoint-url=\${AWS_ENDPOINT_URL} \
+                    --no-verify-ssl \
                     --no-progress
                   
                   echo "Upload completed successfully"
                   echo "Objects in bucket:"
-                  aws s3 ls s3://\${BUCKET}/\${SUBPATH} --recursive --endpoint-url=\${AWS_ENDPOINT_URL}
+                  aws s3 ls s3://\${BUCKET}/\${SUBPATH} --recursive --endpoint-url=\${AWS_ENDPOINT_URL} --no-verify-ssl
 
           ---
           apiVersion: tekton.dev/v1
@@ -769,6 +798,7 @@ spec:
                   rm -rf /tmp/repo && git clone --depth 1 --branch \$(params.bootc-build-files-repo-branch) \$(params.bootc-build-files-repo-url) /tmp/repo
 
                   echo "Copying subpath: \$(params.bootc-build-files-repo-subpath)"
+                  rm -rf \$(workspaces.output.path)/* 
                   cp -r /tmp/repo/\$(params.bootc-build-files-repo-subpath)/* \$(workspaces.output.path)/
           EOFUP
 

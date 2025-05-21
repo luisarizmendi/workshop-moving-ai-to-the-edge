@@ -373,11 +373,11 @@ deploymentSpec:
           \                {\n                    \"name\": \"object-directory-path\"\
           ,\n                    \"value\": f\"{object_storage_path}/serving\"\n \
           \               },\n                {\n                    \"name\": \"\
-          container-registry-image-name\",\n                    \"value\": modelcar_image_name\n\
+          modelcar-image-name\",\n                    \"value\": modelcar_image_name\n\
           \                },\n                {\n                    \"name\": \"\
           container-registry\",\n                    \"value\": f\"{container_registry_clean}/{user_name}\"\
           \n                },\n                {\n                    \"name\": \"\
-          container-registry-image-tag\",\n                    \"value\": modelcar_image_tag\n\
+          modelcar-image-tag\",\n                    \"value\": modelcar_image_tag\n\
           \                }\n            ],\n            \"pipelineRef\": {\n   \
           \             \"name\": pipeline_name\n            },\n            \"taskRunTemplate\"\
           : {\n                \"serviceAccountName\": \"pipeline\"\n            },\n\
