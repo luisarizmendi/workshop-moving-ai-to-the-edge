@@ -581,13 +581,14 @@ spec:
 
 
                   echo "-------------------------------------------------------------------------------"
-                  if [ -n "$(params.EXPORTS)" ]; then
+                  if [ -n "\$(params.EXPORTS)" ]; then
                     echo "Starting the image export."
                     rm -rf exported && mkdir -p exported
                     for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
                       tag="\${arch//\//-}"
                       # Convert comma-separated to space-separated
-                      IFS=',' read -ra items <<< "\$export_list"
+                      IFS=',' read -ra items <<< "\$(params.EXPORTS)"
+                      echo "Converting to: \${items[@]}" 
 
                       for item in "\${items[@]}"; do
                         echo "Exporting \$item ..."
@@ -606,7 +607,7 @@ spec:
 
                       echo "Files exported:"
                       ls exported
-
+                    done
                   fi
 
                   done
