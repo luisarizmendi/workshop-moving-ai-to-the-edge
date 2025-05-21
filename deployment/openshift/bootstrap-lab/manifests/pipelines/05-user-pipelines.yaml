@@ -608,6 +608,9 @@ spec:
                   IMAGE="\${IMAGE#http://}"
                   IMAGE="\${IMAGE#https://}"
                   IMAGE="\${IMAGE//\/\//\/}"
+                  IMAGE_NAME_TAG="\${IMAGE##*/}"
+                  IMAGE_NAME="\${IMAGE_NAME_TAG%%:*}"
+                  IMAGE_TAG="\${IMAGE_NAME_TAG##*:}" 
 
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
@@ -643,8 +646,12 @@ spec:
                   echo "-------------------------------------------------------------------------------"
                   if [ -n "\$(params.EXPORTS)" ]; then
                     echo "Starting the image export."
-                    rm -rf exported && mkdir -p exported
+
                     for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                      IMAGE_TAG="\${IMAGE_TAG//./_}"
+                      DIR_NAME="\${IMAGE_NAME}_\${IMAGE_TAG}_\${arch##*/}"
+                      rm -rf exported && mkdir -p exported/\$DIR_NAME
+
                       tag="\${arch//\//-}"
                       # Convert comma-separated to space-separated
                       IFS=',' read -ra items <<< "\$(params.EXPORTS)"
@@ -654,19 +661,20 @@ spec:
                         echo "Exporting \$item ..."
 
                         podman run \
+                          --platform=\${arch##*/}
                           --rm \
                           --privileged \
                           --pull=newer \
                           --security-opt label=type:unconfined_t \
                           -v ./config.toml:/config.toml:ro \
-                          -v ./exported:/output \
+                          -v ./exported/\$DIR_NAME:/output \
                           -v \$(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
                           quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$IMAGE-\$tag
                       done
-
-                      echo "Files exported:"
-                      ls exported
                     done
+
+                    echo "Files exported:"
+                    ls -R exported/
                   fi
 
 
@@ -698,40 +706,40 @@ spec:
               - name: object-storage-credentials
                 description: Secret with the object storage credentials
             steps:
-              - name: upload files
+              - name: upload-files
                 image: quay.io/luisarizmendi/ocp-job:latest
                 env:
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
-                      name: $(workspaces.object-storage-credentials.secret.secretName)
+                      name: \$(workspaces.object-storage-credentials.secret.secretName)
                       key: AWS_ACCESS_KEY_ID
                 - name: AWS_SECRET_ACCESS_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: $(workspaces.object-storage-credentials.secret.secretName)
+                      name: \$(workspaces.object-storage-credentials.secret.secretName)
                       key: AWS_SECRET_ACCESS_KEY
                 script: |
                   #!/bin/sh
                   set -e
-                  export AWS_REGION="$(params.REGION)"
-                  export AWS_ENDPOINT_URL="$(params.STORAGE-ENDPOINT)"
-                  export BUCKET="$(params.STORAGE-BUCKET)"
-                  export SUBPATH="$(params.SUBPATH)"
+                  export AWS_REGION="\$(params.REGION)"
+                  export AWS_ENDPOINT_URL="\$(params.STORAGE-ENDPOINT)"
+                  export BUCKET="\$(params.STORAGE-BUCKET)"
+                  export SUBPATH="\$(params.SUBPATH)"
                   
-                  cd $(workspaces.source.path)/${SUBPATH}
+                  cd \$(workspaces.source.path)/\${SUBPATH}
                   
-                  echo "Files to be uploaded from $(pwd):"
+                  echo "Files to be uploaded from \$(pwd):"
                   find . -type f | sort
                                    
-                  echo "Uploading files to s3://${BUCKET}/${SUBPATH}"
-                  aws s3 sync . s3://${BUCKET}/${SUBPATH} \
-                    --endpoint-url=${AWS_ENDPOINT_URL} \
+                  echo "Uploading files to s3://\${BUCKET}/\${SUBPATH}"
+                  aws s3 sync . s3://\${BUCKET}/\${SUBPATH} \
+                    --endpoint-url=\${AWS_ENDPOINT_URL} \
                     --no-progress
                   
                   echo "Upload completed successfully"
                   echo "Objects in bucket:"
-                  aws s3 ls s3://${BUCKET}/${SUBPATH} --recursive --endpoint-url=${AWS_ENDPOINT_URL}
+                  aws s3 ls s3://\${BUCKET}/\${SUBPATH} --recursive --endpoint-url=\${AWS_ENDPOINT_URL}
 
           ---
           apiVersion: tekton.dev/v1
