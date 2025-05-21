@@ -556,7 +556,7 @@ def yolo_training_pipeline_cpu(
     train_batch_size: int = 16,
     train_img_size: int = 640,
       
-    container_registry_secret_name: str = "container-registry-credentials",
+    container_registry_secret_name: str = "quay-local-push-secret",
     
     model_registry_name: str = "object-detection-model-registry"
 ):

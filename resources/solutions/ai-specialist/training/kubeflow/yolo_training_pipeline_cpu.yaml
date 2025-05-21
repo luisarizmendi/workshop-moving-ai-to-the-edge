@@ -3,7 +3,7 @@
 # Description: Pipeline to download data, train YOLO model, and upload results to OpenShift Data Foundation
 # Inputs:
 #    container_registry: str
-#    container_registry_secret_name: str [Default: 'container-registry-credentials']
+#    container_registry_secret_name: str [Default: 'quay-local-push-secret']
 #    model_registry_name: str [Default: 'object-detection-model-registry']
 #    object_access_key: str
 #    object_secret_key: str
@@ -817,7 +817,7 @@ root:
       container_registry:
         parameterType: STRING
       container_registry_secret_name:
-        defaultValue: container-registry-credentials
+        defaultValue: quay-local-push-secret
         isOptional: true
         parameterType: STRING
       model_registry_name:

@@ -151,7 +151,7 @@ def yolo_training_pipeline(
     train_batch_size: int = 16,
     train_img_size: int = 640,
       
-    container_registry_secret_name: str = "container-registry-credentials",
+    container_registry_secret_name: str = "quay-local-push-secret",
     
     model_registry_name: str = "object-detection-model-registry"
 ):
@@ -774,7 +774,7 @@ def create_modelcar(
                     "value": f"{container_registry_clean}/{user_name}"
                 },
                 {
-                    "name": "container-registry-credentials",
+                    "name": "quay-local-push-secret",
                     "value": container_registry_credentials
                 },
                 {

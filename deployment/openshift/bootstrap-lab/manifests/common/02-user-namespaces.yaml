@@ -5,7 +5,7 @@ metadata:
   name: user-namespaces-create
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: Delete=true
 spec:
   template:
@@ -75,7 +75,7 @@ spec:
           kind: Secret
           apiVersion: v1
           metadata:
-            name: container-registry-credentials
+            name: quay-local-push-secret
             namespace: $namespace
           stringData:
             .dockerconfigjson: |
