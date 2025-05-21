@@ -42,6 +42,8 @@ asciidoc:
     object_storage_models_secret_key: OBJECT_STORAGE_MODELS_SECRET_KEY
     object_storage_pipeline_access_key: OBJECT_STORAGE_PIPELINE_ACCESS_KEY
     object_storage_pipeline_secret_key: OBJECT_STORAGE_PIPELINE_SECRET_KEY
+    object_storage_bootc_access_key: OBJECT_STORAGE_BOOTC_ACCESS_KEY
+    object_storage_bootc_secret_key: OBJECT_STORAGE_BOOTC_SECRET_KEY
     registry-url: https://quay.io/user/luisarizmendi/
     page-links:
     - url: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge

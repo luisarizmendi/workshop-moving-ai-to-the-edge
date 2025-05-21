@@ -412,7 +412,20 @@ spec:
                 sleep 10
             done    
 
+
           apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: bootc-build-shared-pvc
+            namespace: $pipeline_namespace
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
           ---
           apiVersion: tekton.dev/v1
           kind: Pipeline
@@ -640,14 +653,13 @@ spec:
                       for item in "\${items[@]}"; do
                         echo "Exporting \$item ..."
 
-
                         podman run \
                           --rm \
                           --privileged \
                           --pull=newer \
                           --security-opt label=type:unconfined_t \
-                          -v /workspace/source/config.toml:/config.toml:ro \
-                          -v /workspace/source/exported:/output \
+                          -v ./config.toml:/config.toml:ro \
+                          -v ./exported:/output \
                           -v \$(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
                           quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$IMAGE-\$tag
                       done
