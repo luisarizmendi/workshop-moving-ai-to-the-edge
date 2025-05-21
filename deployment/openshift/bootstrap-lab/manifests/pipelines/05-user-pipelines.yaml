@@ -435,6 +435,24 @@ spec:
               - name: bootc-image-name
                 type: string
                 description: "Full image name including registry and tag, for example 'my.registry.io/user/image:tag'"
+              - name: bootc-build-export-formats
+                description: "Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2)"
+                default: ""
+                type: string
+              - name: bootc-build-platforms
+                description: "Comma-separated target platforms (e.g., linux/amd64,linux/arm64)"
+                default: linux/amd64,linux/arm64
+                type: string
+              - name: object-storage-endpoint
+                description: "Object Storage endpoint where the exported files will be uploaded"
+                default: "s3.openshift-storage.svc:443"
+                type: string
+              - name: object-storage-bucket
+                description: "Object Storage bucket where the exported files will be uploaded"
+                default: "${username}-bootc-exports"
+                type: string
+
+
 
             workspaces:
               - name: shared-workspace
@@ -468,15 +486,19 @@ spec:
                   - name: output
                     workspace: shared-workspace 
 
-              - name: build-and-push-image
+              - name: build-push-and-export
                 runAfter:
                   - get-build-files
                 taskRef:
-                  name: bootc-build-and-push
+                  name: bootc-build-push-and-export
                   kind: Task
                 params:
                   - name: IMAGE
                     value: \$(params.bootc-image-name)
+                  - name: PLATFORMS
+                    value: \$(params.bootc-build-platforms)
+                  - name: EXPORTS
+                    value: \$(params.bootc-build-export-formats)
                 workspaces:
                   - name: source
                     workspace: shared-workspace
@@ -493,11 +515,36 @@ spec:
                   - name: varlibcontainerstorage
                     workspace: varlibcontainerstorage
 
+
+              - name: upload-exports
+                runAfter:
+                  - build-push-and-export
+                taskRef:
+                  name: upload-files-object-storage
+                  kind: Task
+                when:
+                  - input: "\$(params.bootc-build-export-formats)"
+                    operator: notin
+                    values: ["", '""', "''"] 
+                params:
+                  - name: STORAGE-ENDPOINT
+                    value: \$(params.object-storage-endpoint)
+                  - name: STORAGE-BUCKET
+                    value: \$(params.object-storage-bucket)
+                  - name: SUBPATH
+                    value: "exports"
+                workspaces:
+                  - name: source
+                    workspace: shared-workspace
+                  - name: object-storage-credentials
+                    workspace: shared-workspace
+
+
           ---
           apiVersion: tekton.dev/v1
           kind: Task
           metadata:
-            name: bootc-build-and-push
+            name: bootc-build-push-and-export
             namespace: $pipeline_namespace
           spec:
             params:
@@ -533,7 +580,7 @@ spec:
               - name: varlibcontainerstorage
                 mountPath: /var/lib/containers/storage
             steps:
-              - name: build-and-push
+              - name: build-push-and-export
                 image: quay.io/centos-bootc/bootc-image-builder:latest
                 securityContext:
                   privileged: true  # Required for QEMU & binfmt_misc
@@ -613,7 +660,29 @@ spec:
                   done
 
 
-
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: upload-files-object-storage
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: STORAGE-ENDPOINT
+              - name: STORAGE-BUCKET
+              - name: SUBPATH
+                description: Subdirectory path where the files are hosted
+                default: "."
+            workspaces:
+              - name: source
+                description: Workspace where the files are contained
+              - name: object-storage-credentials
+                description: Secret with the object storage credentials
+            steps:
+              - name: upload files
+                image: quay.io/luisarizmendi/ocp-job:latest
+                script: |
+                  #!/bin/sh
 
 
           ---

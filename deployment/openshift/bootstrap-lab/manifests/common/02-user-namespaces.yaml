@@ -89,17 +89,7 @@ spec:
                   }
                 }
               }
-          ---
-          kind: Secret
-          apiVersion: v1
-          metadata:
-            name: ai-models
-            namespace: $namespace
-            annotation:
-              workshop/user: ${username}
-          stringData:
-            AWS_ACCESS_KEY_ID: ${username}
-            AWS_SECRET_ACCESS_KEY: ${password}
+
           ---
           kind: ConfigMap
           apiVersion: v1

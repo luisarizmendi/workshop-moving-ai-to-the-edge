@@ -34,10 +34,8 @@ spec:
               for i in $(seq -w 1 50) 99; do
                 user="user$i"
                 namespace="${user}-tools"
-                access_key=$user
-                secret_key="redhat$i"
 
-                for b in ai-models ai-pipeline; do
+                for b in ai-models ai-pipeline bootc-exports; do
                   bucket=${user}-${b}
 
                   echo "Creating bucket $b"
