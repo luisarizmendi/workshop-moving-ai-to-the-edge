@@ -856,8 +856,6 @@ spec:
                           -v ./exported/\$DIR_NAME:/output \
                           -v \$(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
                           quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$BUILD_BASE_IMAGE
-
-                        if [ -d "/root/redhat-credentials" ]; then podman rmi build:tmp; fi
                       done
                     done
 
