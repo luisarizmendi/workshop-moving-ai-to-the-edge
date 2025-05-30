@@ -625,7 +625,7 @@ spec:
                       if [[ -f "\$file" ]]; then
                         from_line=\$(grep -E '^FROM ' "\$file")
                         if [[ -n "\$from_line" ]]; then
-                          FROM_IMAGE=\$(echo "\$from_line" | awk '{print \$2}')
+                          export FROM_IMAGE=\$(echo "\$from_line" | awk '{print \$2}')
                           echo "Imagen base encontrada en \$file: \$FROM_IMAGE"
                           break
                         fi
@@ -636,7 +636,7 @@ spec:
                     fi
 
 
-                  cat <<EOF > Containerfile.subs
+                  cat <<'EOF' > Containerfile.subs
                   FROM \$FROM_IMAGE
                   RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
                       echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username \$(cat /run/secrets/username) --password \$(cat /run/secrets/password) | tee /tmp/register_output && echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ; \
