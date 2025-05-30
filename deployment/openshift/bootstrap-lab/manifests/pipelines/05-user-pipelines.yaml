@@ -615,18 +615,6 @@ spec:
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
-                  #The easiest way is to subscribe the host (that is this container)
-                  if [ -f /root/redhat-credentials/username ] && [ -f /root/redhat-credentials/password ]; then
-                    echo "Registering with Red Hat subscription manager..."  
-                    rm -rf /etc/rhsm-host
-                    subscription-manager register --username \$(cat /root/redhat-credentials/username) --password \$(cat /root/redhat-credentials/password) | tee /tmp/register_output
-                    echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id
-                    echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output
-                  else
-                    echo "Red Hat credentials not found; skipping subscription registration."
-                  fi
-
-
                   echo "-------------------------------------------------------------------------------"
                   echo "Creating multiarch manifest: \$IMAGE"
                   for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
@@ -671,7 +659,23 @@ spec:
 
                       for item in "\${items[@]}"; do
                         echo "Exporting \$item ..."
-                        
+                        BUILD_BASE_IMAGE=\$IMAGE-\$tag
+                        if [ -d "/root/redhat-credentials" ]; then
+                        # Creating a subscribed copy of the image
+                  cat << 'EOF' > Containerfile.build
+                  FROM \$IMAGE-\$tag
+                  RUN echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username \$(cat /run/secrets/username) --password \$(cat /run/secrets/password) | tee /tmp/register_output && echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ;
+                  RUN dnf -y --nogpgcheck install curl jq && dnf clean all
+                  RUN echo "Unregistering from Red Hat Cloud inventory..." && for uuid in \$(curl -s -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*\$') ; do curl -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" ;done  
+                  EOF                  
+
+                          podman build --authfile /root/quay-local-push-secret/.dockerconfigjson \
+                                      --volume /root/redhat-credentials:/run/secrets:ro \
+                                      --platform \${arch##*/} -f Containerfile.build -t build:tmp .
+                          rm -f Containerfile.build
+                          BUILD_BASE_IMAGE=build:tmp
+                        fi
+
                         podman run  \
                           --platform=\${arch} \
                           --rm \
@@ -681,27 +685,15 @@ spec:
                           -v ./config.toml:/config.toml:ro \
                           -v ./exported/\$DIR_NAME:/output \
                           -v \$(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
-                          quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$IMAGE-\$tag
+                          quay.io/centos-bootc/bootc-image-builder:latest --type \$item --use-librepo=True \$BUILD_BASE_IMAGE
+
+                        if [ -d "/root/redhat-credentials" ]; then podman rmi build:tmp; fi
                       done
                     done
 
                     echo "Files exported:"
                     ls -R exported/
                   fi
-
-                  # Remove subscription with the API
-                  if [ -f /root/redhat-credentials/username ] && [ -f /root/redhat-credentials/password ]; then
-                    echo "Unregistering from Red Hat Cloud inventory..."
-                    for uuid in \$(curl -s -u "\$(cat /root/redhat-credentials/username):\$(cat /root/redhat-credentials/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*\$'); do 
-                      curl -u "\$(cat /root/redhat-credentials/username):\$(cat /root/redhat-credentials/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" 
-                    done
-                    subscription-manager unregister
-                    subscription-manager clean
-                    ln -s /root/redhat-credentials/rhsm /etc/rhsm-host; \
-                  else
-                    echo "Red Hat credentials not found; skipping subscription clean-up."
-                  fi
-
 
 
           ---
