@@ -498,45 +498,12 @@ spec:
                 description: "EmptyDir for image builder used for containerstorage"
 
             tasks:
-              - name: check-rh-entitlements
-                taskRef:
-                  name: check-dir-not-empty
-                workspaces:
-                  - name: rh-entitlements
-                    workspace: rh-entitlements
-
-              - name: gather-rh-entitlements
-                runAfter:
-                  - check-rh-entitlements
-                taskRef:
-                  name: gather-rh-entitlements
-                  kind: Task
-                params:
-                  - name: PLATFORMS
-                    value: \$(params.bootc-build-platforms)
-                workspaces:
-                  - name: rh-entitlements
-                    workspace: rh-entitlements
-                  - name: redhat-credentials
-                    workspace: redhat-credentials
-                  - name: redhat-pull-secret
-                    workspace: redhat-pull-secret
-                when:
-                  - input: "\$(tasks.check-dir.results.directory-non-empty)"
-                    operator: in
-                    values: ["true"]
-
-
-
-
 
 
               - name: get-build-files
                 taskRef:
                   name: git-clone-and-copy-subpath
                   kind: Task
-                runAfter:
-                  - gather-rh-entitlements
                 params:
                   - name: bootc-build-files-repo-url
                     value: \$(params.bootc-build-files-repo-url)
@@ -548,9 +515,29 @@ spec:
                   - name: output
                     workspace: shared-workspace 
 
-              - name: build-push-and-export
+              - name: gather-rh-entitlements
+                taskRef:
+                  name: gather-rh-entitlements
+                  kind: Task
                 runAfter:
                   - get-build-files
+                params:
+                  - name: PLATFORMS
+                    value: \$(params.bootc-build-platforms)
+                workspaces:
+                  - name: source
+                    workspace: shared-workspace
+                  - name: rh-entitlements
+                    workspace: rh-entitlements
+                  - name: redhat-credentials
+                    workspace: redhat-credentials
+                  - name: redhat-pull-secret
+                    workspace: redhat-pull-secret
+
+
+              - name: build-push-and-export
+                runAfter:
+                  - gather-rh-entitlements
                 taskRef:
                   name: bootc-build-push-and-export
                   kind: Task
@@ -564,6 +551,8 @@ spec:
                 workspaces:
                   - name: source
                     workspace: shared-workspace
+                  - name: rh-entitlements
+                    workspace: rh-entitlements
                   - name: redhat-credentials
                     workspace: redhat-credentials
                   - name: redhat-pull-secret
@@ -602,34 +591,6 @@ spec:
                     workspace: shared-workspace
 
           ---
-          apiVersion: tekton.dev/v1
-          kind: Task
-          metadata:
-            name: check-dir-not-empty
-          spec:
-            results:
-              - name: directory-non-empty
-            workspaces:
-              - name: rh-entitlements
-            params:
-              - name: subdirectory
-                type: string
-                default: "." 
-            steps:
-              - name: check-directory
-                image: alpine
-                script: |
-                  #!/bin/sh
-                  set -e
-                  DIR="/workspace/rh-entitlements/\$(params.subdirectory)"
-                  echo "Checking directory: \$DIR"
-                  if [ -n "\$(ls -A "\$DIR" 2>/dev/null)" ]; then
-                    echo -n "true" > \$(results.directory-non-empty.path)
-                  else
-                    echo -n "false" > \$(results.directory-non-empty.path)
-                  fi
-
-          ---
 
 
           apiVersion: tekton.dev/v1
@@ -642,8 +603,13 @@ spec:
               - name: PLATFORMS
                 description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
                 default: linux/amd64,linux/arm64
+              - name: CONTEXT
+                description: Build context
+                default: ./
             workspaces:
+              - name: source
               - name: rh-entitlements
+                mountPath: /root/redhat-entitlements
               - name: redhat-pull-secret
                 optional: true
                 mountPath: /root/redhat-pull-secret
@@ -658,33 +624,68 @@ spec:
                   runAsUser: 0
                   seLinuxOptions:
                     type: container_file_t
-                workingDir: \$(workspaces.rh-entitlements.path)
+                workingDir: \$(workspaces.source.path)
                 script: |
                   #!/bin/bash
                   set -e
+                  declare -A RUN_GATHERING
+                  echo "Checking if there are already entitlements"
+                  echo "Contents:"
+                  ls -r /root/redhat-entitlements
+                  ALL_OK=true
 
-                  echo "Enabling binfmt_misc for cross-arch builds..."
-                  podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+                  for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
+                    DIR="/root/redhat-entitlements/\${arch##*/}"
+                    echo "Checking: \$DIR"
 
-
-                  echo "-------------------------------------------------------------------------------"
-                  if [ -d "/root/redhat-credentials" ]; then
-                    echo "Getting the entitlements..."
-                    echo "Generating Containerfile to gather entitlements"
-
-                    for file in \$(params.CONTEXT)/Dockerfile \$(params.CONTEXT)/Containerfile; do
-                      if [[ -f "\$file" ]]; then
-                        from_line=\$(grep -E '^FROM ' "\$file")
-                        if [[ -n "\$from_line" ]]; then
-                          export FROM_IMAGE=\$(echo "\$from_line" | awk '{print \$2}')
-                          echo "Imagen base encontrada en \$file: \$FROM_IMAGE"
-                          break
-                        fi
-                      fi
-                    done
-                    if [[ -z "\$FROM_IMAGE" ]]; then
-                      echo "No se encontró una línea FROM en Dockerfile o Containerfile"
+                    if [ ! -d "\$DIR" ]; then
+                      echo "Directory does not exist: \$DIR"
+                      ALL_OK=false
+                      RUN_GATHERING["\${arch##*/}"]="true"
                     fi
+
+                    # Check for at least one file (not directory) in \$DIR
+                    if ! find "\$DIR" -mindepth 1 -maxdepth 1 -type f | grep -q .; then
+                      echo "No files found in: \$DIR"
+                      ALL_OK=false
+                      RUN_GATHERING["\${arch##*/}"]="true"
+                    else 
+
+                      RUN_GATHERING["\${arch##*/}"]="false"
+                    fi
+                  done
+
+                  echo "Check results:"
+                  echo "ALL_OK= \$ALL_OK"
+                  for key in "\${!RUN_GATHERING[@]}"; do
+                    echo "\$key \${RUN_GATHERING[\$key]}"
+                  done
+
+                  if [ "\$ALL_OK" = "false" ]; then
+
+                    echo "Enabling binfmt_misc for cross-arch builds..."
+                    podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+
+
+                    echo "-------------------------------------------------------------------------------"
+                    if [ -d "/root/redhat-credentials" ]; then
+                      echo "Getting the entitlements..."
+                      echo "Generating Containerfile to gather entitlements"
+                      echo "Contents of context:"
+                      ls \$(params.CONTEXT)
+                      for file in \$(params.CONTEXT)/Dockerfile \$(params.CONTEXT)/Containerfile; do
+                        if [[ -f "\$file" ]]; then
+                          from_line=\$(grep -E '^FROM ' "\$file")
+                          if [[ -n "\$from_line" ]]; then
+                            export FROM_IMAGE=\$(echo "\$from_line" | awk '{print \$2}')
+                            echo "Imagen base encontrada en \$file: \$FROM_IMAGE"
+                            break
+                          fi
+                        fi
+                      done
+                      if [[ -z "\$FROM_IMAGE" ]]; then
+                        echo "FROM statement not found in Dockerfile or Containerfile"
+                      fi
 
                   cat <<EOF > Containerfile.subs
                   FROM \$FROM_IMAGE
@@ -703,29 +704,37 @@ spec:
                       echo "Red Hat credentials not found; skipping subscription clean-up."; \
                       fi
                   EOF
-                    echo "Containerfile generated:"
-                    cat Containerfile.subs
+                      echo "Containerfile generated:"
+                      cat Containerfile.subs
 
-                    for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
 
-                      echo "Getting entitlements for \$arch"
-                      mkdir -p entitlements/\${arch##*/}
-                      podman build -f Containerfile.subs --authfile /root/redhat-pull-secret/.dockerconfigjson  --volume /root/redhat-credentials:/run/secrets:ro --platform \${arch##*/} -t local-\${arch##*/} .
-                      # Create a temporary container from the image
-                      CONTAINER_ID=\$(podman create local-\${arch##*/})
-                      # Copy the entitlement files from the container to the host
+                      echo "Contents in entitlement directory:"
+                      ls -r /root/redhat-entitlements/
 
-                      podman cp \${CONTAINER_ID}:/entitlements/. entitlements/\${arch##*/}/
-                      # Clean up
-                      podman rm \${CONTAINER_ID}
-                      podman rmi local-\${arch##*/}
-                    done
+                      for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
 
-                    cp -r entitlements/* \$(workspaces.rh-entitlements.path)
-                    echo "Entitlements generated:"
-                    ls -R entitlements
+                          key="\${arch##*/}"
+                          if [ "\${RUN_GATHERING[\$key]}" = "true" ]; then
+                            echo "Gathering entitlements for \${arch##*/}"
+                            mkdir -p entitlements/\${arch##*/}
+                            podman build -f Containerfile.subs --authfile /root/redhat-pull-secret/.dockerconfigjson  --volume /root/redhat-credentials:/run/secrets:ro --platform \${arch##*/} -t local-\${arch##*/} .
+                            CONTAINER_ID=\$(podman create local-\${arch##*/})
+                            podman cp \${CONTAINER_ID}:/entitlements/. entitlements/\${arch##*/}/
+                            podman rm \${CONTAINER_ID}
+                            podman rmi local-\${arch##*/}
+                            mkdir -p /root/redhat-entitlements/\${arch##*/}
+                            cp -r entitlements/\${arch##*/}/* /root/redhat-entitlements/\${arch##*/}
 
+                          fi
+
+                      done
+
+                      echo "Entitlements generated:"
+                      ls -R \$(workspaces.rh-entitlements.path)
+                    fi
                   fi
+
+
 
           ---
           apiVersion: tekton.dev/v1
