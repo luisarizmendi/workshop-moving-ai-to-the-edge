@@ -480,7 +480,7 @@ spec:
             workspaces:
               - name: shared-workspace
                 description: "Workspace used for sharing data between tasks"
-              - name: entitlements
+              - name: rh-entitlements
                 description: "Red Hat Entitlements"
               - name: redhat-pull-secret
                 description: "Secret with the Red Hat container registry pull credentials"
@@ -498,10 +498,6 @@ spec:
                 description: "EmptyDir for image builder used for containerstorage"
 
             tasks:
-
-
-
-
               - name: check-rh-entitlements
                 taskRef:
                   name: check-dir-not-empty
@@ -515,6 +511,7 @@ spec:
                 taskRef:
                   name: gather-rh-entitlements
                   kind: Task
+                params:
                   - name: PLATFORMS
                     value: \$(params.bootc-build-platforms)
                 workspaces:
