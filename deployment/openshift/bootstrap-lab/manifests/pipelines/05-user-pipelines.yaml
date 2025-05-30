@@ -427,6 +427,18 @@ spec:
               requests:
                 storage: 5Gi
           ---
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: bootc-build-entitlements-pvc
+            namespace: $pipeline_namespace
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 100Mi
+          ---
           apiVersion: tekton.dev/v1
           kind: Pipeline
           metadata:
@@ -468,6 +480,8 @@ spec:
             workspaces:
               - name: shared-workspace
                 description: "Workspace used for sharing data between tasks"
+              - name: entitlements
+                description: "Red Hat Entitlements"
               - name: redhat-pull-secret
                 description: "Secret with the Red Hat container registry pull credentials"
               - name: quay-local-push-secret
@@ -484,10 +498,48 @@ spec:
                 description: "EmptyDir for image builder used for containerstorage"
 
             tasks:
+
+
+
+
+              - name: check-rh-entitlements
+                taskRef:
+                  name: check-dir-not-empty
+                workspaces:
+                  - name: rh-entitlements
+                    workspace: rh-entitlements
+
+              - name: gather-rh-entitlements
+                runAfter:
+                  - check-rh-entitlements
+                taskRef:
+                  name: gather-rh-entitlements
+                  kind: Task
+                  - name: PLATFORMS
+                    value: \$(params.bootc-build-platforms)
+                workspaces:
+                  - name: rh-entitlements
+                    workspace: rh-entitlements
+                  - name: redhat-credentials
+                    workspace: redhat-credentials
+                  - name: redhat-pull-secret
+                    workspace: redhat-pull-secret
+                when:
+                  - input: "\$(tasks.check-dir.results.directory-non-empty)"
+                    operator: in
+                    values: ["true"]
+
+
+
+
+
+
               - name: get-build-files
                 taskRef:
                   name: git-clone-and-copy-subpath
                   kind: Task
+                runAfter:
+                  - gather-rh-entitlements
                 params:
                   - name: bootc-build-files-repo-url
                     value: \$(params.bootc-build-files-repo-url)
@@ -552,6 +604,131 @@ spec:
                   - name: object-storage-credentials
                     workspace: shared-workspace
 
+          ---
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: check-dir-not-empty
+          spec:
+            results:
+              - name: directory-non-empty
+            workspaces:
+              - name: rh-entitlements
+            params:
+              - name: subdirectory
+                type: string
+                default: "." 
+            steps:
+              - name: check-directory
+                image: alpine
+                script: |
+                  #!/bin/sh
+                  set -e
+                  DIR="/workspace/rh-entitlements/\$(params.subdirectory)"
+                  echo "Checking directory: \$DIR"
+                  if [ -n "\$(ls -A "\$DIR" 2>/dev/null)" ]; then
+                    echo -n "true" > \$(results.directory-non-empty.path)
+                  else
+                    echo -n "false" > \$(results.directory-non-empty.path)
+                  fi
+
+          ---
+
+
+          apiVersion: tekton.dev/v1
+          kind: Task
+          metadata:
+            name: gather-rh-entitlements
+            namespace: $pipeline_namespace
+          spec:
+            params:
+              - name: PLATFORMS
+                description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
+                default: linux/amd64,linux/arm64
+            workspaces:
+              - name: rh-entitlements
+              - name: redhat-pull-secret
+                optional: true
+                mountPath: /root/redhat-pull-secret
+              - name: redhat-credentials
+                optional: true
+                mountPath: /root/redhat-credentials
+            steps:
+              - name: build-and-save
+                image: quay.io/centos-bootc/bootc-image-builder:latest
+                securityContext:
+                  privileged: true  # Required for QEMU & binfmt_misc
+                  runAsUser: 0
+                  seLinuxOptions:
+                    type: container_file_t
+                workingDir: \$(workspaces.rh-entitlements.path)
+                script: |
+                  #!/bin/bash
+                  set -e
+
+                  echo "Enabling binfmt_misc for cross-arch builds..."
+                  podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+
+
+                  echo "-------------------------------------------------------------------------------"
+                  if [ -d "/root/redhat-credentials" ]; then
+                    echo "Getting the entitlements..."
+                    echo "Generating Containerfile to gather entitlements"
+
+                    for file in \$(params.CONTEXT)/Dockerfile \$(params.CONTEXT)/Containerfile; do
+                      if [[ -f "\$file" ]]; then
+                        from_line=\$(grep -E '^FROM ' "\$file")
+                        if [[ -n "\$from_line" ]]; then
+                          export FROM_IMAGE=\$(echo "\$from_line" | awk '{print \$2}')
+                          echo "Imagen base encontrada en \$file: \$FROM_IMAGE"
+                          break
+                        fi
+                      fi
+                    done
+                    if [[ -z "\$FROM_IMAGE" ]]; then
+                      echo "No se encontró una línea FROM en Dockerfile o Containerfile"
+                    fi
+
+                  cat <<EOF > Containerfile.subs
+                  FROM \$FROM_IMAGE
+                  EOF
+                  cat <<'EOF' >> Containerfile.subs
+                  RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+                      echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username \$(cat /run/secrets/username) --password \$(cat /run/secrets/password) | tee /tmp/register_output && echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ; \
+                      else \
+                      echo "Red Hat credentials not found; skipping subscription registration."; \
+                      fi
+                  RUN dnf -y --nogpgcheck install curl jq && dnf clean all
+                  RUN mkdir -p /entitlements && cp -a /etc/pki/entitlement/* /entitlements/
+                  RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
+                      echo "Unregistering from Red Hat Cloud inventory..." && for uuid in \$(curl -s -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*$') ; do curl -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" ;done && subscription-manager unregister && subscription-manager clean && ln -s /run/secrets/rhsm /etc/rhsm-host; \
+                      else \
+                      echo "Red Hat credentials not found; skipping subscription clean-up."; \
+                      fi
+                  EOF
+                    echo "Containerfile generated:"
+                    cat Containerfile.subs
+
+                    for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
+
+                      echo "Getting entitlements for \$arch"
+                      mkdir -p entitlements/\${arch##*/}
+                      podman build -f Containerfile.subs --authfile /root/redhat-pull-secret/.dockerconfigjson  --volume /root/redhat-credentials:/run/secrets:ro --platform \${arch##*/} -t local-\${arch##*/} .
+                      # Create a temporary container from the image
+                      CONTAINER_ID=\$(podman create local-\${arch##*/})
+                      # Copy the entitlement files from the container to the host
+
+                      podman cp \${CONTAINER_ID}:/entitlements/. entitlements/\${arch##*/}/
+                      # Clean up
+                      podman rm \${CONTAINER_ID}
+                      podman rmi local-\${arch##*/}
+                    done
+
+                    cp -r entitlements/* \$(workspaces.rh-entitlements.path)
+                    echo "Entitlements generated:"
+                    ls -R entitlements
+
+                  fi
 
           ---
           apiVersion: tekton.dev/v1
@@ -577,6 +754,9 @@ spec:
                 default: ""
             workspaces:
               - name: source
+              - name: rh-entitlements
+                optional: true
+                mountPath: /root/rh-entitlements
               - name: redhat-pull-secret
                 optional: true
                 mountPath: /root/redhat-pull-secret
@@ -610,71 +790,15 @@ spec:
                   IMAGE="\${IMAGE//\/\//\/}"
                   IMAGE_NAME_TAG="\${IMAGE##*/}"
                   IMAGE_NAME="\${IMAGE_NAME_TAG%%:*}"
-                  IMAGE_TAG="\${IMAGE_NAME_TAG##*:}" 
+                  IMAGE_TAG="\${IMAGE_NAME_TAG##*:}"
+                  PWD=\$(pwd)
 
                   echo "Enabling binfmt_misc for cross-arch builds..."
                   podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
 
-
-                  echo "-------------------------------------------------------------------------------"
-                  if [ -d "/root/redhat-credentials" ]; then
-                    echo "Getting the entitlements..."
-                    echo "Generating Containerfile to gather entitlements"
-
-                    for file in \$(params.CONTEXT)/Dockerfile \$(params.CONTEXT)/Containerfile; do
-                      if [[ -f "\$file" ]]; then
-                        from_line=\$(grep -E '^FROM ' "\$file")
-                        if [[ -n "\$from_line" ]]; then
-                          export FROM_IMAGE=\$(echo "\$from_line" | awk '{print \$2}')
-                          echo "Imagen base encontrada en \$file: \$FROM_IMAGE"
-                          break
-                        fi
-                      fi
-                    done
-                    if [[ -z "\$FROM_IMAGE" ]]; then
-                      echo "No se encontró una línea FROM en Dockerfile o Containerfile"
-                    fi
-
-                  cat <<EOF > Containerfile.subs
-                  FROM \$FROM_IMAGE
-                  EOF
-
-                  cat <<'EOF' >> Containerfile.subs
-                  RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-                      echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username \$(cat /run/secrets/username) --password \$(cat /run/secrets/password) | tee /tmp/register_output && echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ; \
-                      else \
-                      echo "Red Hat credentials not found; skipping subscription registration."; \
-                      fi
-                  RUN dnf -y --nogpgcheck install curl jq && dnf clean all
-                  RUN mkdir -p /entitlements && cp -a /etc/pki/entitlement/* /entitlements/
-                  RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-                      echo "Unregistering from Red Hat Cloud inventory..." && for uuid in \$(curl -s -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*$') ; do curl -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" ;done && subscription-manager unregister && subscription-manager clean && ln -s /run/secrets/rhsm /etc/rhsm-host; \
-                      else \
-                      echo "Red Hat credentials not found; skipping subscription clean-up."; \
-                      fi
-                  EOF
-                    echo "Containerfile generated:"
-                    cat Containerfile.subs
-
-                    for arch in \$(echo \$(params.PLATFORMS) | tr ',' ' '); do
-
-                      echo "Getting entitlements for \$arch"
-                      mkdir -p entitlements/\${arch##*/}
-                      podman build -f Containerfile.subs --authfile /root/redhat-pull-secret/.dockerconfigjson  --volume /root/redhat-credentials:/run/secrets:ro --platform \${arch##*/} -t local-\${arch##*/} .
-                      # Create a temporary container from the image
-                      CONTAINER_ID=\$(podman create local-\${arch##*/})
-                      # Copy the entitlement files from the container to the host
-
-                      podman cp \${CONTAINER_ID}:/entitlements/. entitlements/\${arch##*/}/
-                      # Clean up
-                      podman rm \${CONTAINER_ID}
-                      podman rmi local-\${arch##*/}
-                    done
-
-                    echo "Entitlements generated:"
-                    ls -R entitlements
-
-                  fi
+                  echo "Moving Entitlements"
+                  mkdir -p /etc/pki/entitlement
+                  find \$(workspaces.rh-entitlements.path)/ -type f -exec cp {} /etc/pki/entitlement \;
 
 
                   echo "-------------------------------------------------------------------------------"
@@ -683,15 +807,8 @@ spec:
                     tag="\${arch//\//-}"
                     echo "Building for \$arch -> \$tag"
 
-                    if [ -d "/root/redhat-credentials" ]; then
-                      echo "Building with Red Hat credentials..."
-                      podman build --authfile /root/redhat-pull-secret/.dockerconfigjson \
-                                  --volume \$(params.CONTEXT)/entitlements/\${arch##*/}:/etc/pki/entitlement:ro \
+                    podman build --authfile /root/redhat-pull-secret/.dockerconfigjson \
                                   --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
-                    else
-                      podman build --authfile /root/redhat-pull-secret/.dockerconfigjson \
-                                  --platform \${arch##*/} -f \$(params.CONTAINERFILE) -t \$IMAGE-\$tag \$(params.CONTEXT)
-                    fi
 
                     podman push --authfile=/root/quay-local-push-secret/.dockerconfigjson \$IMAGE-\$tag
                     
@@ -722,21 +839,6 @@ spec:
                       for item in "\${items[@]}"; do
                         echo "Exporting \$item ..."
                         BUILD_BASE_IMAGE=\$IMAGE-\$tag
-                        if [ -d "/root/redhat-credentials" ]; then
-                        # Creating a subscribed copy of the image
-                  cat << 'EOF' > Containerfile.build
-                  FROM \$IMAGE-\$tag
-                  RUN echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username \$(cat /run/secrets/username) --password \$(cat /run/secrets/password) | tee /tmp/register_output && echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ;
-                  RUN dnf -y --nogpgcheck install curl jq && dnf clean all
-                  RUN echo "Unregistering from Red Hat Cloud inventory..." && for uuid in \$(curl -s -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*\$') ; do curl -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" ;done  
-                  EOF                  
-
-                          podman build --authfile /root/quay-local-push-secret/.dockerconfigjson \
-                                      --volume \$(params.CONTEXT)/entitlements/\${arch##*/}:/etc/pki/entitlement:ro \
-                                      --platform \${arch##*/} -f Containerfile.build -t build:tmp .
-                          rm -f Containerfile.build
-                          BUILD_BASE_IMAGE=build:tmp
-                        fi
 
                         podman run  \
                           --platform=\${arch} \
