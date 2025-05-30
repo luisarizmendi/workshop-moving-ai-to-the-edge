@@ -6,7 +6,6 @@ metadata:
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    argocd.argoproj.io/sync-options: Replace=true
 spec:
   template:
     spec:
@@ -358,7 +357,6 @@ metadata:
   name: bootc-user-pipelines-create
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-options: Replace=true
     argocd.argoproj.io/sync-wave: "5"
 spec:
   template:
