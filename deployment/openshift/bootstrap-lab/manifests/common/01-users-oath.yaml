@@ -18,7 +18,7 @@ spec:
       type: HTPasswd
       htpasswd:
         fileData:
-          name: htpasswd-config
+          name: htpasswd-workshop
 ---
 apiVersion: v1
 kind: Secret

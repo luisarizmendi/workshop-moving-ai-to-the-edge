@@ -17,6 +17,28 @@ spec:
         args:
         - |
 
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
           # Loop through users user01 to user50 and user99
           for i in $(seq -w 1 50) 99; do
             namespace_source="user${i}-ai"
@@ -39,7 +61,7 @@ spec:
               done
 
               echo "Enabling access to $namespace_source from namespace $namespace_dest"
-          oc apply -f - <<EOF
+          apply_with_retries  oc apply -f - <<EOF
           apiVersion: rbac.authorization.k8s.io/v1
           kind: Role
           metadata:

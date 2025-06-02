@@ -40,7 +40,7 @@ spec:
           }
 
           echo "Creating custom SCC for pipelines"
-          oc apply -f - <<EOF
+          apply_with_retries oc apply -f - <<EOF
           apiVersion: security.openshift.io/v1
           kind: SecurityContextConstraints
           metadata:

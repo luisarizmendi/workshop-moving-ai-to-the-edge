@@ -15,6 +15,28 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
+
+              apply_with_retries() {
+                local attempt=0
+                local max_attempts=5
+                local delay=5
+
+                while true; do
+                  if "$@"; then
+                    echo "Apply succeeded: $*"
+                    return 0
+                  fi
+
+                  attempt=$(( attempt + 1 ))
+                  if [ "$attempt" -ge "$max_attempts" ]; then
+                    echo "Apply failed after $max_attempts attempts: $*"
+                    return 1
+                  fi
+
+                  echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+                  sleep "$delay"
+                done
+              }
               set -e
 
               # https://github.com/noobaa/noobaa-core/tree/v5.18.1/src/api
@@ -39,7 +61,7 @@ spec:
                   bucket=${user}-${b}
 
                   echo "Creating bucket $b"
-              oc apply -f - <<EOF
+              apply_with_retries  oc apply -f - <<EOF
               apiVersion: objectbucket.io/v1alpha1
               kind: ObjectBucketClaim
               metadata:
@@ -64,7 +86,7 @@ spec:
                   export AWS_SECRET_ACCESS_KEY=$(kubectl get secret "$bucket" -n "$namespace" -o jsonpath="{.data.AWS_SECRET_ACCESS_KEY}" | base64 -d)
 
                   echo "Creating S3 browser for $bucket"
-              oc apply -f - <<EOF
+              apply_with_retries  oc apply -f - <<EOF
               kind: Deployment
               apiVersion: apps/v1
               metadata:
@@ -162,4 +184,5 @@ spec:
           seccompProfile:
             type: RuntimeDefault
       restartPolicy: OnFailure
-  backoffLimit: 1
+  backoffLimit: 6
+  backoffSeconds: 300

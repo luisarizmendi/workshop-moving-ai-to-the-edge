@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: htpasswd-config
+  name: htpasswd-workshop
   namespace: openshift-config
   annotations:
     argocd.argoproj.io/sync-wave: "0"
