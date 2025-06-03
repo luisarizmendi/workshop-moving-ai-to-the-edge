@@ -562,6 +562,11 @@ spec:
   steps:
     - name: create-manifest
       image: quay.io/centos-bootc/bootc-image-builder:latest
+      securityContext:
+        privileged: true
+        runAsUser: 0
+        seLinuxOptions:
+          type: container_file_t
       script: |
         #!/bin/bash
         set -e
