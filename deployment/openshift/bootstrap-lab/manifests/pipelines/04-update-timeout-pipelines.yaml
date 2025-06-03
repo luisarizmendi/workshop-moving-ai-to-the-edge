@@ -1,0 +1,54 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: increase-tekton-timeout
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: Delete=true
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          patch_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              echo "Patching TektonConfig (attempt $((attempt+1)))..."
+              oc patch tektonconfig config --type merge -p '{"spec": {"pipeline": {"default-timeout-minutes": 120}}}'
+              if [ $? -eq 0 ]; then
+                echo "Patch succeeded!"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Patch failed after $max_attempts attempts."
+                return 1
+              fi
+
+              echo "Patch failed, retrying in $delay seconds..."
+              sleep "$delay"
+            done
+          }
+
+          patch_with_retries
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 6

@@ -354,7 +354,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: bootc-user-pipelines-create
+  name: bootc-multiarch-emulation-user-pipeline-create
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -442,7 +442,7 @@ spec:
           apiVersion: tekton.dev/v1
           kind: Pipeline
           metadata:
-            name: bootc-image-build
+            name: bootc-image-build-multiarch-emulation
             namespace: $pipeline_namespace
           spec:
             params:
@@ -479,9 +479,9 @@ spec:
 
             workspaces:
               - name: shared-workspace
-                description: "Workspace used for sharing data between tasks"
+                description: "Volume Workspace used for sharing data between tasks"
               - name: rh-entitlements
-                description: "Red Hat Entitlements"
+                description: "Volume with Red Hat Entitlements"
               - name: redhat-pull-secret
                 description: "Secret with the Red Hat container registry pull credentials"
               - name: quay-local-push-secret
@@ -535,11 +535,11 @@ spec:
                     workspace: redhat-pull-secret
 
 
-              - name: build-push-and-export
+              - name: multiarch-emulation-build-push-and-export
                 runAfter:
                   - gather-rh-entitlements
                 taskRef:
-                  name: bootc-build-push-and-export
+                  name: bootc-multiarch-emulation-build-push-and-export
                   kind: Task
                 params:
                   - name: IMAGE
@@ -569,7 +569,7 @@ spec:
 
               - name: upload-exports
                 runAfter:
-                  - build-push-and-export
+                  - multiarch-emulation-build-push-and-export
                 taskRef:
                   name: upload-files-object-storage
                   kind: Task
@@ -740,7 +740,7 @@ spec:
           apiVersion: tekton.dev/v1
           kind: Task
           metadata:
-            name: bootc-build-push-and-export
+            name: bootc-multiarch-emulation-build-push-and-export
             namespace: $pipeline_namespace
           spec:
             params:
@@ -779,7 +779,7 @@ spec:
               - name: varlibcontainerstorage
                 mountPath: /var/lib/containers/storage
             steps:
-              - name: build-push-and-export
+              - name: multiarch-emulation-build-push-and-export
                 image: quay.io/centos-bootc/bootc-image-builder:latest
                 securityContext:
                   privileged: true  # Required for QEMU & binfmt_misc

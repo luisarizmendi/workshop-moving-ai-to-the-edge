@@ -1,4 +1,3 @@
-
 ---
 apiVersion: v1
 kind: Namespace
@@ -33,7 +32,7 @@ spec:
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: bootc-image-build
+  name: bootc-image-build-multiarch-parallel
   namespace: admin-tools
 spec:
   params:
@@ -52,11 +51,11 @@ spec:
       type: string
       description: "Full image name including registry and tag, for example 'my.registry.io/user/image:tag'"
     - name: bootc-build-export-formats
-      description: "Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2). If empty there will be no exports"
+      description: "Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2,vmdk,ami). If empty there will be no exports"
       default: ""
       type: string
     - name: bootc-build-platforms
-      description: "Comma-separated target platforms (e.g., linux/amd64,linux/arm64)"
+      description: "Comma-separated target platforms (e.g., linux/amd64,linux/arm64). Can be single platform"
       default: linux/amd64,linux/arm64
       type: string
     - name: object-storage-endpoint
@@ -70,9 +69,9 @@ spec:
 
   workspaces:
     - name: shared-workspace
-      description: "Workspace used for sharing data between tasks"
+      description: "Volume Workspace used for sharing data between tasks"
     - name: rh-entitlements
-      description: "Red Hat Entitlements"
+      description: "Volume with Red Hat Entitlements"
     - name: redhat-pull-secret
       description: "Secret with the Red Hat container registry pull credentials"
     - name: quay-local-push-secret
@@ -81,16 +80,22 @@ spec:
       description: "Secret with the Red Hat user and password"
     - name: object-storage-credentials
       description: Secret with the object storage credentials
-    - name: store
-      description: "EmptyDir for image builder used for the osbuild store"
-    - name: rpmmd
-      description: "EmptyDir for image builder used for the DNF cache"
-    - name: varlibcontainerstorage
-      description: "EmptyDir for image builder used for containerstorage"
+    - name: store-amd64
+      description: "EmptyDir for image builder used for the osbuild store (amd64)"
+    - name: rpmmd-amd64
+      description: "EmptyDir for image builder used for the DNF cache (amd64)"
+    - name: varlibcontainerstorage-amd64
+      description: "EmptyDir for image builder used for containerstorage (amd64)"
+    - name: store-arm64
+      description: "EmptyDir for image builder used for the osbuild store (arm64)"
+    - name: rpmmd-arm64
+      description: "EmptyDir for image builder used for the DNF cache (arm64)"
+    - name: varlibcontainerstorage-arm64
+      description: "EmptyDir for image builder used for containerstorage (arm64)"
+    - name: shared-container-storage
+      description: "Shared container storage for manifest creation"
 
   tasks:
-
-
     - name: get-build-files
       taskRef:
         name: git-clone-and-copy-subpath
@@ -106,15 +111,19 @@ spec:
         - name: output
           workspace: shared-workspace 
 
-    - name: gather-rh-entitlements
+    - name: gather-rh-entitlements-amd64
       taskRef:
         name: gather-rh-entitlements
         kind: Task
       runAfter:
         - get-build-files
+      when:
+        - input: "$(params.bootc-build-platforms)"
+          operator: in
+          values: ["linux/amd64", "linux/amd64,linux/arm64", "linux/arm64,linux/amd64"]
       params:
-        - name: PLATFORMS
-          value: $(params.bootc-build-platforms)
+        - name: PLATFORM
+          value: linux/amd64
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -125,20 +134,44 @@ spec:
         - name: redhat-pull-secret
           workspace: redhat-pull-secret
 
-
-    - name: build-push-and-export
-      runAfter:
-        - gather-rh-entitlements
+    - name: gather-rh-entitlements-arm64
       taskRef:
-        name: bootc-build-push-and-export
+        name: gather-rh-entitlements
+        kind: Task
+      runAfter:
+        - get-build-files
+      when:
+        - input: "$(params.bootc-build-platforms)"
+          operator: in
+          values: ["linux/arm64", "linux/amd64,linux/arm64", "linux/arm64,linux/amd64"]
+      params:
+        - name: PLATFORM
+          value: linux/arm64
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: redhat-credentials
+          workspace: redhat-credentials
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+    - name: build-amd64
+      runAfter:
+        - gather-rh-entitlements-amd64
+      when:
+        - input: "$(params.bootc-build-platforms)"
+          operator: in
+          values: ["linux/amd64", "linux/amd64,linux/arm64", "linux/arm64,linux/amd64"]
+      taskRef:
+        name: bootc-build-with-shared-storage
         kind: Task
       params:
         - name: IMAGE
           value: $(params.bootc-image-name)
-        - name: PLATFORMS
-          value: $(params.bootc-build-platforms)
-        - name: EXPORTS
-          value: $(params.bootc-build-export-formats)
+        - name: PLATFORM
+          value: linux/amd64
       workspaces:
         - name: source
           workspace: shared-workspace
@@ -151,16 +184,120 @@ spec:
         - name: quay-local-push-secret
           workspace: quay-local-push-secret
         - name: store
-          workspace: store
+          workspace: store-amd64
         - name: rpmmd
-          workspace: rpmmd
+          workspace: rpmmd-amd64
         - name: varlibcontainerstorage
-          workspace: varlibcontainerstorage
+          workspace: varlibcontainerstorage-amd64
+        - name: shared-container-storage
+          workspace: shared-container-storage
 
+    - name: build-arm64
+      runAfter:
+        - gather-rh-entitlements-arm64
+      when:
+        - input: "$(params.bootc-build-platforms)"
+          operator: in
+          values: ["linux/arm64", "linux/amd64,linux/arm64", "linux/arm64,linux/amd64"]
+      taskRef:
+        name: bootc-build-with-shared-storage
+        kind: Task
+      params:
+        - name: IMAGE
+          value: $(params.bootc-image-name)
+        - name: PLATFORM
+          value: linux/arm64
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: redhat-credentials
+          workspace: redhat-credentials
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+        - name: quay-local-push-secret
+          workspace: quay-local-push-secret
+        - name: store
+          workspace: store-arm64
+        - name: rpmmd
+          workspace: rpmmd-arm64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-arm64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+
+    - name: create-multiarch-manifest
+      runAfter:
+        - build-amd64
+        - build-arm64
+      when:
+        - input: "$(params.bootc-build-platforms)"
+          operator: in
+          values:
+            - "linux/amd64"
+            - "linux/arm64"
+            - "linux/amd64,linux/arm64"
+            - "linux/arm64,linux/amd64"
+      taskRef:
+        name: create-multiarch-manifest-with-shared-storage
+        kind: Task
+      params:
+        - name: IMAGE
+          value: $(params.bootc-image-name)
+        - name: PLATFORMS
+          value: $(params.bootc-build-platforms)
+      workspaces:
+        - name: quay-local-push-secret
+          workspace: quay-local-push-secret
+        - name: shared-container-storage
+          workspace: shared-container-storage
+
+    - name: generate-export-matrix
+      runAfter:
+        - create-multiarch-manifest
+      when:
+        - input: "$(params.bootc-build-export-formats)"
+          operator: notin
+          values: ["", '""', "''"]
+      taskRef:
+        name: generate-export-combinations
+        kind: Task
+      params:
+        - name: PLATFORMS
+          value: $(params.bootc-build-platforms)
+        - name: EXPORT_FORMATS
+          value: $(params.bootc-build-export-formats)
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: parallel-exports
+      runAfter:
+        - generate-export-matrix
+      taskRef:
+        name: bootc-single-export
+        kind: Task
+      matrix:
+        params:
+          - name: platform
+            value: $(tasks.generate-export-matrix.results.platform)
+          - name: format
+            value: $(tasks.generate-export-matrix.results.format)
+      params:
+        - name: IMAGE
+          value: $(params.bootc-image-name)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: varlibcontainerstorage-amd64
+          workspace: varlibcontainerstorage-amd64
+        - name: varlibcontainerstorage-arm64
+          workspace: varlibcontainerstorage-arm64
 
     - name: upload-exports
       runAfter:
-        - build-push-and-export
+        - parallel-exports
       taskRef:
         name: upload-files-object-storage
         kind: Task
@@ -179,11 +316,11 @@ spec:
         - name: source
           workspace: shared-workspace
         - name: object-storage-credentials
-          workspace: shared-workspace
+          workspace: object-storage-credentials
+
+
 
 ---
-
-
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -191,9 +328,8 @@ metadata:
   namespace: admin-tools
 spec:
   params:
-    - name: PLATFORMS
-      description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
-      default: linux/amd64,linux/arm64
+    - name: PLATFORM
+      description: Target platform (e.g., linux/amd64)
     - name: CONTEXT
       description: Build context
       default: ./
@@ -208,10 +344,10 @@ spec:
       optional: true
       mountPath: /root/redhat-credentials
   steps:
-    - name: build-and-save
+    - name: gather-entitlements
       image: quay.io/centos-bootc/bootc-image-builder:latest
       securityContext:
-        privileged: true  # Required for QEMU & binfmt_misc
+        privileged: true
         runAsUser: 0
         seLinuxOptions:
           type: container_file_t
@@ -219,136 +355,101 @@ spec:
       script: |
         #!/bin/bash
         set -e
-        declare -A RUN_GATHERING
-        echo "Checking if there are already entitlements"
-        echo "Contents:"
-        ls -r /root/redhat-entitlements
-        ALL_OK=true
-
-        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
-          DIR="/root/redhat-entitlements/${arch##*/}"
-          echo "Checking: $DIR"
-
-          if [ ! -d "$DIR" ]; then
-            echo "Directory does not exist: $DIR"
-            ALL_OK=false
-            RUN_GATHERING["${arch##*/}"]="true"
-          fi
-
-          # Check for at least one file (not directory) in $DIR
-          if ! find "$DIR" -mindepth 1 -maxdepth 1 -type f | grep -q .; then
-            echo "No files found in: $DIR"
-            ALL_OK=false
-            RUN_GATHERING["${arch##*/}"]="true"
-          else 
-
-            RUN_GATHERING["${arch##*/}"]="false"
-          fi
-        done
-
-        echo "Check results:"
-        echo "ALL_OK= $ALL_OK"
-        for key in "${!RUN_GATHERING[@]}"; do
-          echo "$key ${RUN_GATHERING[$key]}"
-        done
-
-        if [ "$ALL_OK" = "false" ]; then
-
-          echo "Enabling binfmt_misc for cross-arch builds..."
-          podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
-
-
-          echo "-------------------------------------------------------------------------------"
-          if [ -d "/root/redhat-credentials" ]; then
-            echo "Getting the entitlements..."
-            echo "Generating Containerfile to gather entitlements"
-            echo "Contents of context:"
-            ls $(params.CONTEXT)
-            for file in $(params.CONTEXT)/Dockerfile $(params.CONTEXT)/Containerfile; do
-              if [[ -f "$file" ]]; then
-                from_line=$(grep -E '^FROM ' "$file")
-                if [[ -n "$from_line" ]]; then
-                  export FROM_IMAGE=$(echo "$from_line" | awk '{print $2}')
-                  echo "Imagen base encontrada en $file: $FROM_IMAGE"
-                  break
-                fi
-              fi
-            done
-            if [[ -z "$FROM_IMAGE" ]]; then
-              echo "FROM statement not found in Dockerfile or Containerfile"
+        
+        PLATFORM="$(params.PLATFORM)"
+        ARCH="${PLATFORM##*/}"
+        DIR="/root/redhat-entitlements/${ARCH}"
+        
+        echo "Checking entitlements for platform: $(params.PLATFORM)"
+        echo "Architecture: $ARCH"
+        echo "Entitlements directory: $DIR"
+        
+        # Check if entitlements already exist
+        if [ -d "$DIR" ] && find "$DIR" -mindepth 1 -maxdepth 1 -type f | grep -q .; then
+          echo "Entitlements already exist for $ARCH"
+          exit 0
+        fi
+        
+        if [ ! -d "/root/redhat-credentials" ]; then
+          echo "Red Hat credentials not found; skipping entitlement gathering"
+          exit 0
+        fi
+        
+        echo "Enabling binfmt_misc for cross-arch builds..."
+        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+        
+        echo "Getting entitlements for $ARCH..."
+        
+        # Find FROM image
+        for file in $(params.CONTEXT)/Dockerfile $(params.CONTEXT)/Containerfile; do
+          if [[ -f "$file" ]]; then
+            from_line=$(grep -E '^FROM ' "$file")
+            if [[ -n "$from_line" ]]; then
+              export FROM_IMAGE=$(echo "$from_line" | awk '{print $2}')
+              echo "Base image found in $file: $FROM_IMAGE"
+              break
             fi
+          fi
+        done
+        
+        if [[ -z "$FROM_IMAGE" ]]; then
+          echo "FROM statement not found in Dockerfile or Containerfile"
+          exit 1
+        fi
 
         cat <<EOF > Containerfile.subs
         FROM $FROM_IMAGE
-        EOF
-        cat <<'EOF' >> Containerfile.subs
         RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-            echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username $(cat /run/secrets/username) --password $(cat /run/secrets/password) | tee /tmp/register_output && echo $(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo $(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ; \
+            echo "Registering with Red Hat subscription manager..."  && rm -rf /etc/rhsm-host && subscription-manager register --username \$(cat /run/secrets/username) --password \$(cat /run/secrets/password) | tee /tmp/register_output && echo \$(grep -o 'ID: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f2) > /etc/rhsm/system_id && echo \$(grep -o 'system name is: [a-f0-9-]*' /tmp/register_output | cut -d' ' -f4) > /etc/rhsm/host_id && rm -f /tmp/register_output ; \
             else \
             echo "Red Hat credentials not found; skipping subscription registration."; \
             fi
         RUN dnf -y --nogpgcheck install curl jq && dnf clean all
         RUN mkdir -p /entitlements && cp -a /etc/pki/entitlement/* /entitlements/
         RUN if [ -f /run/secrets/username ] && [ -f /run/secrets/password ]; then \
-            echo "Unregistering from Red Hat Cloud inventory..." && for uuid in $(curl -s -u "$(cat /run/secrets/username):$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*$') ; do curl -u "$(cat /run/secrets/username):$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/$uuid -H  "accept: */*" ;done && subscription-manager unregister && subscription-manager clean && ln -s /run/secrets/rhsm /etc/rhsm-host; \
+            echo "Unregistering from Red Hat Cloud inventory..." && for uuid in \$(curl -s -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" https://cloud.redhat.com/api/inventory/v1/hosts?fqdn=\$(cat /etc/rhsm/host_id) | grep -o '"id":"[^"]*' | grep -o '[^"]*\$') ; do curl -u "\$(cat /run/secrets/username):\$(cat /run/secrets/password)" -X DELETE https://cloud.redhat.com/api/inventory/v1/hosts/\$uuid -H  "accept: */*" ;done && subscription-manager unregister && subscription-manager clean && ln -s /run/secrets/rhsm /etc/rhsm-host; \
             else \
             echo "Red Hat credentials not found; skipping subscription clean-up."; \
             fi
         EOF
-            echo "Containerfile generated:"
-            cat Containerfile.subs
-
-
-            echo "Contents in entitlement directory:"
-            ls -r /root/redhat-entitlements/
-
-            for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
-
-                key="${arch##*/}"
-                if [ "${RUN_GATHERING[$key]}" = "true" ]; then
-                  echo "Gathering entitlements for ${arch##*/}"
-                  mkdir -p entitlements/${arch##*/}
-                  podman build -f Containerfile.subs --authfile /root/redhat-pull-secret/.dockerconfigjson  --volume /root/redhat-credentials:/run/secrets:ro --platform ${arch##*/} -t local-${arch##*/} .
-                  CONTAINER_ID=$(podman create local-${arch##*/})
-                  podman cp ${CONTAINER_ID}:/entitlements/. entitlements/${arch##*/}/
-                  podman rm ${CONTAINER_ID}
-                  podman rmi local-${arch##*/}
-                  mkdir -p /root/redhat-entitlements/${arch##*/}
-                  cp -r entitlements/${arch##*/}/* /root/redhat-entitlements/${arch##*/}
-
-                fi
-
-            done
-
-            echo "Entitlements generated:"
-            ls -R $(workspaces.rh-entitlements.path)
-          fi
-        fi
-
-
+        
+        echo "Building entitlement container for $ARCH..."
+        mkdir -p entitlements/$ARCH
+        podman build -f Containerfile.subs \
+          --authfile /root/redhat-pull-secret/.dockerconfigjson \
+          --volume /root/redhat-credentials:/run/secrets:ro \
+          --platform $ARCH \
+          -t local-$ARCH .
+          
+        CONTAINER_ID=$(podman create local-$ARCH)
+        podman cp ${CONTAINER_ID}:/entitlements/. entitlements/$ARCH/
+        podman rm ${CONTAINER_ID}
+        podman rmi local-$ARCH
+        
+        mkdir -p "$DIR"
+        cp -r entitlements/$ARCH/* "$DIR"
+        
+        echo "Entitlements gathered for $ARCH:"
+        ls -la "$DIR"
 
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: bootc-build-push-and-export
+  name: bootc-build-with-shared-storage
   namespace: admin-tools
 spec:
   params:
     - name: IMAGE
       description: Full image name including registry
+    - name: PLATFORM
+      description: Target platform (e.g., linux/amd64)
     - name: CONTAINERFILE
       description: Path to Containerfile
       default: ./Containerfile
     - name: CONTEXT
       description: Build context
       default: ./
-    - name: PLATFORMS
-      description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
-      default: linux/amd64,linux/arm64
-    - name: EXPORTS
-      description: Comma-separated target files extensions to be exported (e.g., anaconda-iso,qcow2)
-      default: ""
   workspaces:
     - name: source
     - name: rh-entitlements
@@ -369,11 +470,13 @@ spec:
       mountPath: /rpmmd
     - name: varlibcontainerstorage
       mountPath: /var/lib/containers/storage
+    - name: shared-container-storage
+      mountPath: /shared-containers
   steps:
-    - name: build-push-and-export
+    - name: build-and-push
       image: quay.io/centos-bootc/bootc-image-builder:latest
       securityContext:
-        privileged: true  # Required for QEMU & binfmt_misc
+        privileged: true
         runAsUser: 0
         seLinuxOptions:
           type: container_file_t
@@ -381,79 +484,253 @@ spec:
       script: |
         #!/bin/bash
         set -e
+        
         export IMAGE=$(params.IMAGE)
+        IMAGE="${IMAGE#http://}"
+        IMAGE="${IMAGE#https://}"
+        IMAGE="${IMAGE//\/\//\/}"
+        
+        PLATFORM="$(params.PLATFORM)"
+        ARCH="${PLATFORM##*/}"
+        TAG="${ARCH//\//-}"
+        IMAGE_WITH_ARCH_TAG="$IMAGE-$TAG"
+        
+        echo "Building for platform: $(params.PLATFORM)"
+        echo "Architecture: $ARCH"
+        echo "Image with arch tag: $IMAGE_WITH_ARCH_TAG"
+        
+        echo "Enabling binfmt_misc for cross-arch builds..."
+        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+        
+        echo "Moving entitlements for $ARCH..."
+        mkdir -p /etc/pki/entitlement
+        find $(workspaces.rh-entitlements.path)/$ARCH/ -type f -exec cp {} /etc/pki/entitlement \; 2>/dev/null || true
+        
+        echo "Building image for $ARCH..."
+        podman build \
+          --authfile /root/redhat-pull-secret/.dockerconfigjson \
+          --platform $ARCH \
+          -f $(params.CONTAINERFILE) \
+          -t $IMAGE_WITH_ARCH_TAG \
+          $(params.CONTEXT)
+        
+        echo "Pushing image: $IMAGE_WITH_ARCH_TAG"
+        podman push --authfile=/root/quay-local-push-secret/.dockerconfigjson $IMAGE_WITH_ARCH_TAG
+        
+        # Save image to shared storage for manifest creation
+        echo "Saving image to shared storage..."
+        mkdir -p /shared-containers
+        podman save $IMAGE_WITH_ARCH_TAG -o /shared-containers/$IMAGE_WITH_ARCH_TAG.tar
+        
+        echo "Build and push completed for $ARCH"
+
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: create-multiarch-manifest-with-shared-storage
+  namespace: admin-tools
+spec:
+  params:
+    - name: IMAGE
+      description: Full image name including registry
+    - name: PLATFORMS
+      description: Comma-separated target platforms (e.g., linux/amd64,linux/arm64)
+  workspaces:
+    - name: quay-local-push-secret
+      optional: true
+      mountPath: /root/quay-local-push-secret
+    - name: shared-container-storage
+      mountPath: /shared-containers
+  steps:
+    - name: create-manifest
+      image: quay.io/centos-bootc/bootc-image-builder:latest
+      script: |
+        #!/bin/bash
+        set -e
+        
+        export IMAGE=$(params.IMAGE)
+        IMAGE="${IMAGE#http://}"
+        IMAGE="${IMAGE#https://}"
+        IMAGE="${IMAGE//\/\//\/}"
+        
+        echo "Creating multiarch manifest: $IMAGE"
+        
+        # Load images from shared storage
+        echo "Loading images from shared storage..."
+        for arch_tar in /shared-containers/*.tar; do
+          if [ -f "$arch_tar" ]; then
+            echo "Loading $(basename $arch_tar)"
+            podman load -i "$arch_tar"
+          fi
+        done
+        
+        # List loaded images for debugging
+        echo "Available images:"
+        podman images | grep "${IMAGE%:*}"
+        
+        podman manifest create $IMAGE || echo "Manifest already exists, removing and recreating..."
+        podman manifest rm $IMAGE 2>/dev/null || true
+        podman manifest create $IMAGE
+        
+        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
+          tag="${arch//\//-}"
+          arch_image="$IMAGE-$tag"
+          echo "Adding $arch_image to manifest"
+          
+          # Check if the image exists locally
+          if podman image exists $arch_image; then
+            podman manifest add $IMAGE $arch_image
+          else
+            echo "Warning: Image $arch_image not found locally"
+          fi
+        done
+        
+        echo "Pushing manifest list..."
+        podman manifest push --authfile=/root/quay-local-push-secret/.dockerconfigjson --all $IMAGE docker://$IMAGE
+        
+        echo "Multiarch manifest created and pushed successfully"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: generate-export-combinations
+  namespace: admin-tools
+spec:
+  results:
+    - name: platform
+      description: JSON array of platforms
+      type: array
+    - name: format
+      description: JSON array of formats
+      type: array
+  params:
+    - name: PLATFORMS
+      description: Comma-separated target platforms
+    - name: EXPORT_FORMATS
+      description: Comma-separated export formats
+  workspaces:
+    - name: output
+  steps:
+    - name: generate-matrix
+      image: alpine:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        PLATFORMS="$(params.PLATFORMS)"
+        FORMATS="$(params.EXPORT_FORMATS)"
+        
+        # Create arrays for platforms and formats
+        platform_array=()
+        format_array=()
+        
+        # Generate all combinations
+        for platform in $(echo "$PLATFORMS" | tr ',' ' '); do
+          for format in $(echo "$FORMATS" | tr ',' ' '); do
+            platform_array+=("$platform")
+            format_array+=("$format")
+          done
+        done
+        
+        # Write results as JSON arrays
+        echo -n '[' > $(results.platform.path)
+        for i in "${!platform_array[@]}"; do
+          if [ $i -gt 0 ]; then
+            echo -n ',' >> $(results.platform.path)
+          fi
+          echo -n "\"${platform_array[$i]}\"" >> $(results.platform.path)
+        done
+        echo -n ']' >> $(results.platform.path)
+        
+        echo -n '[' > $(results.format.path)
+        for i in "${!format_array[@]}"; do
+          if [ $i -gt 0 ]; then
+            echo -n ',' >> $(results.format.path)
+          fi
+          echo -n "\"${format_array[$i]}\"" >> $(results.format.path)
+        done
+        echo -n ']' >> $(results.format.path)
+        
+        echo "Generated platform matrix: $(cat $(results.platform.path))"
+        echo "Generated format matrix: $(cat $(results.format.path))"
+
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootc-single-export
+  namespace: admin-tools
+spec:
+  params:
+    - name: IMAGE
+      description: Full image name including registry
+    - name: platform
+      description: Target platform (e.g., linux/amd64)
+    - name: format
+      description: Export format (e.g., qcow2)
+  workspaces:
+    - name: source
+    - name: varlibcontainerstorage-amd64
+      mountPath: /var/lib/containers/storage-amd64
+    - name: varlibcontainerstorage-arm64
+      mountPath: /var/lib/containers/storage-arm64
+  steps:
+    - name: export
+      image: quay.io/centos-bootc/bootc-image-builder:latest
+      securityContext:
+        privileged: true
+        runAsUser: 0
+        seLinuxOptions:
+          type: container_file_t
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/bash
+        set -e
+        
+        export IMAGE=$(params.IMAGE)
+        PLATFORM="$(params.platform)"
+        FORMAT="$(params.format)"
+        
         IMAGE="${IMAGE#http://}"
         IMAGE="${IMAGE#https://}"
         IMAGE="${IMAGE//\/\//\/}"
         IMAGE_NAME_TAG="${IMAGE##*/}"
         IMAGE_NAME="${IMAGE_NAME_TAG%%:*}"
         IMAGE_TAG="${IMAGE_NAME_TAG##*:}"
-        PWD=$(pwd)
-
-        echo "Enabling binfmt_misc for cross-arch builds..."
-        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
-
-        echo "Moving Entitlements"
-        mkdir -p /etc/pki/entitlement
-        find $(workspaces.rh-entitlements.path)/ -type f -exec cp {} /etc/pki/entitlement \;
-
-
-        echo "-------------------------------------------------------------------------------"
-        echo "Creating multiarch manifest: $IMAGE"
-        for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
-          tag="${arch//\//-}"
-          echo "Building for $arch -> $tag"
-
-          podman build --authfile /root/redhat-pull-secret/.dockerconfigjson \
-                        --platform ${arch##*/} -f $(params.CONTAINERFILE) -t $IMAGE-$tag $(params.CONTEXT)
-
-          podman push --authfile=/root/quay-local-push-secret/.dockerconfigjson $IMAGE-$tag
-          
-        done
-        echo "Creating and pushing manifest list..."
-        podman manifest create $IMAGE
-        for arch in $(echo $(params.PLATFORMS)  | tr ',' ' '); do
-          tag="${arch//\//-}"
-          podman manifest add $IMAGE $IMAGE-$tag
-        done
-        podman manifest push --authfile=/root/quay-local-push-secret/.dockerconfigjson --all $IMAGE docker://$IMAGE
-
-
-        echo "-------------------------------------------------------------------------------"
-        if [ -n "$(params.EXPORTS)" ]; then
-          echo "Starting the image export."
-
-          for arch in $(echo $(params.PLATFORMS) | tr ',' ' '); do
-            IMAGE_TAG="${IMAGE_TAG//./_}"
-            DIR_NAME="${IMAGE_NAME}_${IMAGE_TAG}_${arch##*/}"
-            rm -rf exported && mkdir -p exported/$DIR_NAME
-
-            tag="${arch//\//-}"
-            # Convert comma-separated to space-separated
-            IFS=',' read -ra items <<< "$(params.EXPORTS)"
-            echo "Converting to: ${items[@]}" 
-
-            for item in "${items[@]}"; do
-              echo "Exporting $item ..."
-              BUILD_BASE_IMAGE=$IMAGE-$tag
-
-              podman run  \
-                --platform=${arch} \
-                --rm \
-                --privileged \
-                --pull=newer \
-                --security-opt label=type:unconfined_t \
-                -v ./config.toml:/config.toml:ro \
-                -v ./exported/$DIR_NAME:/output \
-                -v $(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
-                quay.io/centos-bootc/bootc-image-builder:latest --type $item --use-librepo=True $BUILD_BASE_IMAGE
-            done
-          done
-
-          echo "Files exported:"
-          ls -R exported/
-        fi
-
+        IMAGE_TAG="${IMAGE_TAG//./_}"
+        
+        ARCH=$(echo "$PLATFORM" | cut -d'/' -f2)
+        TAG="${ARCH//\//-}"
+        DIR_NAME="${IMAGE_NAME}_${IMAGE_TAG}_${ARCH}_${FORMAT}"
+        STORAGE_PATH="/var/lib/containers/storage-${ARCH}"
+        
+        echo "Starting export: $PLATFORM - $FORMAT"
+        echo "Architecture: $ARCH"
+        echo "Storage path: $STORAGE_PATH"
+        
+        rm -rf exported/$DIR_NAME && mkdir -p exported/$DIR_NAME
+        
+        BUILD_BASE_IMAGE="$IMAGE-$TAG"
+        
+        echo "Exporting $BUILD_BASE_IMAGE to $FORMAT format"
+        podman run \
+          --platform=$PLATFORM \
+          --rm \
+          --privileged \
+          --pull=newer \
+          --security-opt label=type:unconfined_t \
+          -v ./config.toml:/config.toml:ro \
+          -v ./exported/$DIR_NAME:/output \
+          -v $STORAGE_PATH:/var/lib/containers/storage \
+          quay.io/centos-bootc/bootc-image-builder:latest \
+          --type $FORMAT \
+          --use-librepo=True \
+          $BUILD_BASE_IMAGE
+        
+        echo "Completed export: $PLATFORM - $FORMAT"
+        echo "Exported files:"
+        ls -lh exported/$DIR_NAME
 
 ---
 apiVersion: tekton.dev/v1
@@ -551,4 +828,164 @@ spec:
         echo "Copying subpath: $(params.bootc-build-files-repo-subpath)"
         rm -rf $(workspaces.output.path)/* 
         cp -r /tmp/repo/$(params.bootc-build-files-repo-subpath)/* $(workspaces.output.path)/
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: admin-pipelines-permissions
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
 
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
+          echo "Creating custom SCC for pipelines"
+          apply_with_retries oc apply -f - <<EOF
+          apiVersion: security.openshift.io/v1
+          kind: SecurityContextConstraints
+          metadata:
+            name: podman-multiarch
+          allowPrivilegedContainer: true
+          allowHostDirVolumePlugin: false
+          allowHostNetwork: false
+          allowHostPorts: false
+          allowHostPID: false
+          allowHostIPC: false
+          runAsUser:
+            type: RunAsAny
+          seLinuxContext:
+            type: RunAsAny
+          fsGroup:
+            type: RunAsAny
+          supplementalGroups:
+            type: RunAsAny
+          readOnlyRootFilesystem: false
+          volumes:
+            - configMap
+            - emptyDir
+            - projected
+            - secret
+            - persistentVolumeClaim
+            - downwardAPI
+            - ephemeral
+            - hostPath
+          users: []
+          groups: []
+          EOF
+
+          while true; do
+              if oc get tasks.tekton.dev -n default &> /dev/null; then
+                  echo "Tekton API (tekton.dev/v1) is ready"
+                  break
+              fi
+            sleep 10
+          done
+
+
+          sa="system:serviceaccount:bootc-tools:pipeline"
+          echo "Patching SCC to add $sa..."
+          oc patch scc podman-multiarch --type=json \
+            -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
+  
+
+          echo "Adding podman-multiarch"
+          sa="system:serviceaccount:admin-tools:pipeline"
+          echo "Patching SCC to add $sa..."
+          oc patch scc podman-multiarch --type=json \
+            -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
+
+
+          echo "Creating cross-namespace-pipeline-runner"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: cross-namespace-pipeline-runner
+          rules:
+          - apiGroups: ["tekton.dev"]
+            resources: ["pipelineruns"]
+            verbs: ["create", "get", "list", "watch", "delete", "update"]
+
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: pipeline-cross-namespace-binding
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cross-namespace-pipeline-runner
+          subjects:
+          - kind: ServiceAccount
+            name: pipeline-runner-dspa
+            namespace: admin-tools
+          EOFUP
+
+          echo "Creating pipeline ServiceAccount"
+          apply_with_retries  oc apply -f - <<EOFUP
+          ---
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: pipeline
+            namespace: admin-tools
+          secrets:
+            - name: quay-local-push-secret
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: pipeline-admin-tools
+            namespace: admin-tools
+          subjects:
+          - kind: ServiceAccount
+            name: pipeline
+            namespace: admin-tools
+          roleRef:
+            kind: ClusterRole
+            name: admin
+            apiGroup: rbac.authorization.k8s.io
+          EOFUP
+          
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 1
