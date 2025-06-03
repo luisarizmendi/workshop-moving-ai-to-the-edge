@@ -185,4 +185,3 @@ spec:
             type: RuntimeDefault
       restartPolicy: OnFailure
   backoffLimit: 6
-  backoffSeconds: 300

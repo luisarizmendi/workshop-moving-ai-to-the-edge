@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-arm-machineset
+  namespace: openshift-gitops
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      restartPolicy: Never
+      containers:
+      - name: bootstrap-arm
+        image: quay.io/luisarizmendi/ocp-job:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          set -e
+
+          echo "Finding a base MachineSet..."
+          BASE_MS=$(oc get machineset -n openshift-machine-api -o name | head -n 1)
+          echo "Using base MachineSet: $BASE_MS"
+
+          echo "Exporting and modifying MachineSet..."
+          oc get $BASE_MS -n openshift-machine-api -o yaml > /tmp/base-machineset.yaml
+
+          NAME_SUFFIX="arm64"
+          REGION=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
+          AMI_ID="<REPLACE_WITH_ARM64_AMI_ID>"
+
+          BASE_NAME=$(basename $BASE_MS)
+          NEW_NAME="${BASE_NAME%-*}-$NAME_SUFFIX"
+
+          sed "/name:/s/$BASE_NAME/$NEW_NAME/" /tmp/base-machineset.yaml \
+            | sed "s/instanceType: .*/instanceType: m6g.large/" \
+            | sed "s/ami:.*$/ami:\n              id: $AMI_ID/" \
+            | yq e '.metadata.name = "'"$NEW_NAME"'" |
+                    .spec.template.spec.metadata.labels."machine.openshift.io/arch" = "arm64" |
+                    .spec.template.spec.providerSpec.value.metadata.labels."machine.openshift.io/arch" = "arm64"' - \
+            > /tmp/arm-machineset.yaml
+
+          echo "Applying new ARM MachineSet..."
+          oc apply -f /tmp/arm-machineset.yaml -n openshift-machine-api
+
+          echo "ARM MachineSet creation complete."
