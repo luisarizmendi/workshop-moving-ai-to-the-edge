@@ -3,6 +3,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 
 ---
 apiVersion: v1
@@ -10,6 +12,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: bootc-build-shared-pvc
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -22,6 +26,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: bootc-build-entitlements-pvc
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -34,6 +40,8 @@ kind: Pipeline
 metadata:
   name: bootc-image-build-multiarch-parallel
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
 spec:
   params:
     - name: bootc-build-files-repo-url
@@ -326,6 +334,8 @@ kind: Task
 metadata:
   name: gather-rh-entitlements
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   params:
     - name: PLATFORM
@@ -438,6 +448,8 @@ kind: Task
 metadata:
   name: bootc-build-with-shared-storage
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   params:
     - name: IMAGE
@@ -530,6 +542,8 @@ kind: Task
 metadata:
   name: create-multiarch-manifest-with-shared-storage
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   params:
     - name: IMAGE
@@ -596,6 +610,8 @@ kind: Task
 metadata:
   name: generate-export-combinations
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   results:
     - name: platform
@@ -661,6 +677,8 @@ kind: Task
 metadata:
   name: bootc-single-export
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   params:
     - name: IMAGE
@@ -738,6 +756,8 @@ kind: Task
 metadata:
   name: upload-files-object-storage
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   params:
     - name: STORAGE-ENDPOINT
@@ -802,6 +822,8 @@ kind: Task
 metadata:
   name: git-clone-and-copy-subpath
   namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
 spec:
   params:
     - name: bootc-build-files-repo-url
