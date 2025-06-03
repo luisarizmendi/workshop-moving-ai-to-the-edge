@@ -496,28 +496,28 @@ spec:
       script: |
         #!/bin/bash
         set -e
-
+        
         export IMAGE=$(params.IMAGE)
         IMAGE="${IMAGE#http://}"
         IMAGE="${IMAGE#https://}"
         IMAGE="${IMAGE//\/\//\/}"
-
+        
         PLATFORM="$(params.PLATFORM)"
         ARCH="${PLATFORM##*/}"
         TAG="${ARCH//\//-}"
         IMAGE_WITH_ARCH_TAG="$IMAGE-$TAG"
-
+        
         echo "Building for platform: $(params.PLATFORM)"
         echo "Architecture: $ARCH"
         echo "Image with arch tag: $IMAGE_WITH_ARCH_TAG"
-
+        
         echo "Enabling binfmt_misc for cross-arch builds..."
         podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
-
+        
         echo "Moving entitlements for $ARCH..."
         mkdir -p /etc/pki/entitlement
         find $(workspaces.rh-entitlements.path)/$ARCH/ -type f -exec cp {} /etc/pki/entitlement \; 2>/dev/null || true
-
+        
         echo "Building image for $ARCH..."
         podman build \
           --authfile /root/redhat-pull-secret/.dockerconfigjson \
@@ -525,15 +525,13 @@ spec:
           -f $(params.CONTAINERFILE) \
           -t $IMAGE_WITH_ARCH_TAG \
           $(params.CONTEXT)
-
+        
         echo "Pushing image: $IMAGE_WITH_ARCH_TAG"
         podman push --authfile=/root/quay-local-push-secret/.dockerconfigjson $IMAGE_WITH_ARCH_TAG
-
-        # Save image to shared storage for manifest creation
+        
         echo "Saving image to shared storage..."
         mkdir -p /shared-containers
 
-        # Create a filesystem-safe filename by replacing problematic characters
         SAFE_FILENAME=$(echo "$IMAGE_WITH_ARCH_TAG" | sed 's/:/_/g' | sed 's/\//_/g')
         echo "Safe filename: $SAFE_FILENAME"
 
