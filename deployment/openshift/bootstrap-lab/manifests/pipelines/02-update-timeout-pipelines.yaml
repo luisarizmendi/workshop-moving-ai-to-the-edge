@@ -5,7 +5,7 @@ metadata:
   name: increase-tekton-timeout
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: Delete=true
 spec:
   template:
