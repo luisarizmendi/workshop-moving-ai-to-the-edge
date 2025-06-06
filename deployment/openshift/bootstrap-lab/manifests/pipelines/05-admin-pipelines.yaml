@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: bootc-tools
+  name: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 
@@ -11,7 +11,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: bootc-build-git-repo
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -26,7 +26,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: bootc-build-conatiner-storage
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -41,7 +41,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: bootc-build-entitlements
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -59,7 +59,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: gather-rh-entitlements
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -180,7 +180,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: bootc-build
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -274,7 +274,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: create-multiarch-manifest
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -359,7 +359,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: bootc-multi-export
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 
@@ -500,7 +500,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: upload-files-object-storage
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -567,7 +567,7 @@ apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: git-clone-and-copy-subpath
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
@@ -680,14 +680,14 @@ spec:
           done
 
 
-          sa="system:serviceaccount:bootc-tools:pipeline"
+          sa="system:serviceaccount:admin-tools:pipeline"
           echo "Patching SCC to add $sa..."
           oc patch scc podman-multiarch --type=json \
             -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
   
 
           echo "Adding podman-multiarch"
-          sa="system:serviceaccount:bootc-tools:pipeline"
+          sa="system:serviceaccount:admin-tools:pipeline"
           echo "Patching SCC to add $sa..."
           oc patch scc podman-multiarch --type=json \
             -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
@@ -717,7 +717,7 @@ spec:
           subjects:
           - kind: ServiceAccount
             name: pipeline-runner-dspa
-            namespace: bootc-tools
+            namespace: admin-tools
           EOFUP
 
           echo "Creating pipeline ServiceAccount"
@@ -727,19 +727,19 @@ spec:
           kind: ServiceAccount
           metadata:
             name: pipeline
-            namespace: bootc-tools
+            namespace: admin-tools
           secrets:
             - name: quay-local-push-secret
           ---
           apiVersion: rbac.authorization.k8s.io/v1
           kind: RoleBinding
           metadata:
-            name: pipeline-bootc-tools
-            namespace: bootc-tools
+            name: pipeline-admin-tools
+            namespace: admin-tools
           subjects:
           - kind: ServiceAccount
             name: pipeline
-            namespace: bootc-tools
+            namespace: admin-tools
           roleRef:
             kind: ClusterRole
             name: admin
@@ -763,7 +763,7 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: bootc-image-build-multiarch-parallel
-  namespace: bootc-tools
+  namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "6"
 spec:
