@@ -4,7 +4,7 @@ FROM registry.fedoraproject.org/fedora:latest AS builder
 ENV HELM_VERSION="v3.13.2"
 ENV ARCH="amd64"
 
-RUN dnf install -y git make unzip golang jq tar gzip curl 
+RUN dnf install -y git make unzip golang jq tar gzip curl python3-pip
 
 #RUN git clone https://github.com/red-hat-storage/odf-cli.git /src/odf-cli
 #WORKDIR /src/odf-cli
@@ -20,11 +20,13 @@ RUN VERSION=$(curl -s https://api.github.com/repos/noobaa/noobaa-operator/releas
     tar -xvzf noobaa-operator-$VERSION-linux-amd64.tar.gz && \
     chmod +x noobaa-operator
 
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-        unzip -q awscliv2.zip && \
-        ./aws/install && \
-        rm -rf awscliv2.zip aws
-
+#RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+#        unzip -q awscliv2.zip && \
+#        ./aws/install && \
+#        rm -rf awscliv2.zip aws
+RUN curl -O https://dl.min.io/client/mc/release/linux-amd64/mc && \
+    chmod +x mc && \
+    sudo mv mc /usr/local/bin/
 
 # Stage 2: Final image
 FROM quay.io/openshift/origin-cli:latest
@@ -36,7 +38,7 @@ RUN dnf install -y ansible-core jq tar gzip skopeo && dnf clean all
 COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
 #COPY --from=builder /src/odf-cli/bin/odf /usr/local/bin/odf
 #COPY --from=builder /src/odf-cli/noobaa-operator /usr/local/bin/noobaa
-COPY --from=builder /usr/local/bin/aws /usr/local/bin/aws
+COPY --from=builder /usr/local/bin/mc /usr/local/bin/mc
 
 RUN chmod +x /usr/local/bin/*
 

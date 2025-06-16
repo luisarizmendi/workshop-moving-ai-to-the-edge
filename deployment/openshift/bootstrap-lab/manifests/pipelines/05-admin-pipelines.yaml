@@ -40,6 +40,21 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  name: bootc-exports
+  namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  storageClassName: ocs-storagecluster-cephfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
   name: bootc-build-entitlements
   namespace: admin-tools
   annotations:
@@ -119,7 +134,7 @@ spec:
         fi
         
         echo "Enabling binfmt_misc for cross-arch builds..."
-        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes 2>/dev/null || echo "binfmt setup completed (some handlers may have already existed)"
         
         echo "Getting entitlements for $ARCH..."
         
@@ -269,6 +284,7 @@ spec:
 
         echo "Build and push completed for $ARCH"
 
+
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -350,8 +366,13 @@ spec:
         
         echo "Pushing manifest list..."
         podman manifest push --authfile=/root/quay-local-push-secret/.dockerconfigjson --all $IMAGE docker://$IMAGE
-        
+
+        LOCAL_ARCHIVE="/shared-containers/$(basename "${IMAGE}").manifest.tar"
+        echo "Saving manifest list to $LOCAL_ARCHIVE"
+        podman manifest push --authfile=/root/quay-local-push-secret/.dockerconfigjson --all --format oci "$IMAGE" "oci:$LOCAL_ARCHIVE"
         echo "Multiarch manifest created and pushed successfully"
+
+
 
 
 ---
@@ -385,9 +406,6 @@ spec:
       description: Format to be exported during this iteration
       name: format-export
       type: string
-  results:
-    - name: no-exports
-      description: "Set to true if no exports were generated due to empty format list"
   workspaces:
     - name: source
     - name: store
@@ -398,6 +416,17 @@ spec:
       mountPath: /var/lib/containers/storage
     - name: shared-container-storage
       mountPath: /shared-containers
+    - name: redhat-pull-secret
+      optional: true
+      mountPath: /root/redhat-pull-secret
+    - name: quay-local-push-secret
+      optional: true
+      mountPath: /root/quay-local-push-secret
+    - name: bootc-exports
+      mountPath: /bootc-exports
+    - name: rh-entitlements
+      optional: true
+      mountPath: /root/rh-entitlements
   steps:
     - name: generate-and-run-jobs
       image: quay.io/centos-bootc/bootc-image-builder:latest
@@ -413,6 +442,9 @@ spec:
       workingDir: $(workspaces.source.path)
       script: |
         #!/bin/bash
+
+        ## ISSUE: https://github.com/osbuild/bootc-image-builder/issues/927
+
         set -euo pipefail
 
         PLATFORM_ITEM=$(params.platform-export)
@@ -442,6 +474,16 @@ spec:
             esac
         done
 
+
+        IMAGE="${IMAGE#http://}"
+        IMAGE="${IMAGE#https://}"
+        IMAGE="${IMAGE//\/\//\/}"
+
+        ARCH="${PLATFORM_ITEM##*/}"
+        TAG="${ARCH//\//-}"
+        IMAGE_WITH_ARCH_TAG="$IMAGE-$TAG"
+
+
         # The rest of the arguments go into formats
         FORMATS=("$@")
 
@@ -449,51 +491,62 @@ spec:
         if [[ ! " ${PLATFORMS[*]} " =~ (^|[[:space:]])"${PLATFORM_ITEM}"($|[[:space:]]) ]] \
           || [[ ! " ${FORMATS[*]} "    =~ (^|[[:space:]])"${FORMAT_ITEM}"($|[[:space:]]) ]]; then
             echo "No combination found for requested platforms and formats"
-            echo "Platforms: ${PLATFORMS[@]}"
-            echo "Formats: ${FORMATS[@]}"
-            echo "Platform to be exported now: $PLATFORM_ITEM"
-            echo "Format to be exported now: $FORMAT_ITEM"
+            echo "Requested platforms: ${PLATFORMS[@]}"
+            echo "Requested formats: ${FORMATS[@]}"
             exit 0
         fi
 
         #both values are present;
         echo "${PLATFORM_ITEM} - ${FORMAT_ITEM} found, continuing exporting $IMAGE"
-        echo -n "false" > $(results.no-exports.path)
+
 
         IMAGE_NAME_TAG=$(basename "$IMAGE")
         SANITIZED_NAME_TAG=$(echo "$IMAGE_NAME_TAG" | sed 's/:/_/')
         DIR_NAME=$(echo "$SANITIZED_NAME_TAG" | sed 's/[^A-Za-z0-9._-]/_/g')
         DIR_NAME=${DIR_NAME}-${FORMAT_ITEM}
-        rm -rf exported/$DIR_NAME && mkdir -p exported/$DIR_NAME
+        rm -rf /bootc-exports/$(echo "$PLATFORM_ITEM" | sed 's|linux/||')/$DIR_NAME && mkdir -p /bootc-exports/$(echo "$PLATFORM_ITEM" | sed 's|linux/||')/$DIR_NAME
 
 
 
         echo "Enabling binfmt_misc for cross-arch builds..."
-        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes
+        podman run --rm --privileged docker.io/multiarch/qemu-user-static --reset -p yes 2>/dev/null || echo "binfmt setup completed (some handlers may have already existed)"
+
+        echo "Moving Entitlements"
+        mkdir -p /etc/pki/entitlement
+        find \$(workspaces.rh-entitlements.path)/ -type f -exec cp {} /etc/pki/entitlement \;
 
         echo "Loading images from shared storage..."
         ls /shared-containers/*.tar
-        for arch_tar in /shared-containers/*.tar; do
-          if [ -f "$arch_tar" ]; then
-            echo "Loading $(basename $arch_tar)"
-            podman load -i "$arch_tar"
-          fi
-        done
+        SAFE_FILENAME=$(echo "$IMAGE_WITH_ARCH_TAG" | sed 's/:/_/g' | sed 's/\//_/g')
+        echo "Loading /shared-containers/$SAFE_FILENAME.tar"
+        podman load -i /shared-containers/$SAFE_FILENAME.tar
 
-        podman run  \
+        echo "tag image $IMAGE_WITH_ARCH_TAG as $IMAGE"
+        podman tag $IMAGE_WITH_ARCH_TAG $IMAGE
+       
+        echo "Loaded images:"
+        podman image list
+        sudo podman pull --authfile=/root/quay-local-push-secret/.dockerconfigjson --platform=${PLATFORM_ITEM} $IMAGE
+
+        echo "Files exported before:"
+        ls -R /bootc-exports
+
+        echo "Building for arch $(echo "$PLATFORM_ITEM" | sed 's|linux/||')"
+
+        sudo podman run  \
           --platform=${PLATFORM_ITEM} \
           --rm \
           --privileged \
           --pull=newer \
           --security-opt label=type:unconfined_t \
-          -v ./config.toml:/config.toml:ro \
-          -v ./exported/$DIR_NAME:/output \
-          -v $(workspaces.varlibcontainerstorage.path):/var/lib/containers/storage \
-          quay.io/centos-bootc/bootc-image-builder:latest --type ${FORMAT_ITEM} --use-librepo=True $IMAGE
+          -v ./config.toml:/config.toml:z \
+          -v /bootc-exports/$(echo "$PLATFORM_ITEM" | sed 's|linux/||')/$DIR_NAME:/output \
+          -v /var/lib/containers/storage:/var/lib/containers/storage \
+          quay.io/centos-bootc/bootc-image-builder:latest --target-arch $(echo "$PLATFORM_ITEM" | sed 's|linux/||') --type ${FORMAT_ITEM} --use-librepo=True $IMAGE
 
-        echo "Files exported:"
-        ls -R exported/
-
+        echo "Files exported after:"
+        ls -R /bootc-exports
+        
 
 ---
 apiVersion: tekton.dev/v1
@@ -520,7 +573,7 @@ spec:
       type: string
       default: "local"
   workspaces:
-    - name: source
+    - name: bootc-exports
       description: Workspace where the files are contained
     - name: object-storage-credentials
       description: Secret with the object storage credentials
@@ -547,7 +600,7 @@ spec:
         export BUCKET="$(params.STORAGE-BUCKET)"
         export SUBPATH="$(params.SUBPATH)"
         
-        cd $(workspaces.source.path)/${SUBPATH}
+        cd $(workspaces.bootc-exports.path)/${SUBPATH}
         
         echo "Files to be uploaded from $(pwd):"
         find . -type f | sort
@@ -596,11 +649,49 @@ spec:
         echo "Copying subpath: $(params.bootc-build-files-repo-subpath)"
         rm -rf $(workspaces.output.path)/* 
         cp -r /tmp/repo/$(params.bootc-build-files-repo-subpath)/* $(workspaces.output.path)/
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: check-array-empty
+  namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  params:
+    - name: array-param
+      type: array
+      description: "Input array param to check"
+  results:
+    - name: array-status
+      description: "Result is 'empty' or 'not-empty'"
+  steps:
+    - name: check-empty
+      image: bash:5
+      args:
+        - '$(params.array-param[*])'
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        export first_export="$1"
+
+        if [ -z "$first_export" ]; then
+          echo "No exports found"
+          echo -n "empty" > "$(results.array-status.path)"
+        else
+          echo "Exports!"
+          echo -n "not-empty" > "$(results.array-status.path)"
+        fi
+
+
+
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: admin-pipelines-permissions
+  name: admin-tools-pipelines-permissions
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "4"
@@ -810,6 +901,8 @@ spec:
       description: "Volume used for storing Red Hat Entitlements"
     - name: shared-container-storage
       description: "Volume used for shared container storage"
+    - name: bootc-exports
+      description: "Volume used for file exports storage"
     - name: redhat-pull-secret
       description: "Secret with the Red Hat container registry pull credentials"
     - name: quay-local-push-secret
@@ -987,10 +1080,23 @@ spec:
         - name: shared-container-storage
           workspace: shared-container-storage
 
+    - name: check-exports
+      taskRef:
+        name: check-array-empty
+      runAfter:
+        - create-multiarch-manifest
+      params:
+        - name: array-param
+          value: ["$(params.bootc-build-export-formats)"]
+
 
     - name: parallel-exports-amd64
       runAfter:
-        - create-multiarch-manifest
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
       taskRef:
         name: bootc-multi-export
         kind: Task
@@ -1010,6 +1116,10 @@ spec:
       workspaces:
         - name: source
           workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
         - name: store
           workspace: store-amd64
         - name: rpmmd
@@ -1018,11 +1128,19 @@ spec:
           workspace: varlibcontainerstorage-amd64
         - name: shared-container-storage
           workspace: shared-container-storage
+        - name: quay-local-push-secret
+          workspace: quay-local-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
 
 
     - name: parallel-exports-arm64
       runAfter:
-        - create-multiarch-manifest
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
       taskRef:
         name: bootc-multi-export
         kind: Task
@@ -1042,6 +1160,10 @@ spec:
       workspaces:
         - name: source
           workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
         - name: store
           workspace: store-arm64
         - name: rpmmd
@@ -1050,7 +1172,10 @@ spec:
           workspace: varlibcontainerstorage-arm64
         - name: shared-container-storage
           workspace: shared-container-storage
-
+        - name: quay-local-push-secret
+          workspace: quay-local-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
 
 
 
@@ -1058,16 +1183,13 @@ spec:
       runAfter:
         - parallel-exports-amd64
         - parallel-exports-arm64
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
       taskRef:
         name: upload-files-object-storage
         kind: Task
-      when:
-        - input: "$(tasks.parallel-exports-amd64.results.no-exports)"
-          operator: in
-          values: ["false"]
-        - input: "$(tasks.parallel-exports-arm64.results.no-exports)"
-          operator: in
-          values: ["false"]
       params:
         - name: STORAGE-ENDPOINT
           value: $(params.object-storage-endpoint)
@@ -1076,7 +1198,7 @@ spec:
         - name: SUBPATH
           value: "exports"
       workspaces:
-        - name: source
-          workspace: shared-git-repo
+        - name: bootc-exports
+          workspace: bootc-exports
         - name: object-storage-credentials
           workspace: object-storage-credentials

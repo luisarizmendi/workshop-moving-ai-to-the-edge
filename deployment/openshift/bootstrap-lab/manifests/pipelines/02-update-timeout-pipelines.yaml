@@ -41,7 +41,7 @@ spec:
             done
           }
 
-          patch_with_retries
+          #patch_with_retries
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

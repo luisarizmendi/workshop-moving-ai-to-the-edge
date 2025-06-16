@@ -7,7 +7,10 @@
 #	  -n openshift-machine-config-operator \
 #	  -o jsonpath='{.data.stream}' | jq \
 #	  -r '.architectures.<arch>.images.aws.regions."<region>".image'
-
+#
+# For example: oc get configmap/coreos-bootimages -n openshift-machine-config-operator -o jsonpath='{.data.stream}' | jq -r '.architectures.aarch64.images.aws.regions."us-east-2".image'
+#  ->  it will get output: ami-0b04071739ccf4af2
+# 
 ################
 
 
@@ -30,6 +33,14 @@ spec:
         - |
           set -e
 
+          ##########################################
+          #             REPLACE THIS !
+          ##########################################
+          
+          export AMI_ID="<REPLACE_WITH_ARM64_AMI_ID>"
+          
+          ##########################################
+          ##########################################
           echo "Finding a base MachineSet..."
           BASE_MS=$(oc get machineset -n openshift-machine-api -o name | head -n 1)
           echo "Using base MachineSet: $BASE_MS"
@@ -39,20 +50,30 @@ spec:
 
           NAME_SUFFIX="arm64"
           REGION=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
-          AMI_ID="<REPLACE_WITH_ARM64_AMI_ID>"
 
           BASE_NAME=$(basename $BASE_MS)
           NEW_NAME="${BASE_NAME%-*}-$NAME_SUFFIX"
 
-          sed "/name:/s/$BASE_NAME/$NEW_NAME/" /tmp/base-machineset.yaml \
-            | sed "s/instanceType: .*/instanceType: m6g.large/" \
-            | sed "s/ami:.*$/ami:\n              id: $AMI_ID/" \
-            | yq e '.metadata.name = "'"$NEW_NAME"'" |
-                    .spec.template.spec.metadata.labels."machine.openshift.io/arch" = "arm64" |
-                    .spec.template.spec.providerSpec.value.metadata.labels."machine.openshift.io/arch" = "arm64"' - \
-            > /tmp/arm-machineset.yaml
+          cp /tmp/base-machineset.yaml /tmp/new-machineset.yaml
 
-          echo "Applying new ARM MachineSet..."
-          oc apply -f /tmp/arm-machineset.yaml -n openshift-machine-api
+          sed -i "s/^  name: $BASE_NAME/  name: $NEW_NAME/" /tmp/new-machineset.yaml
+          sed -i "s/machine.openshift.io\/cluster-api-machineset: $BASE_NAME/machine.openshift.io\/cluster-api-machineset: $NEW_NAME/g" /tmp/new-machineset.yaml
+          sed -i "s/^\([[:space:]]*id:[[:space:]]*\)ami-.*/\1$AMI_ID/" /tmp/new-machineset.yaml
+          sed -i 's/amd64/arm64/g' /tmp/new-machineset.yaml
+          sed -i "s/instanceType: .*/instanceType: m6g.large/" /tmp/new-machineset.yaml
+          sed -i 's/^\([[:space:]]*replicas:[[:space:]]*\)[0-9]\+/\11/' /tmp/new-machineset.yaml
 
-          echo "ARM MachineSet creation complete."
+          echo "Creating this object:"
+          cat /tmp/new-machineset.yaml
+
+          echo "Creating new MachineSet: $NEW_NAME"
+          oc apply -f /tmp/new-machineset.yaml
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+  backoffLimit: 1
