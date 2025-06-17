@@ -77,6 +77,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: PLATFORM
@@ -198,6 +199,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: IMAGE
@@ -293,6 +295,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: IMAGE
@@ -383,6 +386,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 
 spec:
   params:
@@ -556,6 +560,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: STORAGE-ENDPOINT
@@ -575,45 +580,41 @@ spec:
   workspaces:
     - name: bootc-exports
       description: Workspace where the files are contained
+      mountPath: /bootc-exports
     - name: object-storage-credentials
       description: Secret with the object storage credentials
+      mountPath: /root/object-storage-credentials
   steps:
     - name: upload-files
-      image: quay.io/luisarizmendi/ocp-job:latest
-      env:
-      - name: AWS_ACCESS_KEY_ID
-        valueFrom:
-          secretKeyRef:
-            name: $(workspaces.object-storage-credentials.secret.secretName)
-            key: AWS_ACCESS_KEY_ID
-      - name: AWS_SECRET_ACCESS_KEY
-        valueFrom:
-          secretKeyRef:
-            name: $(workspaces.object-storage-credentials.secret.secretName)
-            key: AWS_SECRET_ACCESS_KEY
+      image: amazon/aws-cli:latest
       script: |
         #!/bin/sh
         set -e
 
-        export AWS_REGION="$(params.REGION)"
-        export AWS_ENDPOINT_URL="$(params.STORAGE-ENDPOINT)"
-        export BUCKET="$(params.STORAGE-BUCKET)"
-        export SUBPATH="$(params.SUBPATH)"
-        
-        cd $(workspaces.bootc-exports.path)/${SUBPATH}
-        
+        # Read credentials from files
+        ACCESS_KEY=$(cat /root/object-storage-credentials/AWS_ACCESS_KEY_ID)
+        SECRET_KEY=$(cat /root/object-storage-credentials/AWS_SECRET_ACCESS_KEY)
+        REGION="$(params.REGION)" 
+        ENDPOINT="$(params.STORAGE-ENDPOINT)"
+        BUCKET="$(params.STORAGE-BUCKET)"
+        SUBPATH="$(params.SUBPATH)"
+
+        # Setup mc alias
+        mc alias set odf "$ENDPOINT" "$ACCESS_KEY" "$SECRET_KEY" --insecure
+
+        cd /bootc-exports/${SUBPATH}
+
         echo "Files to be uploaded from $(pwd):"
         find . -type f | sort
-                          
-        echo "Uploading files to s3://${BUCKET}/${SUBPATH}"
-        aws s3 sync . s3://${BUCKET}/${SUBPATH} \
-          --endpoint-url=${AWS_ENDPOINT_URL} \
-          --no-verify-ssl \
-          --no-progress
-        
+
+        echo "Uploading files to odf/${BUCKET}/${SUBPATH}"
+        mc cp --recursive . "odf/${BUCKET}/${SUBPATH}"
+
         echo "Upload completed successfully"
         echo "Objects in bucket:"
-        aws s3 ls s3://${BUCKET}/${SUBPATH} --recursive --endpoint-url=${AWS_ENDPOINT_URL} --no-verify-ssl
+        mc ls --recursive "odf/${BUCKET}/${SUBPATH}"
+
+
 
 ---
 apiVersion: tekton.dev/v1
@@ -623,6 +624,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: bootc-build-files-repo-url
@@ -658,6 +660,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: array-param
@@ -857,6 +860,7 @@ metadata:
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   params:
     - name: bootc-build-files-repo-url
