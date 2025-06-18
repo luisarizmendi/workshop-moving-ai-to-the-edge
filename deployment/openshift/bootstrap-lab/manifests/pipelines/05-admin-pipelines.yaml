@@ -67,7 +67,18 @@ spec:
     requests:
       storage: 100Mi
 
-
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-containers-conf
+  namespace: admin-tools
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+data:
+  containers.conf: |
+    [engine]
+    num_locks = 10240
 
 ---
 apiVersion: tekton.dev/v1
@@ -666,6 +677,7 @@ spec:
     - name: array-param
       type: array
       description: "Input array param to check"
+      default: []
   results:
     - name: array-status
       description: "Result is 'empty' or 'not-empty'"
@@ -676,11 +688,9 @@ spec:
         - '$(params.array-param[*])'
       script: |
         #!/usr/bin/env bash
-        set -euo pipefail
+        set -eo pipefail
 
-        export first_export="$1"
-
-        if [ -z "$first_export" ]; then
+        if [ "$#" -eq 0 ]; then
           echo "No exports found"
           echo -n "empty" > "$(results.array-status.path)"
         else

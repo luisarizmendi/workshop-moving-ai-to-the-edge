@@ -5,7 +5,7 @@ metadata:
   name: increase-tekton-timeout
   namespace: openshift-gitops
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: Delete=true
 spec:
   template:
@@ -41,7 +41,7 @@ spec:
             done
           }
 
-          patch_with_retries
+          patch_with_retries       
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
