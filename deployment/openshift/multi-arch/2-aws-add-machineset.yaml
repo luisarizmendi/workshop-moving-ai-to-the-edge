@@ -18,7 +18,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: create-arm-machineset
+  name: create-machineset
   namespace: openshift-gitops
 spec:
   template:
@@ -26,7 +26,7 @@ spec:
       serviceAccountName: openshift-gitops-argocd-application-controller
       restartPolicy: Never
       containers:
-      - name: bootstrap-arm
+      - name: create-machineset
         image: quay.io/luisarizmendi/ocp-job:latest
         command: ["/bin/sh", "-c"]
         args:
@@ -38,6 +38,18 @@ spec:
           ##########################################
           
           export AMI_ID="<REPLACE_WITH_ARM64_AMI_ID>"
+
+          ##########################################
+          #          Change it if you want
+          ##########################################
+
+          export NAME_SUFFIX="build-arm64"
+
+          export TYPE="m6g.large"
+          export ARCH="arm64"          
+          export GPU="0"
+          export MEMORY_MB="8192"
+          export VCPU="2"
           
           ##########################################
           ##########################################
@@ -48,7 +60,6 @@ spec:
           echo "Exporting and modifying MachineSet..."
           oc get $BASE_MS -n openshift-machine-api -o yaml > /tmp/base-machineset.yaml
 
-          NAME_SUFFIX="arm64"
           REGION=$(oc get infrastructure cluster -o jsonpath='{.status.platformStatus.aws.region}')
 
           BASE_NAME=$(basename $BASE_MS)
@@ -59,9 +70,21 @@ spec:
           sed -i "s/^  name: $BASE_NAME/  name: $NEW_NAME/" /tmp/new-machineset.yaml
           sed -i "s/machine.openshift.io\/cluster-api-machineset: $BASE_NAME/machine.openshift.io\/cluster-api-machineset: $NEW_NAME/g" /tmp/new-machineset.yaml
           sed -i "s/^\([[:space:]]*id:[[:space:]]*\)ami-.*/\1$AMI_ID/" /tmp/new-machineset.yaml
-          sed -i 's/amd64/arm64/g' /tmp/new-machineset.yaml
-          sed -i "s/instanceType: .*/instanceType: m6g.large/" /tmp/new-machineset.yaml
+          sed -i "s/^\([[:space:]]*capacity\.cluster-autoscaler\.kubernetes\.io\/labels:[[:space:]]*kubernetes\.io\/arch=\).*/\1$ARCH/" /tmp/new-machineset.yaml
+          sed -i "s/instanceType: .*/instanceType: $TYPE/" /tmp/new-machineset.yaml
           sed -i 's/^\([[:space:]]*replicas:[[:space:]]*\)[0-9]\+/\11/' /tmp/new-machineset.yaml
+          sed -i "s/^\([[:space:]]*machine.openshift.io\/GPU:[[:space:]]*'\)[^']*'/\1$GPU'/" /tmp/new-machineset.yaml
+          sed -i "s/^\([[:space:]]*machine.openshift.io\/memoryMb:[[:space:]]*'\)[^']*'/\1$MEMORY_MB'/" /tmp/new-machineset.yaml
+          sed -i "s/^\([[:space:]]*machine.openshift.io\/vCPU:[[:space:]]*'\)[^']*'/\1$VCPU'/" /tmp/new-machineset.yaml
+
+          # Taints
+          sed -i '/template:/,/spec:/ {
+            /spec:/a\
+                taints:\
+                - effect: NoSchedule\
+                  key: node.kubernetes.io/arch\
+                  value: arm64
+          }' /tmp/new-machineset.yaml
 
           echo "Creating this object:"
           cat /tmp/new-machineset.yaml

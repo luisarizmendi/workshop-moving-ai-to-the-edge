@@ -664,7 +664,7 @@ spec:
         cp -r /tmp/repo/$(params.bootc-build-files-repo-subpath)/* $(workspaces.output.path)/
 
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Task
 metadata:
   name: check-array-empty
