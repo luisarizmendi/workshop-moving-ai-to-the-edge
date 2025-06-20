@@ -15,7 +15,7 @@ spec:
     - name: bootc-build-files-repo-branch
       value: main
     - name: bootc-build-files-repo-subpath
-      value: resources/solutions/platform-specialist/image-building/default
+      value: resources/solutions/platform-specialist/image-building/devices/default
     - name: bootc-image-name
       value: 'workshop-registry-quay-openshift-operators.apps.cluster-drfhw.drfhw.sandbox2016.opentlc.com/user99/myrhel:10.0'
     - name: bootc-build-export-formats
@@ -38,40 +38,6 @@ spec:
     serviceAccountName: pipeline
   timeouts:
     pipeline: 2h0m0s
-  workspaces:
-    - name: shared-git-repo
-      persistentVolumeClaim:
-        claimName: bootc-build-git-repo
-    - name: rh-entitlements
-      persistentVolumeClaim:
-        claimName: bootc-build-entitlements
-    - name: shared-container-storage
-      persistentVolumeClaim:
-        claimName: bootc-build-conatiner-storage
-    - name: bootc-exports
-      persistentVolumeClaim:
-        claimName: bootc-exports
-    - name: redhat-pull-secret
-      secret:
-        secretName: redhat-pull-secret
-    - name: quay-local-push-secret
-      secret:
-        secretName: quay-local-push-secret
-    - name: object-storage-credentials
-      secret:
-        secretName: user99-bootc-exports
-    - emptyDir: {}
-      name: store-amd64
-    - emptyDir: {}
-      name: rpmmd-amd64
-    - emptyDir: {}
-      name: varlibcontainerstorage-amd64
-    - emptyDir: {}
-      name: store-arm64
-    - emptyDir: {}
-      name: rpmmd-arm64
-    - emptyDir: {}
-      name: varlibcontainerstorage-arm64
   taskRunSpecs:
     # ARM64 tasks — prefer arm64 nodes
     - pipelineTaskName: gather-rh-entitlements-arm64
@@ -108,7 +74,7 @@ spec:
             operator: "Equal"
             value: "arm64"
             effect: "NoSchedule"
-    - pipelineTaskName: parallel-exports-arm64
+    - pipelineTaskName: export-arm64-iso
       podTemplate:
         affinity:
           nodeAffinity:
@@ -125,6 +91,91 @@ spec:
             operator: "Equal"
             value: "arm64"
             effect: "NoSchedule"
+    - pipelineTaskName: export-arm64-qcow2
+      podTemplate:
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: kubernetes.io/arch
+                      operator: In
+                      values:
+                        - arm64
+        tolerations:
+          - key: "node.kubernetes.io/arch"
+            operator: "Equal"
+            value: "arm64"
+            effect: "NoSchedule"
+    - pipelineTaskName: export-arm64-vmdk
+      podTemplate:
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: kubernetes.io/arch
+                      operator: In
+                      values:
+                        - arm64
+        tolerations:
+          - key: "node.kubernetes.io/arch"
+            operator: "Equal"
+            value: "arm64"
+            effect: "NoSchedule"
+    - pipelineTaskName: export-arm64-raw
+      podTemplate:
+        affinity:
+          nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                    - key: kubernetes.io/arch
+                      operator: In
+                      values:
+                        - arm64
+        tolerations:
+          - key: "node.kubernetes.io/arch"
+            operator: "Equal"
+            value: "arm64"
+            effect: "NoSchedule"
+  workspaces:
+    - name: shared-git-repo
+      persistentVolumeClaim:
+        claimName: bootc-build-git-repo
+    - name: rh-entitlements
+      persistentVolumeClaim:
+        claimName: bootc-build-entitlements
+    - name: shared-container-storage
+      persistentVolumeClaim:
+        claimName: bootc-build-conatiner-storage
+    - name: bootc-exports
+      persistentVolumeClaim:
+        claimName: bootc-exports
+    - name: redhat-pull-secret
+      secret:
+        secretName: redhat-pull-secret
+    - name: registry-push-secret
+      secret:
+        secretName: quay-local-push-secret
+    - name: object-storage-credentials
+      secret:
+        secretName: user99-bootc-exports
+    - emptyDir: {}
+      name: store-amd64
+    - emptyDir: {}
+      name: rpmmd-amd64
+    - emptyDir: {}
+      name: varlibcontainerstorage-amd64
+    - emptyDir: {}
+      name: store-arm64
+    - emptyDir: {}
+      name: rpmmd-arm64
+    - emptyDir: {}
+      name: varlibcontainerstorage-arm64
 
 
 

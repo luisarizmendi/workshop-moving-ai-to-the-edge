@@ -15,7 +15,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
-  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: nfs-csi
   accessModes:
     - ReadWriteMany
   resources:
@@ -30,7 +30,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
-  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: nfs-csi
   accessModes:
     - ReadWriteMany
   resources:
@@ -45,7 +45,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
-  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: nfs-csi
   accessModes:
     - ReadWriteMany
   resources:
@@ -60,7 +60,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
 spec:
-  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: nfs-csi
   accessModes:
     - ReadWriteMany
   resources:
@@ -231,9 +231,9 @@ spec:
     - name: redhat-pull-secret
       optional: true
       mountPath: /root/redhat-pull-secret
-    - name: quay-local-push-secret
+    - name: registry-push-secret
       optional: true
-      mountPath: /root/quay-local-push-secret
+      mountPath: /root/registry-push-secret
     - name: store
       mountPath: /store
     - name: rpmmd
@@ -285,7 +285,7 @@ spec:
           $(params.CONTEXT)
         
         echo "Pushing image: $IMAGE_WITH_ARCH_TAG"
-        podman push --authfile=/root/quay-local-push-secret/.dockerconfigjson $IMAGE_WITH_ARCH_TAG
+        podman push --authfile=/root/registry-push-secret/.dockerconfigjson $IMAGE_WITH_ARCH_TAG
         
         echo "Saving image to shared storage..."
         mkdir -p /shared-containers
@@ -315,9 +315,9 @@ spec:
       description: Array of target platforms (e.g., ['linux/amd64','linux/arm64'])
       type: array
   workspaces:
-    - name: quay-local-push-secret
+    - name: registry-push-secret
       optional: true
-      mountPath: /root/quay-local-push-secret
+      mountPath: /root/registry-push-secret
     - name: shared-container-storage
       mountPath: /shared-containers
   steps:
@@ -379,11 +379,11 @@ spec:
         
         
         echo "Pushing manifest list..."
-        podman manifest push --authfile=/root/quay-local-push-secret/.dockerconfigjson --all $IMAGE docker://$IMAGE
+        podman manifest push --authfile=/root/registry-push-secret/.dockerconfigjson --all $IMAGE docker://$IMAGE
 
         LOCAL_ARCHIVE="/shared-containers/$(basename "${IMAGE}").manifest.tar"
         echo "Saving manifest list to $LOCAL_ARCHIVE"
-        podman manifest push --authfile=/root/quay-local-push-secret/.dockerconfigjson --all --format oci "$IMAGE" "oci:$LOCAL_ARCHIVE"
+        podman manifest push --authfile=/root/registry-push-secret/.dockerconfigjson --all --format oci "$IMAGE" "oci:$LOCAL_ARCHIVE"
         echo "Multiarch manifest created and pushed successfully"
 
 
@@ -434,9 +434,9 @@ spec:
     - name: redhat-pull-secret
       optional: true
       mountPath: /root/redhat-pull-secret
-    - name: quay-local-push-secret
+    - name: registry-push-secret
       optional: true
-      mountPath: /root/quay-local-push-secret
+      mountPath: /root/registry-push-secret
     - name: bootc-exports
       mountPath: /bootc-exports
     - name: rh-entitlements
@@ -541,7 +541,7 @@ spec:
        
         echo "Loaded images:"
         podman image list
-        sudo podman pull --authfile=/root/quay-local-push-secret/.dockerconfigjson --platform=${PLATFORM_ITEM} $IMAGE
+        sudo podman pull --authfile=/root/registry-push-secret/.dockerconfigjson --platform=${PLATFORM_ITEM} $IMAGE
 
         echo "Files exported before:"
         ls -R /bootc-exports
@@ -833,7 +833,7 @@ spec:
             name: pipeline
             namespace: admin-tools
           secrets:
-            - name: quay-local-push-secret
+            - name: registry-push-secret
           ---
           apiVersion: rbac.authorization.k8s.io/v1
           kind: RoleBinding
@@ -919,7 +919,7 @@ spec:
       description: "Volume used for file exports storage"
     - name: redhat-pull-secret
       description: "Secret with the Red Hat container registry pull credentials"
-    - name: quay-local-push-secret
+    - name: registry-push-secret
       description: "Secret with the credentials to push the image"
     - name: object-storage-credentials
       description: Secret with the object storage credentials
@@ -1025,8 +1025,8 @@ spec:
           workspace: rh-entitlements
         - name: redhat-pull-secret
           workspace: redhat-pull-secret
-        - name: quay-local-push-secret
-          workspace: quay-local-push-secret
+        - name: registry-push-secret
+          workspace: registry-push-secret
         - name: store
           workspace: store-amd64
         - name: rpmmd
@@ -1061,8 +1061,8 @@ spec:
           workspace: rh-entitlements
         - name: redhat-pull-secret
           workspace: redhat-pull-secret
-        - name: quay-local-push-secret
-          workspace: quay-local-push-secret
+        - name: registry-push-secret
+          workspace: registry-push-secret
         - name: store
           workspace: store-arm64
         - name: rpmmd
@@ -1089,8 +1089,8 @@ spec:
         - name: PLATFORMS
           value: ["$(params.bootc-build-platforms)"]
       workspaces:
-        - name: quay-local-push-secret
-          workspace: quay-local-push-secret
+        - name: registry-push-secret
+          workspace: registry-push-secret
         - name: shared-container-storage
           workspace: shared-container-storage
 
@@ -1104,7 +1104,8 @@ spec:
           value: ["$(params.bootc-build-export-formats)"]
 
 
-    - name: parallel-exports-amd64
+
+    - name: export-amd64-iso
       runAfter:
         - check-exports
       when:
@@ -1114,13 +1115,11 @@ spec:
       taskRef:
         name: bootc-multi-export
         kind: Task
-      matrix:
-        params:
-          - name: platform-export
-            value: ["linux/amd64"]
-          - name: format-export
-            value: ["ami", "anaconda-iso", "gce", "iso", "qcow2", "raw", "vhd", "vmdk"]
       params:
+        - name: platform-export
+          value: linux/amd64
+        - name: format-export
+          value: anaconda-iso      
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1142,13 +1141,12 @@ spec:
           workspace: varlibcontainerstorage-amd64
         - name: shared-container-storage
           workspace: shared-container-storage
-        - name: quay-local-push-secret
-          workspace: quay-local-push-secret
+        - name: registry-push-secret
+          workspace: registry-push-secret
         - name: redhat-pull-secret
           workspace: redhat-pull-secret
 
-
-    - name: parallel-exports-arm64
+    - name: export-amd64-qcow2
       runAfter:
         - check-exports
       when:
@@ -1158,13 +1156,137 @@ spec:
       taskRef:
         name: bootc-multi-export
         kind: Task
-      matrix:
-        params:
-          - name: platform-export
-            value: ["linux/arm64"]
-          - name: format-export
-            value: ["ami", "anaconda-iso", "gce", "iso", "qcow2", "raw", "vhd", "vmdk"]
       params:
+        - name: platform-export
+          value: linux/amd64
+        - name: format-qcow2
+          value: anaconda-iso      
+        - name: image
+          value: $(params.bootc-image-name)
+        - name: bootc-build-platforms
+          value: ["$(params.bootc-build-platforms)"]
+        - name: bootc-build-export-formats
+          value: ["$(params.bootc-build-export-formats)"]
+      workspaces:
+        - name: source
+          workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
+        - name: store
+          workspace: store-amd64
+        - name: rpmmd
+          workspace: rpmmd-amd64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-amd64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+        - name: registry-push-secret
+          workspace: registry-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+
+    - name: export-amd64-vmdk
+      runAfter:
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
+      taskRef:
+        name: bootc-multi-export
+        kind: Task
+      params:
+        - name: platform-export
+          value: linux/amd64
+        - name: format-vmdk
+          value: anaconda-iso      
+        - name: image
+          value: $(params.bootc-image-name)
+        - name: bootc-build-platforms
+          value: ["$(params.bootc-build-platforms)"]
+        - name: bootc-build-export-formats
+          value: ["$(params.bootc-build-export-formats)"]
+      workspaces:
+        - name: source
+          workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
+        - name: store
+          workspace: store-amd64
+        - name: rpmmd
+          workspace: rpmmd-amd64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-amd64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+        - name: registry-push-secret
+          workspace: registry-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+    - name: export-amd64-raw
+      runAfter:
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
+      taskRef:
+        name: bootc-multi-export
+        kind: Task
+      params:
+        - name: platform-export
+          value: linux/amd64
+        - name: format-raw
+          value: anaconda-iso      
+        - name: image
+          value: $(params.bootc-image-name)
+        - name: bootc-build-platforms
+          value: ["$(params.bootc-build-platforms)"]
+        - name: bootc-build-export-formats
+          value: ["$(params.bootc-build-export-formats)"]
+      workspaces:
+        - name: source
+          workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
+        - name: store
+          workspace: store-amd64
+        - name: rpmmd
+          workspace: rpmmd-amd64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-amd64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+        - name: registry-push-secret
+          workspace: registry-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+
+
+    - name: export-arm64-iso
+      runAfter:
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
+      taskRef:
+        name: bootc-multi-export
+        kind: Task
+      params:
+        - name: platform-export
+          value: linux/arm64
+        - name: format-export
+          value: anaconda-iso      
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1186,8 +1308,132 @@ spec:
           workspace: varlibcontainerstorage-arm64
         - name: shared-container-storage
           workspace: shared-container-storage
-        - name: quay-local-push-secret
-          workspace: quay-local-push-secret
+        - name: registry-push-secret
+          workspace: registry-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+    - name: export-arm64-qcow2
+      runAfter:
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
+      taskRef:
+        name: bootc-multi-export
+        kind: Task
+      params:
+        - name: platform-export
+          value: linux/arm64
+        - name: format-qcow2
+          value: anaconda-iso      
+        - name: image
+          value: $(params.bootc-image-name)
+        - name: bootc-build-platforms
+          value: ["$(params.bootc-build-platforms)"]
+        - name: bootc-build-export-formats
+          value: ["$(params.bootc-build-export-formats)"]
+      workspaces:
+        - name: source
+          workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
+        - name: store
+          workspace: store-arm64
+        - name: rpmmd
+          workspace: rpmmd-arm64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-arm64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+        - name: registry-push-secret
+          workspace: registry-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+
+    - name: export-arm64-vmdk
+      runAfter:
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
+      taskRef:
+        name: bootc-multi-export
+        kind: Task
+      params:
+        - name: platform-export
+          value: linux/arm64
+        - name: format-vmdk
+          value: anaconda-iso      
+        - name: image
+          value: $(params.bootc-image-name)
+        - name: bootc-build-platforms
+          value: ["$(params.bootc-build-platforms)"]
+        - name: bootc-build-export-formats
+          value: ["$(params.bootc-build-export-formats)"]
+      workspaces:
+        - name: source
+          workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
+        - name: store
+          workspace: store-arm64
+        - name: rpmmd
+          workspace: rpmmd-arm64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-arm64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+        - name: registry-push-secret
+          workspace: registry-push-secret
+        - name: redhat-pull-secret
+          workspace: redhat-pull-secret
+
+    - name: export-arm64-raw
+      runAfter:
+        - check-exports
+      when:
+        - input: "$(tasks.check-exports.results.array-status)"
+          operator: in
+          values: ["not-empty"]
+      taskRef:
+        name: bootc-multi-export
+        kind: Task
+      params:
+        - name: platform-export
+          value: linux/arm64
+        - name: format-raw
+          value: anaconda-iso      
+        - name: image
+          value: $(params.bootc-image-name)
+        - name: bootc-build-platforms
+          value: ["$(params.bootc-build-platforms)"]
+        - name: bootc-build-export-formats
+          value: ["$(params.bootc-build-export-formats)"]
+      workspaces:
+        - name: source
+          workspace: shared-git-repo
+        - name: rh-entitlements
+          workspace: rh-entitlements
+        - name: bootc-exports
+          workspace: bootc-exports
+        - name: store
+          workspace: store-arm64
+        - name: rpmmd
+          workspace: rpmmd-arm64
+        - name: varlibcontainerstorage
+          workspace: varlibcontainerstorage-arm64
+        - name: shared-container-storage
+          workspace: shared-container-storage
+        - name: registry-push-secret
+          workspace: registry-push-secret
         - name: redhat-pull-secret
           workspace: redhat-pull-secret
 
@@ -1195,8 +1441,15 @@ spec:
 
     - name: upload-exports
       runAfter:
-        - parallel-exports-amd64
-        - parallel-exports-arm64
+        - export-amd64-iso
+        - export-amd64-qcow2
+        - export-amd64-vmdk
+        - export-amd64-raw
+        - export-arm64-iso
+        - export-arm64-qcow2
+        - export-arm64-vmdk
+        - export-arm64-raw
+
       when:
         - input: "$(tasks.check-exports.results.array-status)"
           operator: in
