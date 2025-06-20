@@ -1,13 +1,13 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: bootc-image-build-multiarch-parallel
+  name: bootc-image-build-multiarch
   namespace: bootc-tools
   finalizers:
     - chains.tekton.dev/pipelinerun
     - results.tekton.dev/pipelinerun
   labels:
-    tekton.dev/pipeline: bootc-image-build-multiarch-parallel
+    tekton.dev/pipeline: bootc-image-build-multiarch
 spec:
   params:
     - name: bootc-build-files-repo-url
@@ -33,7 +33,7 @@ spec:
     - name: skip-build
       value: 'false'
   pipelineRef:
-    name: bootc-image-build-multiarch-parallel
+    name: bootc-image-build-multiarch
   taskRunTemplate:
     serviceAccountName: pipeline
   timeouts:
