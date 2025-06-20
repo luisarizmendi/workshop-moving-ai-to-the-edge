@@ -583,7 +583,7 @@ spec:
     - name: SUBPATH
       description: Subdirectory path where the files are hosted
       type: string
-      default: "."
+      default: ""
     - name: REGION
       description: The object storage region
       type: string
@@ -619,7 +619,7 @@ spec:
         find . -type f | sort
 
         echo "Uploading files to odf/${BUCKET}/${SUBPATH}"
-        mc cp --recursive . "odf/${BUCKET}/${SUBPATH}"
+        mc cp --recursive /bootc-exports/${SUBPATH}/ "odf/${BUCKET}/${SUBPATH}"
 
         echo "Upload completed successfully"
         echo "Objects in bucket:"
@@ -866,7 +866,7 @@ spec:
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: bootc-image-build-multiarch-parallel
+  name: bootc-image-build-multiarch
   namespace: admin-tools
   annotations:
     argocd.argoproj.io/sync-wave: "6"
@@ -1463,7 +1463,7 @@ spec:
         - name: STORAGE-BUCKET
           value: $(params.object-storage-bucket)
         - name: SUBPATH
-          value: "."
+          value: ""
       workspaces:
         - name: bootc-exports
           workspace: bootc-exports
