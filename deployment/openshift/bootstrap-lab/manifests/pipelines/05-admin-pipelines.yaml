@@ -597,7 +597,7 @@ spec:
       mountPath: /root/object-storage-credentials
   steps:
     - name: upload-files
-      image: amazon/aws-cli:latest
+      image: quay.io/luisarizmendi/ocp-job:latest
       script: |
         #!/bin/sh
         set -e
@@ -611,7 +611,7 @@ spec:
         SUBPATH="$(params.SUBPATH)"
 
         # Setup mc alias
-        mc alias set odf "$ENDPOINT" "$ACCESS_KEY" "$SECRET_KEY" --insecure
+        mc alias set odf https://"$ENDPOINT" "$ACCESS_KEY" "$SECRET_KEY" --insecure
 
         cd /bootc-exports/${SUBPATH}
 
@@ -1119,7 +1119,7 @@ spec:
         - name: platform-export
           value: linux/amd64
         - name: format-export
-          value: anaconda-iso      
+          value: anaconda-iso
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1159,8 +1159,8 @@ spec:
       params:
         - name: platform-export
           value: linux/amd64
-        - name: format-qcow2
-          value: anaconda-iso      
+        - name: format-export
+          value: qcow2    
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1201,8 +1201,8 @@ spec:
       params:
         - name: platform-export
           value: linux/amd64
-        - name: format-vmdk
-          value: anaconda-iso      
+        - name: format-export
+          value: vmdk
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1242,8 +1242,8 @@ spec:
       params:
         - name: platform-export
           value: linux/amd64
-        - name: format-raw
-          value: anaconda-iso      
+        - name: format-export
+          value: raw 
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1326,8 +1326,8 @@ spec:
       params:
         - name: platform-export
           value: linux/arm64
-        - name: format-qcow2
-          value: anaconda-iso      
+        - name: format-export
+          value: qcow2
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1368,8 +1368,8 @@ spec:
       params:
         - name: platform-export
           value: linux/arm64
-        - name: format-vmdk
-          value: anaconda-iso      
+        - name: format-export
+          value: vmdk 
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1409,8 +1409,8 @@ spec:
       params:
         - name: platform-export
           value: linux/arm64
-        - name: format-raw
-          value: anaconda-iso      
+        - name: format-export
+          value: raw
         - name: image
           value: $(params.bootc-image-name)
         - name: bootc-build-platforms
@@ -1463,7 +1463,7 @@ spec:
         - name: STORAGE-BUCKET
           value: $(params.object-storage-bucket)
         - name: SUBPATH
-          value: "exports"
+          value: "."
       workspaces:
         - name: bootc-exports
           workspace: bootc-exports
