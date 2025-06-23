@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: privileged-sa
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 subjects:
   - kind: ServiceAccount
     name: privileged-sa
