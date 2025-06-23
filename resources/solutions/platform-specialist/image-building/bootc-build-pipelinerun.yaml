@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: bootc-image-build-multiarch
-  namespace: bootc-tools
   finalizers:
     - chains.tekton.dev/pipelinerun
     - results.tekton.dev/pipelinerun
@@ -29,7 +28,7 @@ spec:
     - name: object-storage-endpoint
       value: 's3.openshift-storage.svc:443'
     - name: object-storage-bucket
-      value: admin-bootc-exports
+      value: user99-bootc-exports
     - name: skip-build
       value: 'false'
   pipelineRef:

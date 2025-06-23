@@ -27,10 +27,10 @@ FROM quay.io/openshift/origin-cli:latest
 USER root
 RUN dnf install -y ansible-core jq tar gzip skopeo && dnf clean all
 
-# Create a writable directory for mc config that user 1001 can access
+# Create a writable directory for mc config that user 1000 can access
 RUN mkdir -p /tmp/mc-config && \
-    chmod 755 /tmp/mc-config && \
-    chown 1001:1001 /tmp/mc-config
+    chmod 777 /tmp/mc-config && \
+    chown 1000:1000 /tmp/mc-config
 
 # Set environment variable for mc config directory
 ENV MC_CONFIG_DIR=/tmp/mc-config
@@ -41,4 +41,4 @@ COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
 COPY --from=builder /usr/local/bin/mc /usr/local/bin/mc
 RUN chmod +x /usr/local/bin/*
 
-USER 1001
+USER 1000
