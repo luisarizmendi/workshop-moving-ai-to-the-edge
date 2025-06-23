@@ -39,7 +39,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-#  storageClassName: ocs-storagecluster-cephfs
+  storageClassName: ocs-storagecluster-cephfs
   resources:
     requests:
       storage: 100Gi
