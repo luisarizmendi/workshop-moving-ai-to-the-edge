@@ -1,0 +1,387 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: listeners-user-pipelines-create
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
+
+          while true; do
+              if oc get tasks.tekton.dev -n default &> /dev/null; then
+                  echo "Tekton API (tekton.dev/v1) is ready"
+                  break
+              fi
+            sleep 10
+          done
+
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            username="user$i"
+            pipeline_namespace="${username}-tools"
+
+            while true; do
+                if oc get namespace "$pipeline_namespace" &> /dev/null; then
+                    echo "Namespace $pipeline_namespace has been created"
+                    break
+                fi
+                sleep 10
+            done    
+
+
+          apply_with_retries  oc apply -f - <<EOFUP
+          apiVersion: triggers.tekton.dev/v1alpha1
+          kind: EventListener
+          metadata:
+            name: bootc-folder-filter-listener
+            namespace: $pipeline_namespace
+          spec:
+            serviceAccountName: pipeline
+            triggers:
+            - name: bootc-subfolder-trigger-type-1
+              interceptors:
+              # First interceptor: GitHub-compatible interceptor for changed files
+              - ref:
+                  name: "github"
+                  kind: ClusterInterceptor
+                  apiVersion: triggers.tekton.dev
+                params:
+                - name: "addChangedFiles"
+                  value:
+                    enabled: true
+              # Second interceptor: CEL filter for directory matching
+              - ref:
+                  name: cel
+                params:
+                - name: "filter"
+                  value: 'header.match("X-Gitea-Event", "push") && extensions.changed_files.matches("type-1/")'
+                - name: "overlays"
+                  value:
+                  - key: branch
+                    expression: "body.ref.split('/')[2]"
+                  - key: changed_files
+                    expression: "extensions.changed_files"
+                  - key: git_sha_short
+                    expression: "body.after.truncate(8)"
+                  - key: timestamp
+                    expression: "body.head_commit.timestamp"
+                  - key: changed_subfolder
+                    expression: '"type-1"'
+              bindings:
+              - ref: bootc-pipeline-binding
+              template:
+                ref: bootc-pipeline-template
+
+
+            - name: bootc-subfolder-trigger-type-2
+              interceptors:
+              # First interceptor: GitHub-compatible interceptor for changed files
+              - ref:
+                  name: "github"
+                  kind: ClusterInterceptor
+                  apiVersion: triggers.tekton.dev
+                params:
+                - name: "addChangedFiles"
+                  value:
+                    enabled: true
+              # Second interceptor: CEL filter for directory matching
+              - ref:
+                  name: cel
+                params:
+                - name: "filter"
+                  value: 'header.match("X-Gitea-Event", "push") && extensions.changed_files.matches("type-2/")'
+                - name: "overlays"
+                  value:
+                  - key: branch
+                    expression: "body.ref.split('/')[2]"
+                  - key: changed_files
+                    expression: "extensions.changed_files"
+                  - key: git_sha_short
+                    expression: "body.after.truncate(8)"
+                  - key: timestamp
+                    expression: "body.head_commit.timestamp"
+                  - key: changed_subfolder
+                    expression: '"type-2"'
+              bindings:
+              - ref: bootc-pipeline-binding
+              template:
+                ref: bootc-pipeline-template
+          ---
+          # Route to expose the webhook endpoint
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: bootc-folder-filter-webhook
+            namespace: $pipeline_namespace
+          spec:
+            to:
+              kind: Service
+              name: el-bootc-folder-filter-listener
+            port:
+              targetPort: 8080
+            tls:
+              termination: edge
+          ---
+          apiVersion: triggers.tekton.dev/v1alpha1
+          kind: TriggerBinding
+          metadata:
+            name: bootc-pipeline-binding
+            namespace: $pipeline_namespace
+          spec:
+            params:
+            - name: git-repo-url
+              value: \$(body.repository.clone_url)
+            - name: git-revision
+              value: \$(body.after)
+            - name: git-revision-short
+              value: \$(extensions.git_sha_short)
+            - name: git-repo-name
+              value: \$(body.repository.name)
+            - name: branch-name
+              value: \$(extensions.branch)
+            - name: changed-files
+              value: \$(extensions.changed_files)
+            - name: commit-timestamp
+              value: \$(extensions.timestamp)
+            - name: changed-subfolder
+              value: \$(extensions.changed_subfolder)
+          ---
+          apiVersion: triggers.tekton.dev/v1alpha1
+          kind: TriggerTemplate
+          metadata:
+            name: bootc-pipeline-template
+            namespace: $pipeline_namespace
+          spec:
+            params:
+            - name: changed-subfolder
+            - name: git-repo-url
+            - name: git-revision
+            - name: git-revision-short
+            - name: git-repo-name
+            - name: branch-name
+            - name: changed-files
+            - name: commit-timestamp
+            resourcetemplates:
+            - apiVersion: tekton.dev/v1
+              kind: PipelineRun
+              metadata:
+                name: bootc-image-build-\$(tt.params.changed-subfolder)-\$(tt.params.git-revision-short)
+                namespace: $pipeline_namespace
+              spec:
+                params:
+                  - name: bootc-build-files-repo-url
+                    value: \$(tt.params.git-repo-url)
+                  - name: bootc-build-files-repo-branch
+                    value: \$(tt.params.branch-name)
+                  - name: bootc-build-files-repo-subpath
+                    value: \$(tt.params.changed-subfolder)
+                  - name: bootc-image-name
+                    value: 'workshop-registry-quay-openshift-operators.apps.cluster-xhp5n.xhp5n.sandbox1885.opentlc.com/\${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
+                  - name: bootc-build-export-formats
+                    value:
+                      - anaconda-iso
+                    #  - qcow2
+                  - name: bootc-build-platforms
+                    value:
+                      - linux/amd64
+                      - linux/arm64
+                  - name: object-storage-endpoint
+                    value: 's3.openshift-storage.svc:443'
+                  - name: object-storage-bucket
+                    value: \${username}-bootc-exports
+                  - name: skip-build
+                    value: 'false'
+                pipelineRef:
+                  name: bootc-image-build-multiarch
+                taskRunTemplate:
+                  serviceAccountName: pipeline
+                timeouts:
+                  pipeline: 2h0m0s
+                taskRunSpecs:
+                  # ARM64 tasks — prefer arm64 nodes
+                  - pipelineTaskName: gather-rh-entitlements-arm64
+                    podTemplate:
+                      affinity:
+                        nodeAffinity:
+                          preferredDuringSchedulingIgnoredDuringExecution:
+                            - weight: 100
+                              preference:
+                                matchExpressions:
+                                  - key: kubernetes.io/arch
+                                    operator: In
+                                    values:
+                                      - arm64
+                      tolerations:
+                        - key: "node.kubernetes.io/arch"
+                          operator: "Equal"
+                          value: "arm64"
+                          effect: "NoSchedule"
+                  - pipelineTaskName: build-arm64
+                    podTemplate:
+                      affinity:
+                        nodeAffinity:
+                          preferredDuringSchedulingIgnoredDuringExecution:
+                            - weight: 100
+                              preference:
+                                matchExpressions:
+                                  - key: kubernetes.io/arch
+                                    operator: In
+                                    values:
+                                      - arm64
+                      tolerations:
+                        - key: "node.kubernetes.io/arch"
+                          operator: "Equal"
+                          value: "arm64"
+                          effect: "NoSchedule"
+                  - pipelineTaskName: export-arm64-iso
+                    podTemplate:
+                      affinity:
+                        nodeAffinity:
+                          preferredDuringSchedulingIgnoredDuringExecution:
+                            - weight: 100
+                              preference:
+                                matchExpressions:
+                                  - key: kubernetes.io/arch
+                                    operator: In
+                                    values:
+                                      - arm64
+                      tolerations:
+                        - key: "node.kubernetes.io/arch"
+                          operator: "Equal"
+                          value: "arm64"
+                          effect: "NoSchedule"
+                  - pipelineTaskName: export-arm64-qcow2
+                    podTemplate:
+                      affinity:
+                        nodeAffinity:
+                          preferredDuringSchedulingIgnoredDuringExecution:
+                            - weight: 100
+                              preference:
+                                matchExpressions:
+                                  - key: kubernetes.io/arch
+                                    operator: In
+                                    values:
+                                      - arm64
+                      tolerations:
+                        - key: "node.kubernetes.io/arch"
+                          operator: "Equal"
+                          value: "arm64"
+                          effect: "NoSchedule"
+                  - pipelineTaskName: export-arm64-vmdk
+                    podTemplate:
+                      affinity:
+                        nodeAffinity:
+                          preferredDuringSchedulingIgnoredDuringExecution:
+                            - weight: 100
+                              preference:
+                                matchExpressions:
+                                  - key: kubernetes.io/arch
+                                    operator: In
+                                    values:
+                                      - arm64
+                      tolerations:
+                        - key: "node.kubernetes.io/arch"
+                          operator: "Equal"
+                          value: "arm64"
+                          effect: "NoSchedule"
+                  - pipelineTaskName: export-arm64-raw
+                    podTemplate:
+                      affinity:
+                        nodeAffinity:
+                          preferredDuringSchedulingIgnoredDuringExecution:
+                            - weight: 100
+                              preference:
+                                matchExpressions:
+                                  - key: kubernetes.io/arch
+                                    operator: In
+                                    values:
+                                      - arm64
+                      tolerations:
+                        - key: "node.kubernetes.io/arch"
+                          operator: "Equal"
+                          value: "arm64"
+                          effect: "NoSchedule"
+                workspaces:
+                  - name: shared-git-repo
+                    persistentVolumeClaim:
+                      claimName: bootc-build-git-repo
+                  - name: rh-entitlements
+                    persistentVolumeClaim:
+                      claimName: bootc-build-entitlements
+                  - name: shared-container-storage
+                    persistentVolumeClaim:
+                      claimName: bootc-build-conatiner-storage
+                  - name: bootc-exports
+                    persistentVolumeClaim:
+                      claimName: bootc-exports
+                  - name: redhat-pull-secret
+                    secret:
+                      secretName: redhat-pull-secret
+                  - name: registry-push-secret
+                    secret:
+                      secretName: quay-local-push-secret
+                  - name: object-storage-credentials
+                    secret:
+                      secretName: \${username}-bootc-exports
+                  - emptyDir: {}
+                    name: store-amd64
+                  - emptyDir: {}
+                    name: rpmmd-amd64
+                  - emptyDir: {}
+                    name: varlibcontainerstorage-amd64
+                  - emptyDir: {}
+                    name: store-arm64
+                  - emptyDir: {}
+                    name: rpmmd-arm64
+                  - emptyDir: {}
+                    name: varlibcontainerstorage-arm64
+          EOFUP
+
+
+          done 
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 1
+

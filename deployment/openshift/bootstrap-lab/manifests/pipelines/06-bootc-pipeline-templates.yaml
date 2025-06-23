@@ -5,6 +5,7 @@ metadata:
   namespace: openshift
   annotations:
     description: "Template for creating a bootc multi-arch image build PipelineRun"
+    argocd.argoproj.io/sync-wave: "6"
 objects:
   - apiVersion: tekton.dev/v1
     kind: PipelineRun
