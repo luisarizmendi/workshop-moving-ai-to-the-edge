@@ -1,0 +1,82 @@
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rhem-deploy
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          oc patch multiclusterhubs.operator.open-cluster-management.io multiclusterhub -n rhacm --type json --patch '[{"op": "add", "path":"/spec/overrides/components/-", "value": {"name":"edge-manager-preview","enabled": true}}]'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 1
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: enable-plugin-rhem-console
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "99"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+            PLUGIN_NAME="flightctl-plugin"
+            existing_plugins=$(oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins[*]}')
+            read -a plugins_array <<< "$existing_plugins"
+            for plugin in "${plugins_array[@]}"; do
+                if [[ "$plugin" == "$PLUGIN_NAME" ]]; then
+                    echo "Plugin $PLUGIN_NAME is already enabled."
+                    exit 0
+                fi
+            done
+            plugins_array+=("$PLUGIN_NAME")
+            json_array=$(printf '%s\n' "${plugins_array[@]}" | jq -R . | jq -s .)
+
+            echo "Patching with new plugins: $json_array"
+            oc patch console.operator.openshift.io cluster --type=json -p="[{'op': 'add', 'path': '/spec/plugins', 'value': $json_array }]"
+
+            echo "Enabled plugins in the console:"
+            oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 1
+
+
+
+
+
+

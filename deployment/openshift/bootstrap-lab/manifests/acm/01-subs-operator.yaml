@@ -3,33 +3,29 @@ kind: Namespace
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
-  name: open-cluster-management
+  name: rhacm
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
-  name: open-cluster-management
-  namespace: open-cluster-management
+  name: rhacm 
+  namespace: rhacm
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   targetNamespaces:
-    - open-cluster-management
-  upgradeStrategy: Default
+  - rhacm
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  labels:
-    operators.coreos.com/advanced-cluster-management.open-cluster-management: ''
+  name: acm-operator-subscription
+  namespace: rhacm
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: advanced-cluster-management
-  namespace: open-cluster-management
 spec:
+  sourceNamespace: openshift-marketplace
+  source: redhat-operators
   channel: release-2.13
   installPlanApproval: Automatic
   name: advanced-cluster-management
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
-  startingCSV: advanced-cluster-management.v2.13.1
