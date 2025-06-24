@@ -4,7 +4,7 @@ FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 RUN dnf -y --nogpgcheck install tmux  && dnf clean all
 
 ## Enable RHEM
-RUN subscription-manager repos --enable rhacm-2.13-for-rhel-9-$(uname -m)-rpms && \
+RUN dnf -y copr enable @redhat-et/flightctl && \
     dnf -y install flightctl-agent && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
