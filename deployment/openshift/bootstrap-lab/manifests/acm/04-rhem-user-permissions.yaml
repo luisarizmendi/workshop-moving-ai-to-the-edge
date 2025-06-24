@@ -1,0 +1,108 @@
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: user-rhem-permissions
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          RHEM_NAMESPACE="rhacm"
+
+          apply_with_retries() {
+            local attempt=0
+            local max_attempts=5
+            local delay=5
+
+            while true; do
+              if "$@"; then
+                echo "Apply succeeded: $*"
+                return 0
+              fi
+
+              attempt=$(( attempt + 1 ))
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Apply failed after $max_attempts attempts: $*"
+                return 1
+              fi
+
+              echo "Apply failed, retrying in $delay seconds... (attempt $attempt)"
+              sleep "$delay"
+            done
+          }
+
+
+          # Loop through users user01 to user50 and user99
+          for i in $(seq -w 1 50) 99; do
+            username="user$i"
+
+            while true; do
+                if oc get namespace "$RHEM_NAMESPACE" &> /dev/null; then
+                    echo "Namespace $RHEM_NAMESPACE has been created"
+                    break
+                fi
+                sleep 10
+            done    
+
+
+          echo "Creating role bindings"
+          apply_with_retries  oc apply -f - <<EOF
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: flightctl-admin-binding
+            namespace: $RHEM_NAMESPACE
+          subjects:
+            - kind: User
+              name: $username
+              apiGroup: rbac.authorization.k8s.io
+          roleRef:
+            kind: Role
+            name: flightctl-admin
+            apiGroup: rbac.authorization.k8s.io
+
+          EOF
+
+          done 
+
+          echo "Environment ready!"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
