@@ -4,5 +4,6 @@
   # Ignore based on any subset of the file path
   paths = [
     '''deployment\/openshift\/bootstrap-lab\/manifests\/common\/00-users-pass.yaml''',
+    '''resources\/solutions\/platform-specialist\/image-building\/devices\/default\/config.yaml''',
 
         

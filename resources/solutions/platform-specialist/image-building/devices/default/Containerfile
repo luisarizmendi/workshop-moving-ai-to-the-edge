@@ -1,5 +1,13 @@
 FROM registry.redhat.io/rhel10/rhel-bootc:10.0
 
-## Install packages
+## Install base packages
 RUN dnf -y --nogpgcheck install tmux  && dnf clean all
+
+## Enable RHEM
+RUN subscription-manager repos --enable rhacm-2.13-for-rhel-9-$(uname -m)-rpms && \
+    dnf -y install flightctl-agent && \
+    dnf -y clean all && \
+    systemctl enable flightctl-agent.service && \
+    systemctl mask bootc-fetch-apply-updates.timer
+ADD config.yaml /etc/flightctl/
 

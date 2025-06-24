@@ -104,8 +104,13 @@ spec:
           echo "Adding podman-multiarch"
           sa="system:serviceaccount:${pipeline_namespace}:pipeline"
           echo "Patching SCC to add $sa..."
-          oc patch scc podman-multiarch --type=json \
-            -p="[{'op': 'add', 'path': '/users/-', 'value': '$sa'}]"
+          if ! oc get scc podman-multiarch -o jsonpath='{.users}' | grep -q "$sa"; then
+            echo "Adding $sa to SCC podman-multiarch..."
+            oc patch scc podman-multiarch --type=json \
+              -p="[{'op': 'add', 'path': '/users/-', 'value': \"$sa\"}]"
+          else
+            echo "$sa already present in podman-multiarch SCC"
+          fi
 
 
           echo "Creating cross-namespace-pipeline-runner"
@@ -124,7 +129,7 @@ spec:
           apiVersion: rbac.authorization.k8s.io/v1
           kind: ClusterRoleBinding
           metadata:
-            name: pipeline-cross-namespace-binding
+            name: pipeline-cross-namespace-binding-${pipeline_namespace}
           roleRef:
             apiGroup: rbac.authorization.k8s.io
             kind: ClusterRole
