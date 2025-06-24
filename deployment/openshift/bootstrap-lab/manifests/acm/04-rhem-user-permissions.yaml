@@ -44,33 +44,38 @@ spec:
 
           # Loop through users user01 to user50 and user99
           for i in $(seq -w 1 50) 99; do
-            username="user$i"
-
+            echo "Waiting for namespace $RHEM_NAMESPACE to exist..."
             while true; do
                 if oc get namespace "$RHEM_NAMESPACE" &> /dev/null; then
                     echo "Namespace $RHEM_NAMESPACE has been created"
                     break
                 fi
                 sleep 10
-            done    
+            done
 
+            # Construct the RoleBinding with all users
+            echo "Creating RoleBinding with all users..."
 
-          echo "Creating role bindings"
-          apply_with_retries  oc apply -f - <<EOF
+            SUBJECTS=""
+            for i in $(seq -w 1 50) 99; do
+              username="user$i"
+              SUBJECTS="${SUBJECTS}
+              - kind: User
+                name: ${username}
+                apiGroup: rbac.authorization.k8s.io"
+            done
+
+          apply_with_retries oc apply -f - <<EOF
           apiVersion: rbac.authorization.k8s.io/v1
           kind: RoleBinding
           metadata:
             name: flightctl-admin-binding
             namespace: $RHEM_NAMESPACE
-          subjects:
-            - kind: User
-              name: $username
-              apiGroup: rbac.authorization.k8s.io
+          subjects:${SUBJECTS}
           roleRef:
             kind: Role
             name: flightctl-admin
             apiGroup: rbac.authorization.k8s.io
-
           EOF
 
           done 
