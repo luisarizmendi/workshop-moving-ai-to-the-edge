@@ -43,16 +43,20 @@ spec:
           done
           
           # Create repositories
-          for i in $(seq -w 1 $USER_NUM) 99; do
-            USERNAME="$USER_BASE_NAME$i"
-            REPO_NAME="$USERNAME-ai"
-            curl -X POST "$GITEA_BASE_URL/api/v1/admin/users/$USERNAME/repos" \
-              -H "Content-Type: application/json" \
-              -H "$AUTH_HEADER" \
-              -d '{
-                "name": "'"$REPO_NAME"'",
-                "private": false
-              }'
+          for i in $(seq -w 1 $USER_NUM); do
+            USERNAME="${USER_BASE_NAME}${i}"
+
+            for SUFFIX in ai device-images; do
+              REPO_NAME="${USERNAME}-${SUFFIX}"
+
+              curl -X POST "$GITEA_BASE_URL/api/v1/admin/users/$USERNAME/repos" \
+                -H "Content-Type: application/json" \
+                -H "$AUTH_HEADER" \
+                -d '{
+                  "name": "'"$REPO_NAME"'",
+                  "private": false
+                }'
+            done
           done
         env:
         - name: GITEA_BASE_URL
