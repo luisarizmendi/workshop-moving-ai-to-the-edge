@@ -192,7 +192,9 @@ parameters:
     required: true
   - name: SECRET_REDHAT
     value: redhat-pull-secret
+    description: "Secret containing your Red Hat pullsecret"
   - name: SECRET_REGISTRY
     value: quay-local-push-secret
+    description: "Secret containing the registry credentials"
   - name: SECRET_STORAGE
-    value: user99-bootc-exports
+    description: "Secret containing the S3 storage credentials"

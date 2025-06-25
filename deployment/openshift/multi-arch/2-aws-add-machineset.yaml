@@ -54,7 +54,7 @@ spec:
           ##########################################
           ##########################################
           echo "Finding a base MachineSet..."
-          BASE_MS=$(oc get machineset -n openshift-machine-api -o name | head -n 1)
+          BASE_MS=$(oc get machinesets.machine.openshift.io -n openshift-machine-api -o name | head -n 1)
           echo "Using base MachineSet: $BASE_MS"
 
           echo "Exporting and modifying MachineSet..."
