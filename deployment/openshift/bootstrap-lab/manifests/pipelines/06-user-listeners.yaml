@@ -210,7 +210,7 @@ spec:
                   - name: bootc-build-files-repo-subpath
                     value: \$(tt.params.changed-subfolder)
                   - name: bootc-image-name
-                    value: 'workshop-registry-quay-openshift-operators.apps.\${CLUSTER_DOMAIN}/${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
+                    value: 'workshop-registry-quay-openshift-operators.apps.${CLUSTER_DOMAIN}/${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
                   - name: bootc-build-export-formats
                     value:
                       - anaconda-iso
