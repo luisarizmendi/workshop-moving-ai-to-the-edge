@@ -16,6 +16,7 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
+          CLUSTER_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' | sed 's/^apps\.//')
 
           apply_with_retries() {
             local attempt=0
@@ -209,7 +210,7 @@ spec:
                   - name: bootc-build-files-repo-subpath
                     value: \$(tt.params.changed-subfolder)
                   - name: bootc-image-name
-                    value: 'workshop-registry-quay-openshift-operators.apps.cluster-xhp5n.xhp5n.sandbox1885.opentlc.com/\${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
+                    value: 'workshop-registry-quay-openshift-operators.apps.\${CLUSTER_DOMAIN}/\${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
                   - name: bootc-build-export-formats
                     value:
                       - anaconda-iso
