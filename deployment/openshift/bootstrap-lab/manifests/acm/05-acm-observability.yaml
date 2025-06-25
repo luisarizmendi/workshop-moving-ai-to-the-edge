@@ -126,6 +126,9 @@ metadata:
   namespace: open-cluster-management-observability
   annotations:
     argocd.argoproj.io/sync-wave: "7"
+    uninstall.ocs.openshift.io/cleanup-policy: delete
+    uninstall.ocs.openshift.io/mode: graceful
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   observabilityAddonSpec: {}
   storageConfig:
