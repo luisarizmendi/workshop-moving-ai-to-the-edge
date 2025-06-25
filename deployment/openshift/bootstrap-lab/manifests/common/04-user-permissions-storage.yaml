@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
   name: pvc-create-list-clusterrole
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumeclaims"]
@@ -14,7 +14,7 @@ kind: ClusterRoleBinding
 metadata:
   name: pvc-create-list-clusterrolebinding
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
 subjects:
   - kind: Group
     name: workshop-users

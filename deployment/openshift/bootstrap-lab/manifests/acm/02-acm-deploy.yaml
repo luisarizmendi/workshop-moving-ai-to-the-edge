@@ -5,5 +5,8 @@ metadata:
   namespace: rhacm
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    uninstall.ocs.openshift.io/cleanup-policy: delete
+    uninstall.ocs.openshift.io/mode: graceful
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   availabilityConfig: Basic
