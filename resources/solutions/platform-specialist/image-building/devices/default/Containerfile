@@ -6,11 +6,8 @@ ARG ACM_VERSION=2.13
 RUN dnf -y --nogpgcheck install tmux  && dnf clean all
 
 ## Enable RHEM
-
-RUN subscription-manager repos --enable rhacm-${ACM_VERSION}-for-rhel-$(. /etc/os-release && echo ${VERSION_ID%%.*})-$(uname -m)-rpms && \
-    dnf -y install flightctl-agent && \
+RUN dnf -y install --enablerepo=rhacm-${ACM_VERSION}-for-rhel-$(. /etc/os-release && echo ${VERSION_ID%%.*})-$(uname -m)-rpms flightctl-agent && \
     dnf -y clean all && \
     systemctl enable flightctl-agent.service && \
     systemctl mask bootc-fetch-apply-updates.timer
 ADD config.yaml /etc/flightctl/
-
