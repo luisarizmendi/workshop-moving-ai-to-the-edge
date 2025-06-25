@@ -210,7 +210,7 @@ spec:
                   - name: bootc-build-files-repo-subpath
                     value: \$(tt.params.changed-subfolder)
                   - name: bootc-image-name
-                    value: 'workshop-registry-quay-openshift-operators.apps.\${CLUSTER_DOMAIN}/\${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
+                    value: 'workshop-registry-quay-openshift-operators.apps.\${CLUSTER_DOMAIN}/${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
                   - name: bootc-build-export-formats
                     value:
                       - anaconda-iso
@@ -222,7 +222,7 @@ spec:
                   - name: object-storage-endpoint
                     value: 's3.openshift-storage.svc:443'
                   - name: object-storage-bucket
-                    value: \${username}-bootc-exports
+                    value: ${username}-bootc-exports
                   - name: skip-build
                     value: 'false'
                 pipelineRef:
@@ -356,7 +356,7 @@ spec:
                       secretName: quay-local-push-secret
                   - name: object-storage-credentials
                     secret:
-                      secretName: \${username}-bootc-exports
+                      secretName: ${username}-bootc-exports
                   - emptyDir: {}
                     name: store-amd64
                   - emptyDir: {}
