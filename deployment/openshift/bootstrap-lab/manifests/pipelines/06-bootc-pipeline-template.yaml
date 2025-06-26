@@ -35,7 +35,7 @@ objects:
         - name: object-storage-bucket
           value: ${OBJECT_STORAGE_BUCKET}
         - name: skip-build
-          value: 'false'
+          value: $SKIP_BUILD
       pipelineRef:
         name: bootc-image-build-multiarch
       taskRunTemplate:
@@ -190,6 +190,10 @@ parameters:
   - name: OBJECT_STORAGE_BUCKET
     description: "S3 bucket to store the build artifacts"
     required: true
+  - name: SKIP_BUILD
+    description: "If true, it skips the building process"
+    required: true
+    value: "false"
   - name: SECRET_REDHAT
     value: redhat-pull-secret
     description: "Secret containing your Red Hat pullsecret"

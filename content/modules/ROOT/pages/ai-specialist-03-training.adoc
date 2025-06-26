@@ -107,7 +107,7 @@ image::ai-train-code-terminal.png[]
 
 [source,shell,role=execute,subs="attributes"]
 ----
-git clone http://gitea.apps.{ocp_cluster_url}/{user}/{user}-ai.git
+git clone http://gitea.apps.{ocp_cluster_url}/{user}/ai.git
 ----
 
 6- Set Up the Pipeline Script: Create a new file `hardhat-kubeflow-pipeline.py` in the cloned directory (right-click to create a file). Copy the example script from: https://github.com/luisarizmendi/workshop-moving-ai-to-the-edge/blob/main/resources/solutions/ai-specialist/training/kubeflow/hardhat-kubeflow-pipeline.py[hardhat-kubeflow-pipeline.py, window=_blank]. Save it and prepare for review.
@@ -969,7 +969,7 @@ Let's generate the Pipeline YAML file and push it into Gitea.
 ----
 pip install --upgrade pip
 pip install kfp[kubernetes]
-cd {user}-ai
+cd ai
 python hardhat-kubeflow-pipeline.py
 ----
 
@@ -980,7 +980,7 @@ python hardhat-kubeflow-pipeline.py
 ----
 git config --global user.email {user}@acme.com
 git config --global user.name {user}
-git remote set-url origin http://{gitea-user}:{gitea-password}@gitea.apps.{ocp_cluster_url}/{user}/{user}-ai.git
+git remote set-url origin http://{gitea-user}:{gitea-password}@gitea.apps.{ocp_cluster_url}/{user}/ai.git
 git add .
 git commit -m "kubeflow Pipeline"
 git push

@@ -1,0 +1,41 @@
+apiVersion: flightctl.io/v1alpha1
+kind: Fleet
+metadata:
+  labels: {}
+  name: workshop
+  resourceVersion: "4"
+spec:
+  selector:
+    matchLabels:
+      fleet: "workshop"
+  template:
+    metadata:
+      labels:
+        fleet: workshop
+    spec:
+      applications: []
+      config:
+      - name: motd-update
+        configType: InlineConfigProviderSpec
+        inline:
+          - path: "/etc/motd"
+            content: "This system is managed by flightctl."
+            mode: 0644
+      - gitRef:
+          mountPath: /
+          path: /configs/site/{{ .metadata.labels.site }}
+          repository: fleet-mgmt
+          targetRevision: main
+        name: site-config
+      - gitRef:
+          mountPath: /
+          path: /config/function/{{ .metadata.labels.function }}
+          repository: fleet-mgmt
+          targetRevision: main
+        name: function-config
+      systemd:
+        matchPatterns:
+          - "flightctl-agent.service"
+
+
+

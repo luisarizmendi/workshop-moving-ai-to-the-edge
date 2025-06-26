@@ -158,6 +158,8 @@ spec:
               metadata:
                 name: s3-browser-$bucket
                 namespace: $namespace
+                annotations:
+                  haproxy.router.openshift.io/timeout: 60m
               spec:
                 to:
                   kind: Service
