@@ -17,6 +17,13 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
+          echo "Waiting for multiclusterhub to be created..."
+          until oc get multiclusterhubs.operator.open-cluster-management.io multiclusterhub -n rhacm >/dev/null 2>&1; do
+            echo "multiclusterhub not found, waiting 10s..."
+            sleep 10
+          done
+
+          echo "multiclusterhub found, applying patch..."
           oc patch multiclusterhubs.operator.open-cluster-management.io multiclusterhub -n rhacm --type json --patch '[{"op": "add", "path":"/spec/overrides/components/-", "value": {"name":"edge-manager-preview","enabled": true}}]'
         securityContext:
           allowPrivilegeEscalation: false
