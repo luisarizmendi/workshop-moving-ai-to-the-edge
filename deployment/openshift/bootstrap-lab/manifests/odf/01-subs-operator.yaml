@@ -32,4 +32,90 @@ spec:
   name: odf-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: odf-operator.v4.18.4-rhodf
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-odf-install-issue
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  template:
+    spec:
+      serviceAccountName: openshift-gitops-argocd-application-controller
+      containers:
+      - name: shell
+        image: quay.io/luisarizmendi/ocp-job:latest  
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          #!/bin/bash
+          set -e
+
+          CSV_NAME=""
+          echo "Waiting for odf-operator CSV to appear..."
+
+          # Wait until CSV is visible
+          for i in {1..30}; do
+            CSV_NAME=$(oc get csv -n openshift-storage | grep odf-operator | awk '{print $1}')
+            if [[ -n "$CSV_NAME" ]]; then
+              break
+            fi
+            sleep 10
+          done
+
+          if [[ -z "$CSV_NAME" ]]; then
+            echo "odf-operator CSV not found after waiting. Exiting."
+            exit 1
+          fi
+
+          echo "Found CSV: $CSV_NAME"
+
+          START_TIME=$(oc get csv "$CSV_NAME" -n openshift-storage -o jsonpath='{.metadata.creationTimestamp}')
+          START_EPOCH=$(date -d "$START_TIME" +%s)
+
+          MAX_WAIT_SECONDS=300
+
+          while true; do
+            NOW_EPOCH=$(date +%s)
+            ELAPSED=$((NOW_EPOCH - START_EPOCH))
+
+            STATUS=$(oc get csv "$CSV_NAME" -n openshift-storage -o jsonpath='{.status.phase}')
+            echo "Elapsed: $ELAPSED seconds | Status: $STATUS"
+
+            if [[ "$STATUS" == "Succeeded" ]]; then
+              echo "CSV installed successfully."
+              exit 0
+            fi
+
+            if [[ "$ELAPSED" -ge "$MAX_WAIT_SECONDS" ]]; then
+              REASON=$(oc get csv "$CSV_NAME" -n openshift-storage -o jsonpath="{.status.conditions[?(@.type=='Installed')].message}")
+              echo "Install reason: $REASON"
+
+              if echo "$REASON" | grep -q "waiting for deployment ocs-client-operator-controller-manager to become ready"; then
+                echo "CSV stuck due to deployment readiness. Recreating..."
+                oc get csv "$CSV_NAME" -n openshift-storage -o yaml > /tmp/odf.csv.yaml
+                oc delete csv "$CSV_NAME" -n openshift-storage
+                sleep 10
+                oc create -f /tmp/odf.csv.yaml -n openshift-storage
+                echo "CSV recreated."
+                exit 0
+              else
+                echo "CSV not ready, but not stuck on expected condition. Exiting without changes."
+                exit 0
+              fi
+            fi
+
+            sleep 20
+          done
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - "ALL"
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: OnFailure
+  backoffLimit: 1
