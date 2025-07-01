@@ -3,7 +3,9 @@ FROM registry.redhat.io/rhel9/rhel-bootc:9.6
 ARG ACM_VERSION=2.13
 
 ## Install base packages
-RUN dnf -y --nogpgcheck install tmux podman-compose  && dnf clean all
+RUN dnf -y install tmux python3-pip && \
+    pip3 install podman-compose && \
+    dnf clean all
 
 ## Enable RHEM
 RUN dnf -y install --enablerepo=rhacm-${ACM_VERSION}-for-rhel-$(. /etc/os-release && echo ${VERSION_ID%%.*})-$(uname -m)-rpms flightctl-agent && \

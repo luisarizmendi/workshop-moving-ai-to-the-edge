@@ -13,7 +13,11 @@ spec:
       labels:
         fleet: workshop
     spec:
-      applications: []
+      applications:
+      - envVars:
+          IMAGE_NAME: quay.io/luisarizmendi/modelcar-hardhat:v1
+        image: quay.io/luisarizmendi/compose-triton:latest
+        name: triton
       config:
       - name: motd-update
         configType: InlineConfigProviderSpec
@@ -24,18 +28,20 @@ spec:
       - gitRef:
           mountPath: /
           path: /configs/site/{{ .metadata.labels.site }}
-          repository: fleet-mgmt
+          repository: user01-fleet-mgmt
           targetRevision: main
         name: site-config
       - gitRef:
           mountPath: /
-          path: /config/function/{{ .metadata.labels.function }}
-          repository: fleet-mgmt
+          path: /configs/function/{{ .metadata.labels.function }}
+          repository: user01-fleet-mgmt
           targetRevision: main
         name: function-config
       systemd:
         matchPatterns:
           - "flightctl-agent.service"
+      os:
+        image: workshop-registry-quay-openshift-operators.apps.cluster-bndlv.bndlv.sandbox2791.opentlc.com/user01/type-1:prod
 
 
 

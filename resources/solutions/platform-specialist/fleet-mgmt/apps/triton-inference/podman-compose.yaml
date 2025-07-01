@@ -1,0 +1,58 @@
+
+version: '3.8'
+
+services:
+  model-downloader:
+    image: quay.io/luisarizmendi/ocp-job:latest
+    volumes:
+      - model-storage-gpu:/mnt/models:z
+    environment:
+      - IMAGE_NAME=${IMAGE_NAME:-quay.io/luisarizmendi/modelcar-hardhat:v1}
+    command: >
+      /bin/bash -c "mkdir -p /mnt/models && 
+      /usr/bin/skopeo copy --override-os linux docker://$$IMAGE_NAME oci-archive:/tmp/modelcar.tar && 
+      mkdir -p /tmp/image && 
+      tar -xf /tmp/modelcar.tar -C /tmp/image && 
+      for layer in /tmp/image/blobs/sha256/*; do 
+        tar -tf \"$$layer\" | grep '^models/' && tar -xf \"$$layer\" -C /mnt/models --strip-components=1 || true; 
+      done && 
+      rm -rf /tmp/modelcar.tar /tmp/image"
+    restart: "no"
+    networks:
+      - hardhat-network
+
+  inference-container:
+    image: nvcr.io/nvidia/tritonserver:25.03-py3
+    depends_on:
+      model-downloader:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"  # REST API
+      - "8001:8001"  # gRPC API
+    volumes:
+      - model-storage-gpu:/mnt/models:z
+    tmpfs:
+      - /dev/shm
+    environment:
+      - PORT=8000
+    # GPU support - uncomment the following lines if you have GPU support
+    # devices:
+    #   - nvidia.com/gpu=all
+    # security_opt:
+    #   - label=disable
+    command: >
+      /bin/sh -c 'exec tritonserver 
+      "--model-repository=/mnt/models" 
+      "--allow-http=true" 
+      "--allow-sagemaker=false"'
+    restart: unless-stopped
+    networks:
+      - hardhat-network
+
+volumes:
+  model-storage-gpu:
+    driver: local
+
+networks:
+  hardhat-network:
+    driver: bridge

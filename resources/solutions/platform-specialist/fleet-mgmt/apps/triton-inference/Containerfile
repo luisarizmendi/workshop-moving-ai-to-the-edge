@@ -1,0 +1,6 @@
+FROM scratch
+
+COPY podman-compose.yaml /podman-compose.yaml
+
+# required
+LABEL appType="compose"

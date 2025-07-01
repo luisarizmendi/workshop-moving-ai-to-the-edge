@@ -16,47 +16,55 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
         - |
+          #!/bin/bash
           set -e
+
           # Wait for Gitea to be ready
           while ! curl -s --head "$GITEA_BASE_URL" | grep "HTTP/1.1 200 OK" > /dev/null; do
-            echo "Waiting for Gitea to be ready..."
-            sleep 5
+              echo "Waiting for Gitea to be ready..."
+              sleep 5
           done
           echo "Gitea is ready waiting to start configuration!"
-          #sleep 60
-          
+
+          # Check if API swagger is accessible
+          while ! curl -s "$GITEA_BASE_URL/api/swagger" > /dev/null; do
+              echo "Waiting for Gitea API to be ready..."
+              sleep 5
+          done
+          echo "Gitea API is accessible!"
+
           AUTH_HEADER="Authorization: Basic $(echo -n "$GITEA_ADMIN_USER:$GITEA_ADMIN_PASS" | base64)"
-          
+
           # Get the route URL
           CLUSTER_DOMAIN=$(oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}' | sed 's/^apps\.//')
-                   
+
           # Create webhooks in repositories
           for i in $(seq -w 1 $USER_NUM); do
-            USERNAME="${USER_BASE_NAME}${i}"
-            REPO_NAME="device-images"
-            FULL_WEBHOOK_URL=https://$WEBHOOK_ROUTE_NAME-$USERNAME-$TOOLS_NAMESPACE_SUFIX.apps.$CLUSTER_DOMAIN
-
-            echo "Creating webhook for repository: $REPO_NAME"
-            
-            # Create webhook
-            curl -X POST \
-              -H "$AUTH_HEADER" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"type\": \"gitea\",
-                \"config\": {
-                  \"url\": \"$FULL_WEBHOOK_URL\",
-                  \"content_type\": \"json\",
-                  \"secret\": \"\"
-                },
-                \"events\": [\"push\"],
-                \"active\": true
-              }" \
-              "$GITEA_BASE_URL/api/v1/repos/$USERNAME/$REPO_NAME/hooks"
-            
-            echo "Webhook created for $REPO_NAME"
+              USERNAME="${USER_BASE_NAME}${i}"
+              REPO_NAME=$REPOSITORY
+              FULL_WEBHOOK_URL=https://$WEBHOOK_ROUTE_NAME-$USERNAME-$TOOLS_NAMESPACE_SUFIX.apps.$CLUSTER_DOMAIN
+              
+              echo "Creating webhook for repository: $REPO_NAME"
+              
+              # Create webhook
+              curl -X POST \
+                  -H "$AUTH_HEADER" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                      \"type\": \"gitea\",
+                      \"config\": {
+                          \"url\": \"$FULL_WEBHOOK_URL\",
+                          \"content_type\": \"json\",
+                          \"secret\": \"\"
+                      },
+                      \"events\": [\"push\"],
+                      \"active\": true
+                  }" \
+                  "$GITEA_BASE_URL/api/v1/repos/$USERNAME/$REPO_NAME/hooks"
+              
+              echo "Webhook created for $REPO_NAME"
           done
-          
+
           echo "All webhooks configured successfully!"
 
         env:
@@ -70,6 +78,8 @@ spec:
             value: "user"
           - name: USER_BASE_PASS
             value: "redhat"
+          - name: REPOSITORY
+            value: "fleet-mgmt"
           - name: USER_NUM
             value: "50"
           - name: WEBHOOK_ROUTE_NAME

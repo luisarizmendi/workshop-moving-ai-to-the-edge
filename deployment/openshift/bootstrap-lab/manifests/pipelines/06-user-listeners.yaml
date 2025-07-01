@@ -88,7 +88,7 @@ spec:
                   name: cel
                 params:
                 - name: "filter"
-                  value: 'header.match("X-Gitea-Event", "push") && extensions.changed_files.matches("type-1/")'
+                  value: 'header.match("X-Gitea-Event", "push") && extensions.changed_files.matches("devices/type-1/")'
                 - name: "overlays"
                   value:
                   - key: branch
@@ -100,6 +100,8 @@ spec:
                   - key: timestamp
                     expression: "body.head_commit.timestamp"
                   - key: changed_subfolder
+                    expression: '"devices/type-1"'
+                  - key: image_name
                     expression: '"type-1"'
               bindings:
               - ref: bootc-pipeline-binding
@@ -123,7 +125,7 @@ spec:
                   name: cel
                 params:
                 - name: "filter"
-                  value: 'header.match("X-Gitea-Event", "push") && extensions.changed_files.matches("type-2/")'
+                  value: 'header.match("X-Gitea-Event", "push") && extensions.changed_files.matches("devices/type-2/")'
                 - name: "overlays"
                   value:
                   - key: branch
@@ -135,6 +137,8 @@ spec:
                   - key: timestamp
                     expression: "body.head_commit.timestamp"
                   - key: changed_subfolder
+                    expression: '"devices/type-2"'
+                  - key: image_name
                     expression: '"type-2"'
               bindings:
               - ref: bootc-pipeline-binding
@@ -179,6 +183,8 @@ spec:
               value: \$(extensions.timestamp)
             - name: changed-subfolder
               value: \$(extensions.changed_subfolder)
+            - name: image-name
+              value: \$(extensions.image-name)
           ---
           apiVersion: triggers.tekton.dev/v1alpha1
           kind: TriggerTemplate
@@ -195,11 +201,12 @@ spec:
             - name: branch-name
             - name: changed-files
             - name: commit-timestamp
+            - name: image-name
             resourcetemplates:
             - apiVersion: tekton.dev/v1
               kind: PipelineRun
               metadata:
-                name: bootc-image-build-\$(tt.params.changed-subfolder)-\$(tt.params.git-revision-short)
+                name: bootc-image-build-\$(tt.params.image-name)-\$(tt.params.git-revision-short)
                 namespace: $pipeline_namespace
               spec:
                 params:
@@ -210,7 +217,7 @@ spec:
                   - name: bootc-build-files-repo-subpath
                     value: \$(tt.params.changed-subfolder)
                   - name: bootc-image-name
-                    value: 'workshop-registry-quay-openshift-operators.apps.${CLUSTER_DOMAIN}/${username}/\$(tt.params.changed-subfolder):\$(tt.params.git-revision-short)'
+                    value: 'workshop-registry-quay-openshift-operators.apps.${CLUSTER_DOMAIN}/${username}/\$(tt.params.image-name):\$(tt.params.git-revision-short)'
                   - name: bootc-build-export-formats
                     value:
                       - anaconda-iso
@@ -218,7 +225,7 @@ spec:
                   - name: bootc-build-platforms
                     value:
                       - linux/amd64
-                      - linux/arm64
+                    #  - linux/arm64
                   - name: object-storage-endpoint
                     value: 's3.openshift-storage.svc:443'
                   - name: object-storage-bucket

@@ -39,7 +39,7 @@
 * xref:ai-specialist-99-fast.adoc[*Fast-Track for AI Specialist*]
 
 * -------------------------
-* `_Platform Specialist_`
+* `_Platform Specialist (TO BE UPDATED)_`
 * xref:platform-specialist-00-intro.adoc[*0. Platform Specialist Intro*]
 * xref:platform-specialist-00-intro.adoc#_background[- Background]
 * xref:platform-specialist-00-intro.adoc#_toolset[- Toolset]
@@ -47,20 +47,12 @@
 * xref:platform-specialist-00-intro.adoc#_section_video_recording[- Section Video Recording]
 
 * xref:platform-specialist-01-image-bake.adoc[*1. Device Image Preparation*]
-* xref:platform-specialist-01-image-bake.adoc#_[- RHDE - Standard x86]
-* xref:platform-specialist-01-image-bake.adoc#_[- RHDE - Nvidia Jetson]
-* xref:platform-specialist-01-image-bake.adoc#_[- OCP - ACM GUI]
-* xref:platform-specialist-01-image-bake.adoc#_[- OCP - Appliance Mode]
 
 
 * xref:platform-specialist-02-device-onboarding.adoc[*2. Device Onboarding*]
-* xref:platform-specialist-02-device-onboarding.adoc#_[- RHDE]
-* xref:platform-specialist-02-device-onboarding.adoc#_[- OCP - ACM GUI]
-* xref:platform-specialist-02-device-onboarding.adoc#_[- OCP - Appliance Mode]
 
 * xref:platform-specialist-03-day-2-ops.adoc[*3. Day-2 Operations*]
-* xref:platform-specialist-03-day-2-ops.adoc#_[- Red Hat Edge Manager]
-* xref:platform-specialist-03-day-2-ops.adoc#_[- Advanced Cluster Manager]
+
 
 
 * -------------------------
